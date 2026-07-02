@@ -1,0 +1,103 @@
+import { api } from '../api.js';
+import { useLoad } from '../hooks.js';
+import Icon from '../components/Icon.jsx';
+
+function StatCard({ icon, label, value, hint }) {
+  return (
+    <div className="card stat-card">
+      <div className="stat-label">
+        <Icon name={icon} size={16} />
+        {label}
+      </div>
+      <div className="stat-value">{value}</div>
+      {hint && <div className="stat-hint">{hint}</div>}
+    </div>
+  );
+}
+
+function SplitBar({ label, value, total, color }) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div className="split-row">
+      <div className="split-head">
+        <span>{label}</span>
+        <strong>
+          {value} · {pct}%
+        </strong>
+      </div>
+      <div className="split-track" role="img" aria-label={`${label}: ${value} of ${total} (${pct}%)`}>
+        <div className="split-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
+
+export default function Dashboard() {
+  const { data, loading, error } = useLoad(api.dashboard);
+
+  if (loading) {
+    return (
+      <div>
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="skeleton-row" />
+        ))}
+      </div>
+    );
+  }
+  if (error) return <div className="form-alert">Could not load dashboard: {error.message}</div>;
+
+  const s = data;
+  const allocated = s.billableCount + s.nonBillableCount;
+  const billablePct = s.totalAssociates > 0 ? Math.round((s.billableCount / s.totalAssociates) * 100) : 0;
+  const maxHeadcount = Math.max(1, ...s.clientHeadcounts.map((c) => c.headcount));
+
+  return (
+    <>
+      <div className="stat-grid">
+        <StatCard icon="users" label="Total Associates" value={s.totalAssociates} hint={`${allocated} allocated to projects`} />
+        <StatCard icon="dollar" label="Billable" value={s.billableCount} hint={`${billablePct}% billability ratio`} />
+        <StatCard icon="bench" label="On Bench" value={s.benchCount} hint="No current allocation" />
+        <StatCard icon="briefcase" label="Active Projects" value={s.activeProjects} hint={`across ${s.totalClients} clients`} />
+      </div>
+
+      <div className="panel-grid">
+        <div className="card panel">
+          <h2>Billability Mix</h2>
+          <SplitBar label="Billable" value={s.billableCount} total={s.totalAssociates} color="var(--color-accent)" />
+          <SplitBar label="Non-billable" value={s.nonBillableCount} total={s.totalAssociates} color="var(--color-warn)" />
+          <SplitBar label="Bench" value={s.benchCount} total={s.totalAssociates} color="var(--color-destructive)" />
+        </div>
+
+        <div className="card panel">
+          <h2>Delivery Mix</h2>
+          <SplitBar label="Onshore" value={s.onshoreCount} total={s.totalAssociates} color="var(--color-primary)" />
+          <SplitBar label="Offshore" value={s.offshoreCount} total={s.totalAssociates} color="#7c3aed" />
+          <div className="legend">
+            <span>
+              <span className="legend-dot" style={{ background: 'var(--color-primary)' }} />
+              Onshore — client site / US
+            </span>
+            <span>
+              <span className="legend-dot" style={{ background: '#7c3aed' }} />
+              Offshore — delivery centers
+            </span>
+          </div>
+        </div>
+
+        <div className="card panel" style={{ gridColumn: '1 / -1' }}>
+          <h2>Headcount by Client</h2>
+          {s.clientHeadcounts.length === 0 && <p className="stat-hint">No current allocations.</p>}
+          {s.clientHeadcounts.map((c) => (
+            <div className="rank-row" key={c.clientName}>
+              <span className="rank-name">{c.clientName}</span>
+              <span className="rank-count">{c.headcount} associates</span>
+              <div className="rank-track" role="img" aria-label={`${c.clientName}: ${c.headcount} associates`}>
+                <div className="rank-fill" style={{ width: `${(c.headcount / maxHeadcount) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}

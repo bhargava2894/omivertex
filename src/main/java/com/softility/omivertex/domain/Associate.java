@@ -1,0 +1,58 @@
+package com.softility.omivertex.domain;
+
+import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.Instant;
+
+@Entity
+@Table(name = "associates", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
+public class Associate {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
+    private String email;
+
+    @Column(nullable = false)
+    private String company;
+
+    private String location;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private WorkMode workMode;
+
+    private String designation;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EntityStatus status = EntityStatus.ACTIVE;
+
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getCompany() { return company; }
+    public void setCompany(String company) { this.company = company; }
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+    public WorkMode getWorkMode() { return workMode; }
+    public void setWorkMode(WorkMode workMode) { this.workMode = workMode; }
+    public String getDesignation() { return designation; }
+    public void setDesignation(String designation) { this.designation = designation; }
+    public EntityStatus getStatus() { return status; }
+    public void setStatus(EntityStatus status) { this.status = status; }
+    public Instant getCreatedAt() { return createdAt; }
+}
