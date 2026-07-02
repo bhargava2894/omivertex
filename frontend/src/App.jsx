@@ -5,6 +5,8 @@ import Associates from './pages/Associates.jsx';
 import Clients from './pages/Clients.jsx';
 import Projects from './pages/Projects.jsx';
 import Allocations from './pages/Allocations.jsx';
+import Settings from './pages/Settings.jsx';
+import { storedTheme, applyTheme, resolveTheme } from './theme.js';
 
 const ROUTES = [
   { path: 'dashboard', label: 'Dashboard', icon: 'dashboard', component: Dashboard, sub: 'Resource overview across Softility' },
@@ -12,6 +14,7 @@ const ROUTES = [
   { path: 'clients', label: 'Clients', icon: 'building', component: Clients, sub: 'Master client list' },
   { path: 'projects', label: 'Projects', icon: 'briefcase', component: Projects, sub: 'Master project list by client' },
   { path: 'allocations', label: 'Allocations', icon: 'link', component: Allocations, sub: 'Assign associates to projects' },
+  { path: 'settings', label: 'Settings', icon: 'settings', component: Settings, sub: 'Appearance and data management' },
 ];
 
 function useHashRoute() {
@@ -28,6 +31,19 @@ function useHashRoute() {
 export default function App() {
   const route = useHashRoute();
   const [toast, setToast] = useState(null);
+  const [theme, setThemeState] = useState(storedTheme);
+
+  useEffect(() => {
+    applyTheme(theme);
+    if (theme !== 'system') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => applyTheme('system');
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [theme]);
+
+  const setTheme = (value) => setThemeState(value);
+  const toggleTheme = () => setTheme(resolveTheme(theme) === 'dark' ? 'light' : 'dark');
 
   const showToast = useCallback((message, isError = false) => {
     setToast({ message, isError });
@@ -36,6 +52,7 @@ export default function App() {
 
   const active = ROUTES.find((r) => r.path === route) || ROUTES[0];
   const Page = active.component;
+  const isDark = resolveTheme(theme) === 'dark';
 
   return (
     <div className="shell">
@@ -69,9 +86,19 @@ export default function App() {
             <h1>{active.label}</h1>
             <div className="topbar-sub">{active.sub}</div>
           </div>
+          <div className="topbar-actions">
+            <button
+              className="icon-btn"
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+              title={isDark ? 'Light theme' : 'Dark theme'}
+            >
+              <Icon name={isDark ? 'sun' : 'moon'} size={17} />
+            </button>
+          </div>
         </header>
         <main className="content">
-          <Page showToast={showToast} />
+          <Page showToast={showToast} theme={theme} setTheme={setTheme} />
         </main>
       </div>
 

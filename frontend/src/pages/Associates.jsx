@@ -6,6 +6,7 @@ import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
+import { ExportMenu, ImportButton } from '../components/DataTransfer.jsx';
 
 const EMPTY = {
   name: '', email: '', company: 'Softility', location: '',
@@ -105,9 +106,13 @@ export default function Associates({ showToast }) {
             <option value="OFFSHORE">Offshore</option>
           </select>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>
-          <Icon name="plus" size={16} /> New Associate
-        </button>
+        <div className="toolbar-actions">
+          <ImportButton onImported={reload} showToast={showToast} />
+          <ExportMenu />
+          <button className="btn btn-primary" onClick={openCreate}>
+            <Icon name="plus" size={16} /> New Associate
+          </button>
+        </div>
       </div>
 
       <DataTable

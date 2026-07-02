@@ -30,6 +30,12 @@ public class GlobalExceptionHandler {
         return new ApiError("Validation failed", fieldErrors);
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleBadRequest(BadRequestException ex) {
+        return ApiError.of(ex.getMessage());
+    }
+
     @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiError handleNotFound(NotFoundException ex) {

@@ -17,4 +17,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findAllByOrderByNameAsc();
 
     boolean existsByClientId(Long clientId);
+
+    java.util.Optional<Project> findByNameIgnoreCaseAndClientId(String name, Long clientId);
 }

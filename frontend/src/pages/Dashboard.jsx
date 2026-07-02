@@ -6,7 +6,9 @@ function StatCard({ icon, label, value, hint }) {
   return (
     <div className="card stat-card">
       <div className="stat-label">
-        <Icon name={icon} size={16} />
+        <span className="stat-icon">
+          <Icon name={icon} size={15} />
+        </span>
         {label}
       </div>
       <div className="stat-value">{value}</div>
