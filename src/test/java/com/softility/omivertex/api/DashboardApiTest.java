@@ -31,7 +31,14 @@ class DashboardApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.activeProjects").value(1))
                 .andExpect(jsonPath("$.clientHeadcounts", hasSize(1)))
                 .andExpect(jsonPath("$.clientHeadcounts[0].clientName").value("Acme Corp"))
-                .andExpect(jsonPath("$.clientHeadcounts[0].headcount").value(2));
+                .andExpect(jsonPath("$.clientHeadcounts[0].headcount").value(2))
+                // allocations in ApiTestBase start 3 months ago, so the last 4 points
+                // of the 6-month trend carry them and the first 2 are empty
+                .andExpect(jsonPath("$.staffingTrend", hasSize(6)))
+                .andExpect(jsonPath("$.staffingTrend[0].total").value(0))
+                .andExpect(jsonPath("$.staffingTrend[5].total").value(2))
+                .andExpect(jsonPath("$.staffingTrend[5].billable").value(1))
+                .andExpect(jsonPath("$.staffingTrend[5].month").isNotEmpty());
     }
 
     @Test

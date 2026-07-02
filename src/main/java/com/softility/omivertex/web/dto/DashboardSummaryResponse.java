@@ -11,8 +11,13 @@ public record DashboardSummaryResponse(
         long offshoreCount,
         long totalClients,
         long activeProjects,
-        List<ClientHeadcount> clientHeadcounts) {
+        List<ClientHeadcount> clientHeadcounts,
+        List<TrendPoint> staffingTrend) {
 
     public record ClientHeadcount(String clientName, long headcount) {
+    }
+
+    /** Distinct allocated / billable associates during one calendar month. */
+    public record TrendPoint(String month, long total, long billable) {
     }
 }

@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +70,28 @@ public class DashboardService {
         return new DashboardSummaryResponse(associates.size(), billableCount, nonBillableCount, benchCount,
                 onshore, offshore, clientRepository.count(),
                 projectRepository.findAll().stream().filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count(),
-                headcounts);
+                headcounts, staffingTrend());
+    }
+
+    /** Distinct allocated / billable associates per month for the trailing six months. */
+    private List<DashboardSummaryResponse.TrendPoint> staffingTrend() {
+        List<Allocation> all = allocationRepository.findAllWithDetails();
+        DateTimeFormatter monthLabel = DateTimeFormatter.ofPattern("MMM");
+        List<DashboardSummaryResponse.TrendPoint> points = new ArrayList<>();
+        YearMonth current = YearMonth.now();
+        for (int i = 5; i >= 0; i--) {
+            YearMonth month = current.minusMonths(i);
+            LocalDate start = month.atDay(1);
+            LocalDate end = month.atEndOfMonth();
+            List<Allocation> active = all.stream()
+                    .filter(a -> !a.getStartDate().isAfter(end)
+                            && (a.getEndDate() == null || !a.getEndDate().isBefore(start)))
+                    .toList();
+            long total = active.stream().map(a -> a.getAssociate().getId()).distinct().count();
+            long billable = active.stream().filter(Allocation::isBillable)
+                    .map(a -> a.getAssociate().getId()).distinct().count();
+            points.add(new DashboardSummaryResponse.TrendPoint(monthLabel.format(start), total, billable));
+        }
+        return points;
     }
 }

@@ -32,6 +32,13 @@
   --shadow-btn: 0 1px 2px rgba(37, 99, 235, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   --font-sans: 'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif;
   --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+  /* chart series — validated (dataviz six checks) against the light surface */
+  --chart-1: #2563eb;
+  --chart-2: #059669;
+  --chart-3: #d97706;
+  --chart-4: #dc2626;
+  --chart-5: #7c3aed;
+  --chart-grid: #eef2f7;
 }
 
 [data-theme='dark'] {
@@ -61,6 +68,13 @@
   --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.55);
   --shadow-btn: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  /* chart series — validated against the dark surface #121b2e */
+  --chart-1: #3b82f6;
+  --chart-2: #059669;
+  --chart-3: #d97706;
+  --chart-4: #ef4444;
+  --chart-5: #8b5cf6;
+  --chart-grid: #1c2740;
 }
 
 * { box-sizing: border-box; }
@@ -518,6 +532,49 @@ td.actions { text-align: right; white-space: nowrap; }
   animation: pop-in 0.2s var(--ease);
 }
 .toast.error { background: var(--color-destructive); color: #fff; }
+
+/* ---------- Charts ---------- */
+.chart-box { position: relative; }
+.chart-grid { stroke: var(--chart-grid); stroke-width: 1; }
+.chart-crosshair { stroke: var(--color-muted-fg); stroke-width: 1; opacity: 0.55; }
+.chart-tick { fill: var(--color-muted-fg); font-size: 11px; font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+.chart-cat { fill: var(--color-foreground); font-size: 12.5px; font-weight: 600; font-family: var(--font-sans); }
+.chart-endlabel { fill: var(--color-foreground); font-size: 12px; font-weight: 700; font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+.chart-seglabel { fill: #fff; font-size: 11px; font-weight: 700; font-family: var(--font-sans); }
+svg path, svg rect, svg circle { transition: opacity 0.15s var(--ease); }
+
+.chart-tooltip {
+  position: absolute;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  pointer-events: none;
+  z-index: 30;
+  white-space: nowrap;
+}
+.tt-title { font-weight: 700; margin-bottom: 4px; }
+.tt-row { display: flex; align-items: center; gap: 7px; margin-top: 2px; }
+.tt-row strong { font-variant-numeric: tabular-nums; }
+.tt-key { width: 12px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.tt-label { color: var(--color-muted-fg); }
+
+.chart-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 12.5px; color: var(--color-muted-fg); }
+.chart-legend-item { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; }
+.chart-legend-value { color: var(--color-foreground); font-weight: 700; font-variant-numeric: tabular-nums; }
+.chart-key-rect { width: 11px; height: 11px; border-radius: 3px; }
+.chart-key-line { width: 14px; height: 3px; border-radius: 2px; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip: rect(0 0 0 0);
+  overflow: hidden;
+  white-space: nowrap;
+}
 
 /* ---------- Client headcount list ---------- */
 .rank-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; margin-bottom: 12px; }
