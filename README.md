@@ -40,8 +40,9 @@ cd frontend && npm run dev   # Vite dev server on :5173, /api proxied to :8080
 ./mvnw test
 ```
 
-36 tests — full HTTP-level coverage (MockMvc + H2) of every endpoint: happy paths,
-validation (400), missing resources (404), and conflict rules (409).
+45 tests — full HTTP-level coverage (MockMvc + H2) of every endpoint: happy paths,
+validation (400), missing resources (404), conflict rules (409), dashboard KPIs with
+staffing trend, and CSV/JSON import-export.
 
 ## API
 

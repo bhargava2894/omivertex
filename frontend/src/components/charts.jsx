@@ -34,10 +34,18 @@ function Tooltip({ tip }) {
 
 export function Legend({ items, lines }) {
   return (
-    <div className="chart-legend">
+    <div className="chart-legend" style={{ justifyContent: 'center' }}>
       {items.map((it) => (
         <span key={it.label} className="chart-legend-item">
-          <span className={lines ? 'chart-key-line' : 'chart-key-rect'} style={{ background: it.color }} />
+          <span
+            className={lines ? 'chart-key-line' : 'chart-key-rect'}
+            style={{
+              borderColor: it.color,
+              borderWidth: lines ? '0' : '1.5px',
+              borderStyle: lines ? 'none' : 'solid',
+              background: lines ? it.color : `color-mix(in srgb, ${it.color} 15%, transparent)`
+            }}
+          />
           {it.label}
           {it.value != null && <span className="chart-legend-value">{it.value}</span>}
         </span>
@@ -266,3 +274,206 @@ export function HBarChart({ rows, color, unit }) {
     </div>
   );
 }
+
+/* ---------- Donut Chart: part-to-whole segment layout with border + soft fill ---------- */
+
+function getDonutSlicePath(cx, cy, rOut, rIn, startAngle, endAngle) {
+  const diff = endAngle - startAngle;
+  if (diff <= 0) return '';
+  const actualEndAngle = diff >= 2 * Math.PI ? startAngle + 2 * Math.PI - 0.001 : endAngle;
+  
+  const x1Out = cx + rOut * Math.cos(startAngle);
+  const y1Out = cy + rOut * Math.sin(startAngle);
+  const x2Out = cx + rOut * Math.cos(actualEndAngle);
+  const y2Out = cy + rOut * Math.sin(actualEndAngle);
+  
+  const x1In = cx + rIn * Math.cos(startAngle);
+  const y1In = cy + rIn * Math.sin(startAngle);
+  const x2In = cx + rIn * Math.cos(actualEndAngle);
+  const y2In = cy + rIn * Math.sin(actualEndAngle);
+  
+  const largeArc = (actualEndAngle - startAngle) > Math.PI ? 1 : 0;
+  
+  return `M ${x1Out} ${y1Out} A ${rOut} ${rOut} 0 ${largeArc} 1 ${x2Out} ${y2Out} L ${x2In} ${y2In} A ${rIn} ${rIn} 0 ${largeArc} 0 ${x1In} ${y1In} Z`;
+}
+
+export function DonutChart({ segments }) {
+  const [ref, width] = useWidth();
+  const [tip, setTip] = useState(null);
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+  const height = 180;
+  
+  const sum = segments.reduce((a, s) => a + s.value, 0);
+  const cx = width / 2;
+  const cy = height / 2;
+  const rOut = 65;
+  const rIn = 45;
+  
+  let startAngle = -Math.PI / 2;
+  const slices = segments.map((s, index) => {
+    const angle = sum > 0 ? (s.value / sum) * 2 * Math.PI : 0;
+    const endAngle = startAngle + angle;
+    const slice = {
+      ...s,
+      startAngle,
+      endAngle,
+      path: getDonutSlicePath(cx, cy, rOut, rIn, startAngle, endAngle),
+      index
+    };
+    startAngle = endAngle;
+    return slice;
+  });
+
+  return (
+    <div className="chart-box" ref={ref} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {width > 0 && (
+        <svg width={width} height={height} role="img" aria-label={segments.map((s) => `${s.label}: ${s.value}`).join(', ')}>
+          {sum === 0 ? (
+            <path
+              d={getDonutSlicePath(cx, cy, rOut, rIn, 0, 2 * Math.PI)}
+              fill="var(--color-muted)"
+              stroke="var(--color-border)"
+              strokeWidth={1.5}
+            />
+          ) : (
+            slices.map((s) => {
+              const hovered = hoveredIdx === s.index;
+              const active = hoveredIdx !== null;
+              return (
+                <path
+                  key={s.label}
+                  d={s.path}
+                  fill={s.color}
+                  fillOpacity={active ? (hovered ? 0.25 : 0.08) : 0.15}
+                  stroke={s.color}
+                  strokeWidth={hovered ? 2.5 : 1.5}
+                  strokeLinejoin="round"
+                  onPointerMove={(e) => {
+                    const box = e.currentTarget.closest('.chart-box').getBoundingClientRect();
+                    setHoveredIdx(s.index);
+                    setTip({
+                      x: e.clientX - box.left,
+                      y: e.clientY - box.top - 14,
+                      align: e.clientX - box.left > width * 0.6 ? 'right' : 'left',
+                      title: s.label,
+                      rows: [{ label: sum ? `${Math.round((s.value / sum) * 100)}% of ${sum}` : '', value: s.value, color: s.color }],
+                    });
+                  }}
+                  onPointerLeave={() => {
+                    setHoveredIdx(null);
+                    setTip(null);
+                  }}
+                  style={{
+                    cursor: 'pointer',
+                    transition: 'all 0.18s ease-in-out',
+                  }}
+                />
+              );
+            })
+          )}
+        </svg>
+      )}
+      <Tooltip tip={tip} />
+      <Legend items={segments.map((s) => ({ label: s.label, color: s.color, value: s.value }))} />
+    </div>
+  );
+}
+
+/* ---------- Vertical Column Bar Chart: colorful multi-hue bar series ---------- */
+
+export function VBarChart({ rows, unit }) {
+  const [ref, width] = useWidth();
+  const [tip, setTip] = useState(null);
+  const [hoveredIdx, setHoveredIdx] = useState(null);
+  const height = 240;
+  const m = { top: 20, right: 20, bottom: 54, left: 34 };
+  
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  const ticks = niceTicks(max);
+  const yMax = ticks[ticks.length - 1];
+  const iw = Math.max(0, width - m.left - m.right);
+  const ih = height - m.top - m.bottom;
+  
+  const colW = rows.length > 0 ? iw / rows.length : 0;
+  const barW = Math.min(36, colW * 0.6);
+  
+  const getBarX = (i) => m.left + i * colW + (colW - barW) / 2;
+  const getBarY = (v) => m.top + ih - (v / yMax) * ih;
+  
+  const getBarPath = (x, y, w, h, r = 4) => {
+    if (h <= 0) return '';
+    const actualR = Math.min(r, w / 2, h);
+    return `M ${x},${y + h} L ${x},${y + actualR} A ${actualR} ${actualR} 0 0 1 ${x + actualR},${y} L ${x + w - actualR},${y} A ${actualR} ${actualR} 0 0 1 ${x + w},${y + actualR} L ${x + w},${y + h} Z`;
+  };
+
+  return (
+    <div className="chart-box" ref={ref}>
+      {width > 0 && (
+        <svg width={width} height={height} role="img" aria-label={rows.map((r) => `${r.label}: ${r.value}`).join(', ')}>
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={m.left} x2={width - m.right} y1={m.top + ih - (t / yMax) * ih} y2={m.top + ih - (t / yMax) * ih} className="chart-grid" />
+              <text x={m.left - 8} y={m.top + ih - (t / yMax) * ih + 4} textAnchor="end" className="chart-tick">{t}</text>
+            </g>
+          ))}
+          
+          {rows.map((r, i) => {
+            const x = getBarX(i);
+            const y = getBarY(r.value);
+            const h = (r.value / yMax) * ih;
+            const color = `var(--chart-${(i % 5) + 1})`;
+            const hovered = hoveredIdx === i;
+            const active = hoveredIdx !== null;
+            const displayLabel = r.label.length > 16 ? r.label.substring(0, 14) + '..' : r.label;
+            
+            return (
+              <g
+                key={r.label}
+                onPointerMove={(e) => {
+                  const box = e.currentTarget.closest('.chart-box').getBoundingClientRect();
+                  setHoveredIdx(i);
+                  setTip({
+                    x: e.clientX - box.left,
+                    y: e.clientY - box.top - 12,
+                    align: e.clientX - box.left > width * 0.6 ? 'right' : 'left',
+                    title: r.label,
+                    rows: [{ label: unit, value: r.value, color }],
+                  });
+                }}
+                onPointerLeave={() => {
+                  setHoveredIdx(null);
+                  setTip(null);
+                }}
+                style={{ cursor: 'pointer' }}
+              >
+                {/* Hotspot background rect to improve hover sensitivity */}
+                <rect x={m.left + i * colW} y={m.top} width={colW} height={ih} fill="transparent" />
+                
+                {r.value > 0 && (
+                  <path
+                    d={getBarPath(x, y, barW, h, 4)}
+                    fill={color}
+                    fillOpacity={active ? (hovered ? 0.25 : 0.08) : 0.15}
+                    stroke={color}
+                    strokeWidth={hovered ? 2.5 : 1.5}
+                    style={{ transition: 'all 0.18s ease-in-out' }}
+                  />
+                )}
+                
+                <text
+                  transform={`translate(${x + barW / 2}, ${height - 38}) rotate(-25)`}
+                  textAnchor="end"
+                  className="chart-tick"
+                >
+                  {displayLabel}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      )}
+      <Tooltip tip={tip} />
+    </div>
+  );
+}
+
