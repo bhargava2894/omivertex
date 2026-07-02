@@ -57,10 +57,8 @@ export default function App() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="sidebar-brand" style={{ padding: '16px 20px', borderBottom: '1px solid rgba(148, 163, 184, 0.08)' }}>
-          <div style={{ background: '#ffffff', padding: '6px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-            <img src="/logo.jpg" alt="OmiVertex Logo" style={{ maxHeight: '28px', width: 'auto', display: 'block' }} />
-          </div>
+        <div className="sidebar-brand" style={{ padding: '14px 16px', background: '#ffffff', borderBottom: '1px solid rgba(0, 0, 0, 0.06)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <img src="/logo.jpg" alt="OmiVertex Logo" style={{ height: '42px', width: 'auto', display: 'block' }} />
         </div>
         <nav className="sidebar-nav" aria-label="Primary">
           {ROUTES.map((r) => (
