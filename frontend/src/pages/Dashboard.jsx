@@ -124,6 +124,31 @@ export default function Dashboard() {
 
         <div className="card panel">
           <h2>
+            <Icon name="radar" size={15} /> Cert Expiry Radar — next 90 days
+          </h2>
+          {!s.expiringCertifications || s.expiringCertifications.length === 0 ? (
+            <p className="stat-hint">No certifications expiring in the next 90 days.</p>
+          ) : (
+            s.expiringCertifications.map((c) => (
+              <div className="radar-row" key={c.certificationId}>
+                <div>
+                  <div className="cell-main">{c.associateName}</div>
+                  <div className="cell-sub">{c.name}</div>
+                </div>
+                <div className="radar-right">
+                  <span className="cell-sub">{c.expiryDate}</span>
+                  <Badge
+                    tone={c.daysLeft <= 30 ? 'red' : c.daysLeft <= 60 ? 'amber' : 'blue'}
+                    label={c.daysLeft <= 0 ? 'expired' : `${c.daysLeft}d left`}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="card panel">
+          <h2>
             <Icon name="bench" size={15} /> Bench Aging
           </h2>
           <div className="bench-buckets">

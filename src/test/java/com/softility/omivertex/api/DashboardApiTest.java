@@ -23,6 +23,10 @@ class DashboardApiTest extends ApiTestBase {
         rollingOff.setEndDate(LocalDate.now().plusDays(10));
         allocationRepository.save(rollingOff);
 
+        // Certs setup
+        cert(billableDev, "AWS Certified Solutions Architect", LocalDate.now().plusDays(25));
+        cert(shadowDev, "Certified Scrum Master", LocalDate.now().plusDays(200));
+
         mockMvc.perform(get("/api/v1/dashboard/summary"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalAssociates").value(3))
@@ -57,7 +61,11 @@ class DashboardApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.upcomingRolloffs[0].associateName").value("Rahul Verma"))
                 .andExpect(jsonPath("$.upcomingRolloffs[0].projectName").value("Storefront Revamp"))
                 .andExpect(jsonPath("$.upcomingRolloffs[0].daysLeft").value(10))
-                .andExpect(jsonPath("$.openPositions").value(0));
+                .andExpect(jsonPath("$.openPositions").value(0))
+                .andExpect(jsonPath("$.expiringCertifications", hasSize(1)))
+                .andExpect(jsonPath("$.expiringCertifications[0].associateName").value("Priya Sharma"))
+                .andExpect(jsonPath("$.expiringCertifications[0].name").value("AWS Certified Solutions Architect"))
+                .andExpect(jsonPath("$.expiringCertifications[0].daysLeft").value(25));
     }
 
     @Test
@@ -66,6 +74,18 @@ class DashboardApiTest extends ApiTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalAssociates").value(0))
                 .andExpect(jsonPath("$.benchCount").value(0))
-                .andExpect(jsonPath("$.clientHeadcounts", hasSize(0)));
+                .andExpect(jsonPath("$.clientHeadcounts", hasSize(0)))
+                .andExpect(jsonPath("$.expiringCertifications", hasSize(0)));
+    }
+
+    private com.softility.omivertex.domain.Certification cert(
+            com.softility.omivertex.domain.Associate associate, String name, LocalDate expiry) {
+        var c = new com.softility.omivertex.domain.Certification();
+        c.setAssociate(associate);
+        c.setName(name);
+        c.setAuthority("Amazon");
+        c.setIssuedDate(LocalDate.now().minusYears(1));
+        c.setExpiryDate(expiry);
+        return certificationRepository.save(c);
     }
 }

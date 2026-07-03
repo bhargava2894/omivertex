@@ -36,15 +36,18 @@ public class DashboardService {
     private final ProjectRepository projectRepository;
     private final AllocationRepository allocationRepository;
     private final com.softility.omivertex.repository.OpenPositionRepository openPositionRepository;
+    private final com.softility.omivertex.repository.CertificationRepository certificationRepository;
 
     public DashboardService(AssociateRepository associateRepository, ClientRepository clientRepository,
                             ProjectRepository projectRepository, AllocationRepository allocationRepository,
-                            com.softility.omivertex.repository.OpenPositionRepository openPositionRepository) {
+                            com.softility.omivertex.repository.OpenPositionRepository openPositionRepository,
+                            com.softility.omivertex.repository.CertificationRepository certificationRepository) {
         this.associateRepository = associateRepository;
         this.clientRepository = clientRepository;
         this.projectRepository = projectRepository;
         this.allocationRepository = allocationRepository;
         this.openPositionRepository = openPositionRepository;
+        this.certificationRepository = certificationRepository;
     }
 
     public DashboardSummaryResponse summary() {
@@ -113,12 +116,24 @@ public class DashboardService {
                         a.getEndDate(), ChronoUnit.DAYS.between(today, a.getEndDate())))
                 .toList();
 
+        // expiring certifications: certifications expiring within 90 days
+        LocalDate certExpiryLimit = today.plusDays(90);
+        List<DashboardSummaryResponse.ExpiringCert> expiringCerts = certificationRepository.findAllWithAssociate().stream()
+                .filter(c -> c.getExpiryDate() != null
+                        && !c.getExpiryDate().isBefore(today)
+                        && !c.getExpiryDate().isAfter(certExpiryLimit))
+                .sorted(Comparator.comparing(com.softility.omivertex.domain.Certification::getExpiryDate))
+                .map(c -> new DashboardSummaryResponse.ExpiringCert(c.getId(),
+                        c.getAssociate().getId(), c.getAssociate().getName(),
+                        c.getName(), c.getExpiryDate(), ChronoUnit.DAYS.between(today, c.getExpiryDate())))
+                .toList();
+
         return new DashboardSummaryResponse(associates.size(), billableCount, nonBillableCount, benchCount,
                 onshore, offshore, clientRepository.count(),
                 projectRepository.findAll().stream().filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count(),
                 openPositionRepository.countByStatus(PositionStatus.OPEN),
                 utilization, benchAging, benchAssociates, rolloffs,
-                headcounts, staffingTrend());
+                headcounts, staffingTrend(), expiringCerts);
     }
 
     /** Distinct allocated / billable associates per month for the trailing six months. */

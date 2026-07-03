@@ -24,7 +24,7 @@
 | 8 | Faceted skill search (API + Associates page filters) | ✅ DONE |
 | 9 | Demand matching upgrade (skill FK + min proficiency) | ✅ DONE |
 | 10 | Skill reports API + page (stacked proficiency bars) | ✅ DONE |
-| 11 | Cert-expiry radar on dashboard | ⬜ PENDING |
+| 11 | Cert-expiry radar on dashboard | ✅ DONE |
 | 12 | Docs, TODO refresh, graph rebuild | ⬜ PENDING |
 
 **Read `docs/TODO.md` for the project-wide backlog beyond this epic** (P0 auth/deploy blockers remain untouched by this plan).

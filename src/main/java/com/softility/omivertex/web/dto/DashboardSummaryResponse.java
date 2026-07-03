@@ -17,7 +17,8 @@ public record DashboardSummaryResponse(
         List<BenchAssociate> benchAssociates,
         List<Rolloff> upcomingRolloffs,
         List<ClientHeadcount> clientHeadcounts,
-        List<TrendPoint> staffingTrend) {
+        List<TrendPoint> staffingTrend,
+        List<ExpiringCert> expiringCertifications) {
 
     public record ClientHeadcount(String clientName, long headcount) {
     }
@@ -37,5 +38,10 @@ public record DashboardSummaryResponse(
     public record Rolloff(Long allocationId, Long associateId, String associateName,
                           String projectName, String clientName,
                           java.time.LocalDate endDate, long daysLeft) {
+    }
+
+    /** A certification expiring within the next 90 days. */
+    public record ExpiringCert(Long certificationId, Long associateId, String associateName,
+                               String name, java.time.LocalDate expiryDate, long daysLeft) {
     }
 }
