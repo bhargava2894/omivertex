@@ -16,7 +16,7 @@
 |---|---|---|
 | 1 | Skill model entities + repositories | ✅ DONE |
 | 2 | Taxonomy API (categories/skills CRUD) | ✅ DONE |
-| 3 | Associate skills API (grouped read + replace write) | ⬜ PENDING |
+| 3 | Associate skills API (grouped read + replace write) | ✅ DONE |
 | 4 | Certifications API (per-associate + org-wide report) | ⬜ PENDING |
 | 5 | Multi-sheet Excel import v2 | ⬜ PENDING |
 | 6 | Associate profile page (UI) | ⬜ PENDING |
