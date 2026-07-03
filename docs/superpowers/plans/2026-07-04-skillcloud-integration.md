@@ -22,7 +22,7 @@
 | 6 | Associate profile page (UI) | ✅ DONE |
 | 7 | Taxonomy admin page (UI) | ✅ DONE |
 | 8 | Faceted skill search (API + Associates page filters) | ✅ DONE |
-| 9 | Demand matching upgrade (skill FK + min proficiency) | ⬜ PENDING |
+| 9 | Demand matching upgrade (skill FK + min proficiency) | ✅ DONE |
 | 10 | Skill reports API + page (stacked proficiency bars) | ⬜ PENDING |
 | 11 | Cert-expiry radar on dashboard | ⬜ PENDING |
 | 12 | Docs, TODO refresh, graph rebuild | ⬜ PENDING |

@@ -12,6 +12,9 @@ public record PositionResponse(
         String projectName,
         String clientName,
         String requiredSkill,
+        Long requiredSkillId,
+        String requiredSkillName,
+        com.softility.omivertex.domain.Proficiency minProficiency,
         boolean billable,
         int allocationPercent,
         LocalDate startDate,
@@ -21,7 +24,11 @@ public record PositionResponse(
         return new PositionResponse(position.getId(), position.getTitle(),
                 position.getProject().getId(), position.getProject().getName(),
                 position.getProject().getClient().getName(),
-                position.getRequiredSkill(), position.isBillable(),
+                position.getRequiredSkill(),
+                position.getRequiredSkillRef() == null ? null : position.getRequiredSkillRef().getId(),
+                position.getRequiredSkillRef() == null ? null : position.getRequiredSkillRef().getName(),
+                position.getMinProficiency(),
+                position.isBillable(),
                 position.getAllocationPercent(), position.getStartDate(), position.getStatus());
     }
 }

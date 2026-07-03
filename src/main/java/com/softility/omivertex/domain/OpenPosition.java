@@ -23,6 +23,13 @@ public class OpenPosition {
 
     private String requiredSkill;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "required_skill_id")
+    private Skill requiredSkillRef;
+
+    @Enumerated(EnumType.STRING)
+    private Proficiency minProficiency;
+
     @Column(nullable = false)
     private boolean billable = true;
 
@@ -47,6 +54,10 @@ public class OpenPosition {
     public void setProject(Project project) { this.project = project; }
     public String getRequiredSkill() { return requiredSkill; }
     public void setRequiredSkill(String requiredSkill) { this.requiredSkill = requiredSkill; }
+    public Skill getRequiredSkillRef() { return requiredSkillRef; }
+    public void setRequiredSkillRef(Skill requiredSkillRef) { this.requiredSkillRef = requiredSkillRef; }
+    public Proficiency getMinProficiency() { return minProficiency; }
+    public void setMinProficiency(Proficiency minProficiency) { this.minProficiency = minProficiency; }
     public boolean isBillable() { return billable; }
     public void setBillable(boolean billable) { this.billable = billable; }
     public int getAllocationPercent() { return allocationPercent; }

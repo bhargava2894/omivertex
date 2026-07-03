@@ -1,5 +1,7 @@
 package com.softility.omivertex.web.dto;
 
+import com.softility.omivertex.domain.Proficiency;
+
 public record MatchCandidateResponse(
         Long associateId,
         String name,
@@ -9,5 +11,6 @@ public record MatchCandidateResponse(
         Long benchDays,
         int availablePercent,
         boolean skillMatch,
-        int score) {
+        int score,
+        Proficiency matchedProficiency) {
 }

@@ -12,6 +12,8 @@ public record PositionRequest(
         @NotBlank(message = "Title is required") String title,
         @NotNull(message = "Project is required") Long projectId,
         String requiredSkill,
+        Long requiredSkillId,
+        com.softility.omivertex.domain.Proficiency minProficiency,
         Boolean billable,
         @Min(value = 1, message = "Allocation must be at least 1%")
         @Max(value = 100, message = "Allocation cannot exceed 100%")

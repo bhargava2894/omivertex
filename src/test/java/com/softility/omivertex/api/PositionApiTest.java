@@ -203,4 +203,44 @@ class PositionApiTest extends ApiTestBase {
         mockMvc.perform(get("/api/v1/positions/" + id))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void createPosition_withStructuredSkillAndMatches() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var javaSkill = skill("Development", "Java");
+
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        var rahul = associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE);
+
+        rateSkill(priya, javaSkill, com.softility.omivertex.domain.Proficiency.MASTERY);
+        rateSkill(rahul, javaSkill, com.softility.omivertex.domain.Proficiency.INTERMEDIATE);
+
+        // Create position requiring Java with min proficiency ADVANCE
+        var created = mockMvc.perform(post("/api/v1/positions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Lead Java Dev","projectId":%d,"requiredSkillId":%d,"minProficiency":"ADVANCE",
+                                 "billable":true,"allocationPercent":100}"""
+                                .formatted(proj.getId(), javaSkill.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.requiredSkillId").value(javaSkill.getId()))
+                .andExpect(jsonPath("$.requiredSkillName").value("Java"))
+                .andExpect(jsonPath("$.minProficiency").value("ADVANCE"))
+                .andReturn();
+
+        long id = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        // Priya is MASTERY (>= ADVANCE), Rahul is INTERMEDIATE (< ADVANCE)
+        mockMvc.perform(get("/api/v1/positions/" + id + "/matches"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].name").value("Priya Sharma"))
+                .andExpect(jsonPath("$[0].skillMatch").value(true))
+                .andExpect(jsonPath("$[0].matchedProficiency").value("MASTERY"))
+                .andExpect(jsonPath("$[1].name").value("Rahul Verma"))
+                .andExpect(jsonPath("$[1].skillMatch").value(false))
+                .andExpect(jsonPath("$[1].matchedProficiency").isEmpty());
+    }
 }

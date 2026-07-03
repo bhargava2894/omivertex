@@ -8,7 +8,7 @@ import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
 
 const EMPTY = {
-  title: '', projectId: '', requiredSkill: '', billable: true,
+  title: '', projectId: '', requiredSkill: '', requiredSkillId: '', minProficiency: '', billable: true,
   allocationPercent: 100, startDate: '', status: 'OPEN',
 };
 
@@ -19,6 +19,7 @@ export default function Positions({ showToast, canEdit }) {
     [statusFilter]
   );
   const { data: projects } = useLoad(() => api.list('projects'));
+  const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
 
   const [editing, setEditing] = useState(null);
   const [errors, setErrors] = useState({});
@@ -31,7 +32,10 @@ export default function Positions({ showToast, canEdit }) {
     setEditing({
       id: row.id,
       form: {
-        title: row.title, projectId: row.projectId, requiredSkill: row.requiredSkill || '',
+        title: row.title, projectId: row.projectId,
+        requiredSkill: row.requiredSkill || '',
+        requiredSkillId: row.requiredSkillId || '',
+        minProficiency: row.minProficiency || '',
         billable: row.billable, allocationPercent: row.allocationPercent,
         startDate: row.startDate || '', status: row.status,
       },
@@ -46,6 +50,8 @@ export default function Positions({ showToast, canEdit }) {
     const payload = {
       ...f,
       projectId: f.projectId === '' ? null : Number(f.projectId),
+      requiredSkillId: f.requiredSkillId === '' ? null : Number(f.requiredSkillId),
+      minProficiency: f.minProficiency === '' ? null : f.minProficiency,
       allocationPercent: Number(f.allocationPercent),
       startDate: f.startDate || null,
     };
@@ -131,7 +137,22 @@ export default function Positions({ showToast, canEdit }) {
               </div>
             ),
           },
-          { key: 'requiredSkill', label: 'Skill', render: (r) => r.requiredSkill || '—' },
+          {
+            key: 'requiredSkill',
+            label: 'Skill',
+            render: (r) => (
+              <div>
+                <div className="cell-main">
+                  {r.requiredSkillName || r.requiredSkill || '—'}
+                </div>
+                {r.minProficiency && (
+                  <div className="cell-sub" style={{ fontSize: '11px' }}>
+                    Min: {r.minProficiency.replace('_', ' ')}
+                  </div>
+                )}
+              </div>
+            ),
+          },
           { key: 'billable', label: 'Billing', render: (r) => <Badge value={r.billable ? 'Billable' : 'Non-billable'} /> },
           { key: 'allocationPercent', label: 'Allocation', render: (r) => `${r.allocationPercent}%` },
           { key: 'startDate', label: 'Start', render: (r) => r.startDate || '—' },
@@ -174,8 +195,35 @@ export default function Positions({ showToast, canEdit }) {
                 ))}
               </select>
             </Field>
-            <Field label="Required skill" error={errors.requiredSkill}>
-              <input value={editing.form.requiredSkill} onChange={(e) => set('requiredSkill', e.target.value)} placeholder="e.g. Java" />
+            <Field label="Required Skill (Structured)" error={errors.requiredSkillId}>
+              <select value={editing.form.requiredSkillId} onChange={(e) => set('requiredSkillId', e.target.value)}>
+                <option value="">Select skill from taxonomy…</option>
+                {(taxonomy || []).map((cat) => (
+                  <optgroup key={cat.id} label={cat.name}>
+                    {(cat.skills || []).map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </Field>
+            <Field label="Minimum Proficiency" error={errors.minProficiency}>
+              <select
+                value={editing.form.minProficiency}
+                onChange={(e) => set('minProficiency', e.target.value)}
+                disabled={!editing.form.requiredSkillId}
+              >
+                <option value="">Any Level</option>
+                <option value="NOVICE">Novice</option>
+                <option value="FOUNDATIONAL">Foundational</option>
+                <option value="INTERMEDIATE">Intermediate</option>
+                <option value="FUNCTIONAL_USER">Functional User</option>
+                <option value="ADVANCE">Advance</option>
+                <option value="MASTERY">Mastery</option>
+              </select>
+            </Field>
+            <Field label="Legacy Required Skill (Text fallback)" error={errors.requiredSkill} full>
+              <input value={editing.form.requiredSkill} onChange={(e) => set('requiredSkill', e.target.value)} placeholder="e.g. Java, Python (legacy search fallback)" />
             </Field>
             <Field label="Allocation %" error={errors.allocationPercent}>
               <input type="number" min="1" max="100" value={editing.form.allocationPercent} onChange={(e) => set('allocationPercent', e.target.value)} />
@@ -207,8 +255,11 @@ export default function Positions({ showToast, canEdit }) {
           footer={<button className="btn btn-ghost" onClick={() => setMatching(null)}>Close</button>}
         >
           <p className="cell-sub" style={{ marginTop: 0 }}>
-            {matching.position.projectName} · {matching.position.clientName}
-            {matching.position.requiredSkill ? ` · needs ${matching.position.requiredSkill}` : ''} ·{' '}
+            {matching.position.requiredSkillName
+              ? ` · needs ${matching.position.requiredSkillName}${matching.position.minProficiency ? ` (${matching.position.minProficiency.replace('_', ' ')}+)` : ''}`
+              : matching.position.requiredSkill
+              ? ` · needs ${matching.position.requiredSkill}`
+              : ''} ·{' '}
             {matching.position.allocationPercent}%
           </p>
           {matching.candidates == null ? (
@@ -221,7 +272,12 @@ export default function Positions({ showToast, canEdit }) {
                 <div>
                   <div className="cell-main">
                     {c.name}{' '}
-                    {c.skillMatch && <Badge tone="green" label="skill match" />}
+                    {c.skillMatch && (
+                      <Badge
+                        tone="green"
+                        label={`skill match${c.matchedProficiency ? ` (${c.matchedProficiency.replace('_', ' ')})` : ''}`}
+                      />
+                    )}
                   </div>
                   <div className="cell-sub">
                     {[c.designation, c.primarySkill, c.secondarySkill].filter(Boolean).join(' · ') || '—'}
