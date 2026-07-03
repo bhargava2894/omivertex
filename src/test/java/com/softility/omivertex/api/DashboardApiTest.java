@@ -56,7 +56,8 @@ class DashboardApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.upcomingRolloffs", hasSize(1)))
                 .andExpect(jsonPath("$.upcomingRolloffs[0].associateName").value("Rahul Verma"))
                 .andExpect(jsonPath("$.upcomingRolloffs[0].projectName").value("Storefront Revamp"))
-                .andExpect(jsonPath("$.upcomingRolloffs[0].daysLeft").value(10));
+                .andExpect(jsonPath("$.upcomingRolloffs[0].daysLeft").value(10))
+                .andExpect(jsonPath("$.openPositions").value(0));
     }
 
     @Test

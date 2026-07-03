@@ -22,12 +22,15 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ClientRepository clientRepository;
     private final AllocationRepository allocationRepository;
+    private final com.softility.omivertex.repository.OpenPositionRepository openPositionRepository;
 
     public ProjectService(ProjectRepository projectRepository, ClientRepository clientRepository,
-                          AllocationRepository allocationRepository) {
+                          AllocationRepository allocationRepository,
+                          com.softility.omivertex.repository.OpenPositionRepository openPositionRepository) {
         this.projectRepository = projectRepository;
         this.clientRepository = clientRepository;
         this.allocationRepository = allocationRepository;
+        this.openPositionRepository = openPositionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +69,9 @@ public class ProjectService {
         Project project = find(id);
         if (allocationRepository.existsByProjectId(id)) {
             throw new ConflictException("Project has allocations; roll off associates first");
+        }
+        if (openPositionRepository.existsByProjectId(id)) {
+            throw new ConflictException("Project has open positions; close or delete them first");
         }
         projectRepository.delete(project);
     }

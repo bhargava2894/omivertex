@@ -93,6 +93,7 @@ export default function Dashboard() {
         <StatCard icon="dollar" label="Billable" value={s.billableCount} hint={`${billablePct}% of headcount`} />
         <StatCard icon="bench" label="On Bench" value={s.benchCount} hint="No current allocation" />
         <StatCard icon="briefcase" label="Active Projects" value={s.activeProjects} hint={`across ${s.totalClients} clients`} />
+        <StatCard icon="target" label="Open Demand" value={s.openPositions} hint="Positions awaiting a match" />
       </div>
 
       <div className="panel-grid">

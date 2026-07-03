@@ -117,6 +117,19 @@ const paths = {
     </>
   ),
   activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+  target: (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </>
+  ),
+  sparkles: (
+    <>
+      <path d="M12 3l1.9 5.7L19.6 10.6l-5.7 1.9L12 18.2l-1.9-5.7L4.4 10.6l5.7-1.9Z" />
+      <path d="M19 15l.9 2.6L22.5 18.5l-2.6.9L19 22l-.9-2.6L15.5 18.5l2.6-.9Z" />
+    </>
+  ),
   radar: (
     <>
       <path d="M19.07 4.93A10 10 0 0 0 6.99 3.34" />
@@ -154,6 +167,11 @@ const paths = {
     <>
       <rect x="3" y="11" width="18" height="11" rx="2" />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </>
   ),
   list: (

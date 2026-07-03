@@ -30,6 +30,10 @@ public class Associate {
 
     private String designation;
 
+    private String primarySkill;
+
+    private String secondarySkill;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EntityStatus status = EntityStatus.ACTIVE;
@@ -52,6 +56,10 @@ public class Associate {
     public void setWorkMode(WorkMode workMode) { this.workMode = workMode; }
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }
+    public String getPrimarySkill() { return primarySkill; }
+    public void setPrimarySkill(String primarySkill) { this.primarySkill = primarySkill; }
+    public String getSecondarySkill() { return secondarySkill; }
+    public void setSecondarySkill(String secondarySkill) { this.secondarySkill = secondarySkill; }
     public EntityStatus getStatus() { return status; }
     public void setStatus(EntityStatus status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }

@@ -2,6 +2,7 @@ package com.softility.omivertex.service;
 
 import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
+import com.softility.omivertex.domain.PositionStatus;
 import com.softility.omivertex.domain.ProjectStatus;
 import com.softility.omivertex.domain.WorkMode;
 import com.softility.omivertex.repository.AllocationRepository;
@@ -34,13 +35,16 @@ public class DashboardService {
     private final ClientRepository clientRepository;
     private final ProjectRepository projectRepository;
     private final AllocationRepository allocationRepository;
+    private final com.softility.omivertex.repository.OpenPositionRepository openPositionRepository;
 
     public DashboardService(AssociateRepository associateRepository, ClientRepository clientRepository,
-                            ProjectRepository projectRepository, AllocationRepository allocationRepository) {
+                            ProjectRepository projectRepository, AllocationRepository allocationRepository,
+                            com.softility.omivertex.repository.OpenPositionRepository openPositionRepository) {
         this.associateRepository = associateRepository;
         this.clientRepository = clientRepository;
         this.projectRepository = projectRepository;
         this.allocationRepository = allocationRepository;
+        this.openPositionRepository = openPositionRepository;
     }
 
     public DashboardSummaryResponse summary() {
@@ -112,6 +116,7 @@ public class DashboardService {
         return new DashboardSummaryResponse(associates.size(), billableCount, nonBillableCount, benchCount,
                 onshore, offshore, clientRepository.count(),
                 projectRepository.findAll().stream().filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count(),
+                openPositionRepository.countByStatus(PositionStatus.OPEN),
                 utilization, benchAging, benchAssociates, rolloffs,
                 headcounts, staffingTrend());
     }

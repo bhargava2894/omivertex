@@ -19,6 +19,8 @@ public record AssociateResponse(
         String location,
         WorkMode workMode,
         String designation,
+        String primarySkill,
+        String secondarySkill,
         EntityStatus status,
         boolean billable,
         Long currentProjectId,
@@ -35,7 +37,8 @@ public record AssociateResponse(
                 .orElse(current.isEmpty() ? null : current.get(0));
         return new AssociateResponse(associate.getId(), associate.getName(), associate.getEmail(),
                 associate.getCompany(), associate.getLocation(), associate.getWorkMode(),
-                associate.getDesignation(), associate.getStatus(), billable,
+                associate.getDesignation(), associate.getPrimarySkill(), associate.getSecondarySkill(),
+                associate.getStatus(), billable,
                 primary == null ? null : primary.getProject().getId(),
                 primary == null ? null : primary.getProject().getName(),
                 primary == null ? null : primary.getProject().getClient().getName(),

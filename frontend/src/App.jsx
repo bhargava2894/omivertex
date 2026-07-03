@@ -5,8 +5,10 @@ import Associates from './pages/Associates.jsx';
 import Clients from './pages/Clients.jsx';
 import Projects from './pages/Projects.jsx';
 import Allocations from './pages/Allocations.jsx';
+import Positions from './pages/Positions.jsx';
 import Settings from './pages/Settings.jsx';
 import Login from './pages/Login.jsx';
+import AccessRequests from './pages/AccessRequests.jsx';
 import { api } from './api.js';
 import { storedTheme, applyTheme, resolveTheme } from './theme.js';
 
@@ -16,6 +18,8 @@ const ROUTES = [
   { path: 'clients', label: 'Clients', icon: 'building', component: Clients, sub: 'Master client list' },
   { path: 'projects', label: 'Projects', icon: 'briefcase', component: Projects, sub: 'Master project list by client' },
   { path: 'allocations', label: 'Allocations', icon: 'link', component: Allocations, sub: 'Assign associates to projects' },
+  { path: 'demand', label: 'Demand', icon: 'target', component: Positions, sub: 'Open positions and bench matching' },
+  { path: 'access-requests', label: 'Access Requests', icon: 'shield', component: AccessRequests, sub: 'Manage pending user access requests', adminOnly: true },
   { path: 'settings', label: 'Settings', icon: 'settings', component: Settings, sub: 'Appearance and data management' },
 ];
 
@@ -68,10 +72,11 @@ export default function App() {
     }
   };
 
-  const active = ROUTES.find((r) => r.path === route) || ROUTES[0];
+  const canEdit = user?.role === 'ADMIN';
+  const visibleRoutes = ROUTES.filter((r) => !r.adminOnly || canEdit);
+  const active = visibleRoutes.find((r) => r.path === route) || visibleRoutes[0];
   const Page = active.component;
   const isDark = resolveTheme(theme) === 'dark';
-  const canEdit = user?.role === 'ADMIN';
 
   if (user === undefined) {
     return null; // session check in flight — avoid flashing the login page
@@ -91,7 +96,7 @@ export default function App() {
           </div>
         </div>
         <nav className="sidebar-nav" aria-label="Primary">
-          {ROUTES.map((r) => (
+          {visibleRoutes.map((r) => (
             <button
               key={r.path}
               className={`nav-item ${r.path === active.path ? 'active' : ''}`}

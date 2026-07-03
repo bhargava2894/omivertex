@@ -77,6 +77,18 @@ class AssociateApiTest extends ApiTestBase {
     }
 
     @Test
+    void createAssociate_withSkills_returnsSkills() throws Exception {
+        mockMvc.perform(post("/api/v1/associates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                 "workMode":"OFFSHORE","primarySkill":"Java","secondarySkill":"AWS"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.primarySkill").value("Java"))
+                .andExpect(jsonPath("$.secondarySkill").value("AWS"));
+    }
+
+    @Test
     void associateResponses_carryBenchDays() throws Exception {
         var acme = client("Acme Corp");
         var proj = project("ACM-100", "Storefront Revamp", acme);

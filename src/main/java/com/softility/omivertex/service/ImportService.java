@@ -111,6 +111,7 @@ public class ImportService {
                     associate.setCompany(company.isEmpty() ? "Softility" : company);
                     associate.setLocation(location);
                     associate.setWorkMode(workMode);
+                    associate.setPrimarySkill(emptyToNull(clean(value(row, "SKILL", "PRIMARY SKILL", "TECHNOLOGY"))));
                     associate = associates.save(associate);
                     associatesCreated++;
                 }

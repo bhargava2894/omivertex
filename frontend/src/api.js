@@ -37,4 +37,9 @@ export const api = {
     request('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
+  googleLogin: (email, name) =>
+    request('/auth/google', { method: 'POST', body: JSON.stringify({ email, name }) }),
+  listRequests: () => request('/admin/access-requests'),
+  approveRequest: (id) => request(`/admin/access-requests/${id}/approve`, { method: 'POST' }),
+  rejectRequest: (id) => request(`/admin/access-requests/${id}/reject`, { method: 'POST' }),
 };

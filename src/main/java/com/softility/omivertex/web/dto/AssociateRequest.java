@@ -13,5 +13,7 @@ public record AssociateRequest(
         String location,
         @NotNull(message = "Work mode is required") WorkMode workMode,
         String designation,
+        String primarySkill,
+        String secondarySkill,
         EntityStatus status) {
 }

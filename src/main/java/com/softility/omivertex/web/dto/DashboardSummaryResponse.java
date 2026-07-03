@@ -11,6 +11,7 @@ public record DashboardSummaryResponse(
         long offshoreCount,
         long totalClients,
         long activeProjects,
+        long openPositions,
         long utilizationPercent,
         BenchAging benchAging,
         List<BenchAssociate> benchAssociates,

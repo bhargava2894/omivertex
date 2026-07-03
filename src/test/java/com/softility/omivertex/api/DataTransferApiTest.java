@@ -75,10 +75,10 @@ class DataTransferApiTest extends ApiTestBase {
     }
 
     @Test
-    void importCsv_isSupported() throws Exception {
+    void importCsv_isSupported_andMapsSkillColumn() throws Exception {
         String csv = """
-                ASSOCIATE NAME,COMPANY,LOCATION,CUSTOMER,BILLABLE,Project
-                Madhu Chittepu,Softility,OFFSHORE,COX,B,BIGDATA DEVOPS
+                ASSOCIATE NAME,COMPANY,LOCATION,CUSTOMER,BILLABLE,Project,SKILL
+                Madhu Chittepu,Softility,OFFSHORE,COX,B,BIGDATA DEVOPS,Hadoop
                 """;
         var file = new MockMultipartFile("file", "roster.csv", "text/csv", csv.getBytes());
 
@@ -86,6 +86,9 @@ class DataTransferApiTest extends ApiTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rowsProcessed").value(1))
                 .andExpect(jsonPath("$.associatesCreated").value(1));
+
+        mockMvc.perform(get("/api/v1/associates"))
+                .andExpect(jsonPath("$[0].primarySkill").value("Hadoop"));
     }
 
     @Test

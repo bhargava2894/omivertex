@@ -10,7 +10,7 @@ import { ExportMenu, ImportButton } from '../components/DataTransfer.jsx';
 
 const EMPTY = {
   name: '', email: '', company: 'Softility', location: '',
-  workMode: 'ONSHORE', designation: '', status: 'ACTIVE',
+  workMode: 'ONSHORE', designation: '', primarySkill: '', secondarySkill: '', status: 'ACTIVE',
 };
 
 function billability(row) {
@@ -50,7 +50,8 @@ export default function Associates({ showToast, canEdit }) {
       id: row.id,
       form: {
         name: row.name, email: row.email, company: row.company, location: row.location || '',
-        workMode: row.workMode, designation: row.designation || '', status: row.status,
+        workMode: row.workMode, designation: row.designation || '',
+        primarySkill: row.primarySkill || '', secondarySkill: row.secondarySkill || '', status: row.status,
       },
     });
   };
@@ -129,7 +130,9 @@ export default function Associates({ showToast, canEdit }) {
             render: (r) => (
               <div>
                 <div className="cell-main">{r.name}</div>
-                <div className="cell-sub">{r.designation ? `${r.designation} · ` : ''}{r.email}</div>
+                <div className="cell-sub">
+                  {[r.designation, r.primarySkill, r.email].filter(Boolean).join(' · ')}
+                </div>
               </div>
             ),
           },
@@ -176,6 +179,12 @@ export default function Associates({ showToast, canEdit }) {
             </Field>
             <Field label="Designation" error={errors.designation}>
               <input value={editing.form.designation} onChange={(e) => set('designation', e.target.value)} />
+            </Field>
+            <Field label="Primary skill" error={errors.primarySkill}>
+              <input value={editing.form.primarySkill} onChange={(e) => set('primarySkill', e.target.value)} placeholder="e.g. Java" />
+            </Field>
+            <Field label="Secondary skill" error={errors.secondarySkill}>
+              <input value={editing.form.secondarySkill} onChange={(e) => set('secondarySkill', e.target.value)} placeholder="e.g. AWS" />
             </Field>
             <Field label="Location" error={errors.location}>
               <input value={editing.form.location} onChange={(e) => set('location', e.target.value)} />
