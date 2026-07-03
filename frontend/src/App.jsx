@@ -10,6 +10,7 @@ import Settings from './pages/Settings.jsx';
 import Login from './pages/Login.jsx';
 import AccessRequests from './pages/AccessRequests.jsx';
 import AuditLog from './pages/AuditLog.jsx';
+import Profile from './pages/Profile.jsx';
 import { api } from './api.js';
 import { storedTheme, applyTheme, resolveTheme } from './theme.js';
 
@@ -76,8 +77,18 @@ export default function App() {
 
   const canEdit = user?.role === 'ADMIN';
   const visibleRoutes = ROUTES.filter((r) => !r.adminOnly || canEdit);
-  const active = visibleRoutes.find((r) => r.path === route) || visibleRoutes[0];
-  const Page = active.component;
+  let active = visibleRoutes.find((r) => r.path === route);
+  let isProfile = false;
+  let profileId = null;
+  if (!active && route.startsWith('associates/')) {
+    active = visibleRoutes.find((r) => r.path === 'associates');
+    isProfile = true;
+    profileId = Number(route.split('/')[1]);
+  }
+  if (!active) {
+    active = visibleRoutes[0];
+  }
+  const Page = isProfile ? Profile : active.component;
   const isDark = resolveTheme(theme) === 'dark';
 
   if (user === undefined) {
@@ -116,8 +127,8 @@ export default function App() {
       <div className="main">
         <header className="topbar">
           <div>
-            <h1>{active.label}</h1>
-            <div className="topbar-sub">{active.sub}</div>
+            <h1>{isProfile ? 'Associate Profile' : active.label}</h1>
+            <div className="topbar-sub">{isProfile ? 'Skills, certifications, and history' : active.sub}</div>
           </div>
           <div className="topbar-actions">
             <div className="user-chip" title={`Signed in as ${user.username}`}>
@@ -143,7 +154,11 @@ export default function App() {
           </div>
         </header>
         <main className="content">
-          <Page showToast={showToast} theme={theme} setTheme={setTheme} canEdit={canEdit} />
+          {isProfile ? (
+            <Page id={profileId} showToast={showToast} canEdit={canEdit} />
+          ) : (
+            <Page showToast={showToast} theme={theme} setTheme={setTheme} canEdit={canEdit} />
+          )}
         </main>
       </div>
 

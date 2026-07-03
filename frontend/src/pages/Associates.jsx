@@ -129,7 +129,9 @@ export default function Associates({ showToast, canEdit }) {
             key: 'name', label: 'Associate',
             render: (r) => (
               <div>
-                <div className="cell-main">{r.name}</div>
+                <div className="cell-main">
+                  <a href={'#/associates/' + r.id}>{r.name}</a>
+                </div>
                 <div className="cell-sub">
                   {[r.designation, r.primarySkill, r.email].filter(Boolean).join(' · ')}
                 </div>

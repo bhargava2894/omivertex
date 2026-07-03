@@ -19,7 +19,7 @@
 | 3 | Associate skills API (grouped read + replace write) | ✅ DONE |
 | 4 | Certifications API (per-associate + org-wide report) | ✅ DONE |
 | 5 | Multi-sheet Excel import v2 | ✅ DONE |
-| 6 | Associate profile page (UI) | ⬜ PENDING |
+| 6 | Associate profile page (UI) | ✅ DONE |
 | 7 | Taxonomy admin page (UI) | ⬜ PENDING |
 | 8 | Faceted skill search (API + Associates page filters) | ⬜ PENDING |
 | 9 | Demand matching upgrade (skill FK + min proficiency) | ⬜ PENDING |

@@ -42,4 +42,10 @@ export const api = {
   listRequests: () => request('/admin/access-requests'),
   approveRequest: (id) => request(`/admin/access-requests/${id}/approve`, { method: 'POST' }),
   rejectRequest: (id) => request(`/admin/access-requests/${id}/reject`, { method: 'POST' }),
+  replaceSkills: (associateId, skills) =>
+    request(`/associates/${associateId}/skills`, { method: 'PUT', body: JSON.stringify({ skills }) }),
+  getCertifications: (associateId) => request(`/associates/${associateId}/certifications`),
+  addCertification: (associateId, data) =>
+    request(`/associates/${associateId}/certifications`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteCertification: (id) => request(`/certifications/${id}`, { method: 'DELETE' }),
 };
