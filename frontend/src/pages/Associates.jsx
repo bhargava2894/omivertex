@@ -18,7 +18,7 @@ function billability(row) {
   return row.billable ? 'Billable' : 'Non-billable';
 }
 
-export default function Associates({ showToast }) {
+export default function Associates({ showToast, canEdit }) {
   const [staffing, setStaffing] = useState(''); // '' | billable | nonbillable | bench
   const [workMode, setWorkMode] = useState('');
   const [search, setSearch] = useState('');
@@ -107,11 +107,13 @@ export default function Associates({ showToast }) {
           </select>
         </div>
         <div className="toolbar-actions">
-          <ImportButton onImported={reload} showToast={showToast} />
+          {canEdit && <ImportButton onImported={reload} showToast={showToast} />}
           <ExportMenu />
-          <button className="btn btn-primary" onClick={openCreate}>
-            <Icon name="plus" size={16} /> New Associate
-          </button>
+          {canEdit && (
+            <button className="btn btn-primary" onClick={openCreate}>
+              <Icon name="plus" size={16} /> New Associate
+            </button>
+          )}
         </div>
       </div>
 
@@ -119,8 +121,8 @@ export default function Associates({ showToast }) {
         loading={loading}
         rows={rows}
         emptyText="No associates match these filters."
-        onEdit={openEdit}
-        onDelete={remove}
+        onEdit={canEdit ? openEdit : undefined}
+        onDelete={canEdit ? remove : undefined}
         columns={[
           {
             key: 'name', label: 'Associate',

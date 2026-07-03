@@ -34,6 +34,19 @@ in `src/main/resources/application.properties` to disable.
 cd frontend && npm run dev   # Vite dev server on :5173, /api proxied to :8080
 ```
 
+## Sign-in
+
+Two internal accounts (session-based, Spring Security):
+
+| Account | Password | Access |
+|---|---|---|
+| `admin` | `Admin@123` | Super Admin — full view + edit |
+| `viewer` | `Viewer@123` | User — read-only (exports allowed) |
+
+Override passwords with `omivertex.auth.admin-password` /
+`omivertex.auth.viewer-password` properties. Writes (`POST/PUT/DELETE
+/api/v1/**`) require the ADMIN role; reads need any signed-in account.
+
 ## Tests
 
 ```bash

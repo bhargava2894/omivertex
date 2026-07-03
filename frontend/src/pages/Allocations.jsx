@@ -14,7 +14,7 @@ const EMPTY = {
   allocationPercent: 100, startDate: today(), endDate: '',
 };
 
-export default function Allocations({ showToast }) {
+export default function Allocations({ showToast, canEdit }) {
   const [projectFilter, setProjectFilter] = useState('');
   const [activeOnly, setActiveOnly] = useState(true);
 
@@ -101,17 +101,19 @@ export default function Allocations({ showToast }) {
             <option value="">Including ended</option>
           </select>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>
-          <Icon name="plus" size={16} /> Assign Associate
-        </button>
+        {canEdit && (
+          <button className="btn btn-primary" onClick={openCreate}>
+            <Icon name="plus" size={16} /> Assign Associate
+          </button>
+        )}
       </div>
 
       <DataTable
         loading={loading}
         rows={data || []}
         emptyText="No allocations found. Assign an associate to a project."
-        onEdit={openEdit}
-        onDelete={remove}
+        onEdit={canEdit ? openEdit : undefined}
+        onDelete={canEdit ? remove : undefined}
         columns={[
           { key: 'associateName', label: 'Associate', render: (r) => <span className="cell-main">{r.associateName}</span> },
           {

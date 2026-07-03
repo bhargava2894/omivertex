@@ -12,6 +12,7 @@ import java.time.LocalDate;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@org.springframework.security.test.context.support.WithMockUser(username = "admin", roles = "ADMIN")
 public abstract class ApiTestBase {
 
     @Autowired protected MockMvc mockMvc;

@@ -8,6 +8,9 @@ async function request(path, options = {}) {
   if (res.status === 204) return null;
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 401 && !path.startsWith('/auth/')) {
+      window.dispatchEvent(new Event('ov-unauthorized'));
+    }
     const error = new Error(body.message || 'Request failed');
     error.fieldErrors = body.fieldErrors || {};
     error.status = res.status;
@@ -30,4 +33,8 @@ export const api = {
     request(`/${resource}/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   remove: (resource, id) => request(`/${resource}/${id}`, { method: 'DELETE' }),
   dashboard: () => request('/dashboard/summary'),
+  login: (username, password) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  me: () => request('/auth/me'),
 };

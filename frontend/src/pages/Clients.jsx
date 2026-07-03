@@ -9,7 +9,7 @@ import Icon from '../components/Icon.jsx';
 
 const EMPTY = { name: '', industry: '', location: '', status: 'ACTIVE' };
 
-export default function Clients({ showToast }) {
+export default function Clients({ showToast, canEdit }) {
   const { data, loading, reload } = useLoad(() => api.list('clients'));
   const [editing, setEditing] = useState(null); // null | {form, id?}
   const [errors, setErrors] = useState({});
@@ -66,17 +66,19 @@ export default function Clients({ showToast }) {
             aria-label="Search clients"
           />
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>
-          <Icon name="plus" size={16} /> New Client
-        </button>
+        {canEdit && (
+          <button className="btn btn-primary" onClick={openCreate}>
+            <Icon name="plus" size={16} /> New Client
+          </button>
+        )}
       </div>
 
       <DataTable
         loading={loading}
         rows={rows}
         emptyText="No clients yet. Add your first client to get started."
-        onEdit={openEdit}
-        onDelete={remove}
+        onEdit={canEdit ? openEdit : undefined}
+        onDelete={canEdit ? remove : undefined}
         columns={[
           { key: 'name', label: 'Client', render: (r) => <span className="cell-main">{r.name}</span> },
           { key: 'industry', label: 'Industry', render: (r) => r.industry || '—' },

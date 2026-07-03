@@ -30,6 +30,12 @@ public class GlobalExceptionHandler {
         return new ApiError("Validation failed", fieldErrors);
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiError handleUnauthorized(UnauthorizedException ex) {
+        return ApiError.of(ex.getMessage());
+    }
+
     @ExceptionHandler(BadRequestException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleBadRequest(BadRequestException ex) {

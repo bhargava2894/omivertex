@@ -24,7 +24,7 @@ const OPTIONS = [
   { value: 'system', label: 'System' },
 ];
 
-export default function Settings({ theme, setTheme, showToast }) {
+export default function Settings({ theme, setTheme, showToast, canEdit }) {
   return (
     <>
       <div className="card settings-section">
@@ -53,7 +53,7 @@ export default function Settings({ theme, setTheme, showToast }) {
           Excel, CSV, PDF, or Word.
         </p>
         <div className="toolbar-actions">
-          <ImportButton onImported={() => {}} showToast={showToast} />
+          {canEdit && <ImportButton onImported={() => {}} showToast={showToast} />}
           <ExportMenu />
         </div>
       </div>

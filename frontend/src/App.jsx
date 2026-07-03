@@ -6,6 +6,8 @@ import Clients from './pages/Clients.jsx';
 import Projects from './pages/Projects.jsx';
 import Allocations from './pages/Allocations.jsx';
 import Settings from './pages/Settings.jsx';
+import Login from './pages/Login.jsx';
+import { api } from './api.js';
 import { storedTheme, applyTheme, resolveTheme } from './theme.js';
 
 const ROUTES = [
@@ -32,6 +34,14 @@ export default function App() {
   const route = useHashRoute();
   const [toast, setToast] = useState(null);
   const [theme, setThemeState] = useState(storedTheme);
+  const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
+
+  useEffect(() => {
+    api.me().then(setUser).catch(() => setUser(null));
+    const onUnauthorized = () => setUser(null);
+    window.addEventListener('ov-unauthorized', onUnauthorized);
+    return () => window.removeEventListener('ov-unauthorized', onUnauthorized);
+  }, []);
 
   useEffect(() => {
     applyTheme(theme);
@@ -50,15 +60,35 @@ export default function App() {
     setTimeout(() => setToast(null), 3500);
   }, []);
 
+  const logout = async () => {
+    try {
+      await api.logout();
+    } finally {
+      setUser(null);
+    }
+  };
+
   const active = ROUTES.find((r) => r.path === route) || ROUTES[0];
   const Page = active.component;
   const isDark = resolveTheme(theme) === 'dark';
+  const canEdit = user?.role === 'ADMIN';
+
+  if (user === undefined) {
+    return null; // session check in flight — avoid flashing the login page
+  }
+  if (user === null) {
+    return <Login onLogin={setUser} />;
+  }
 
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="sidebar-brand" style={{ padding: '14px 16px', background: '#ffffff', borderBottom: '1px solid rgba(0, 0, 0, 0.06)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <img src="/logo.jpg" alt="OmiVertex Logo" style={{ height: '42px', width: 'auto', display: 'block' }} />
+        <div className="sidebar-brand">
+          <img src="/logo-mark.png" alt="" className="brand-logo" />
+          <div>
+            <div className="brand-name">OmiVertex</div>
+            <div className="brand-sub">Softility Resource Hub</div>
+          </div>
         </div>
         <nav className="sidebar-nav" aria-label="Primary">
           {ROUTES.map((r) => (
@@ -83,6 +113,15 @@ export default function App() {
             <div className="topbar-sub">{active.sub}</div>
           </div>
           <div className="topbar-actions">
+            <div className="user-chip" title={`Signed in as ${user.username}`}>
+              <span className="user-avatar">{user.displayName.charAt(0)}</span>
+              <span className="user-meta">
+                <span className="user-name">{user.displayName}</span>
+                <span className={`badge ${canEdit ? 'badge-blue' : 'badge-gray'}`}>
+                  {canEdit ? 'Admin' : 'Read-only'}
+                </span>
+              </span>
+            </div>
             <button
               className="icon-btn"
               onClick={toggleTheme}
@@ -91,10 +130,13 @@ export default function App() {
             >
               <Icon name={isDark ? 'sun' : 'moon'} size={17} />
             </button>
+            <button className="icon-btn" onClick={logout} aria-label="Sign out" title="Sign out">
+              <Icon name="logout" size={17} />
+            </button>
           </div>
         </header>
         <main className="content">
-          <Page showToast={showToast} theme={theme} setTheme={setTheme} />
+          <Page showToast={showToast} theme={theme} setTheme={setTheme} canEdit={canEdit} />
         </main>
       </div>
 

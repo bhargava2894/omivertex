@@ -9,7 +9,7 @@ import Icon from '../components/Icon.jsx';
 
 const EMPTY = { code: '', name: '', clientId: '', status: 'ACTIVE', startDate: '', endDate: '' };
 
-export default function Projects({ showToast }) {
+export default function Projects({ showToast, canEdit }) {
   const [clientFilter, setClientFilter] = useState('');
   const { data, loading, reload } = useLoad(
     () => api.list('projects', { clientId: clientFilter }),
@@ -77,17 +77,19 @@ export default function Projects({ showToast }) {
             ))}
           </select>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>
-          <Icon name="plus" size={16} /> New Project
-        </button>
+        {canEdit && (
+          <button className="btn btn-primary" onClick={openCreate}>
+            <Icon name="plus" size={16} /> New Project
+          </button>
+        )}
       </div>
 
       <DataTable
         loading={loading}
         rows={data || []}
         emptyText="No projects found."
-        onEdit={openEdit}
-        onDelete={remove}
+        onEdit={canEdit ? openEdit : undefined}
+        onDelete={canEdit ? remove : undefined}
         columns={[
           {
             key: 'name', label: 'Project',
