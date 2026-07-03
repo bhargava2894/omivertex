@@ -24,12 +24,16 @@ public class AllocationService {
     private final AssociateRepository associateRepository;
     private final ProjectRepository projectRepository;
 
+    private final AuditService auditService;
+
     public AllocationService(AllocationRepository allocationRepository,
                              AssociateRepository associateRepository,
-                             ProjectRepository projectRepository) {
+                             ProjectRepository projectRepository,
+                             AuditService auditService) {
         this.allocationRepository = allocationRepository;
         this.associateRepository = associateRepository;
         this.projectRepository = projectRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -65,7 +69,11 @@ public class AllocationService {
         allocation.setAllocationPercent(request.allocationPercent() == null ? 100 : request.allocationPercent());
         allocation.setStartDate(request.startDate());
         allocation.setEndDate(request.endDate());
-        return AllocationResponse.from(allocationRepository.save(allocation));
+        allocation = allocationRepository.save(allocation);
+        auditService.record("CREATED", "Allocation", allocation.getId(),
+                "Allocated " + associate.getName() + " to " + project.getName()
+                + " (" + (allocation.isBillable() ? "billable" : "non-billable") + " " + allocation.getAllocationPercent() + "%)");
+        return AllocationResponse.from(allocation);
     }
 
     public AllocationResponse update(Long id, AllocationUpdateRequest request) {
@@ -79,11 +87,17 @@ public class AllocationService {
         }
         allocation.setStartDate(request.startDate());
         allocation.setEndDate(request.endDate());
+        auditService.record("UPDATED", "Allocation", id,
+                "Updated allocation of " + allocation.getAssociate().getName() + " on " + allocation.getProject().getName()
+                + (request.endDate() != null ? " (end date " + request.endDate() + ")" : ""));
         return AllocationResponse.from(allocation);
     }
 
     public void delete(Long id) {
-        allocationRepository.delete(find(id));
+        Allocation allocation = find(id);
+        auditService.record("DELETED", "Allocation", id,
+                "Removed allocation of " + allocation.getAssociate().getName() + " on " + allocation.getProject().getName());
+        allocationRepository.delete(allocation);
     }
 
     private Allocation find(Long id) {

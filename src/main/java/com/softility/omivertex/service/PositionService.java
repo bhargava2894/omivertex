@@ -27,14 +27,17 @@ public class PositionService {
     private final AllocationRepository allocations;
     private final AllocationService allocationService;
 
+    private final AuditService auditService;
+
     public PositionService(OpenPositionRepository positions, ProjectRepository projects,
                            AssociateRepository associates, AllocationRepository allocations,
-                           AllocationService allocationService) {
+                           AllocationService allocationService, AuditService auditService) {
         this.positions = positions;
         this.projects = projects;
         this.associates = associates;
         this.allocations = allocations;
         this.allocationService = allocationService;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -54,17 +57,22 @@ public class PositionService {
     public PositionResponse create(PositionRequest request) {
         OpenPosition position = new OpenPosition();
         apply(position, request);
-        return PositionResponse.from(positions.save(position));
+        position = positions.save(position);
+        auditService.record("CREATED", "Position", position.getId(), "Opened position " + position.getTitle() + " on " + position.getProject().getName());
+        return PositionResponse.from(position);
     }
 
     public PositionResponse update(Long id, PositionRequest request) {
         OpenPosition position = find(id);
         apply(position, request);
+        auditService.record("UPDATED", "Position", position.getId(), "Updated position " + position.getTitle());
         return PositionResponse.from(position);
     }
 
     public void delete(Long id) {
-        positions.delete(find(id));
+        OpenPosition position = find(id);
+        auditService.record("DELETED", "Position", id, "Deleted position " + position.getTitle());
+        positions.delete(position);
     }
 
     /**
@@ -112,6 +120,8 @@ public class PositionService {
                 position.getProject().getId(), position.isBillable(),
                 position.getAllocationPercent(), start, null));
         position.setStatus(PositionStatus.FILLED);
+        auditService.record("FILLED", "Position", position.getId(),
+                "Filled position " + position.getTitle() + " with associate id " + request.associateId());
         return PositionResponse.from(position);
     }
 

@@ -47,22 +47,45 @@ export function ImportButton({ onImported, showToast }) {
   const [open, setOpen] = useState(false);
   const [drag, setDrag] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [summary, setSummary] = useState(null);
+  const [file, setFile] = useState(null);
+  const [summary, setSummary] = useState(null); // dry-run preview or final result
   const [error, setError] = useState(null);
 
-  const upload = async (file) => {
-    if (!file) return;
+  const post = async (theFile, dryRun) => {
+    const form = new FormData();
+    form.append('file', theFile);
+    const res = await fetch(`/api/v1/data/import?dryRun=${dryRun}`, { method: 'POST', body: form });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.message || 'Import failed');
+    return body;
+  };
+
+  // step 1: always preview first — nothing is written
+  const preview = async (theFile) => {
+    if (!theFile) return;
     setBusy(true);
     setError(null);
     setSummary(null);
-    const form = new FormData();
-    form.append('file', file);
     try {
-      const res = await fetch('/api/v1/data/import', { method: 'POST', body: form });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.message || 'Import failed');
-      setSummary(body);
-      showToast(`Imported ${body.allocationsCreated} allocation${body.allocationsCreated === 1 ? '' : 's'}`);
+      setSummary(await post(theFile, true));
+      setFile(theFile);
+    } catch (err) {
+      setError(err.message);
+      setFile(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // step 2: user confirmed — import for real
+  const confirm = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await post(file, false);
+      setSummary(result);
+      setFile(null);
+      showToast(`Imported ${result.allocationsCreated} allocation${result.allocationsCreated === 1 ? '' : 's'}`);
       onImported();
     } catch (err) {
       setError(err.message);
@@ -73,10 +96,13 @@ export function ImportButton({ onImported, showToast }) {
 
   const close = () => {
     setOpen(false);
+    setFile(null);
     setSummary(null);
     setError(null);
     setDrag(false);
   };
+
+  const isPreview = summary?.dryRun;
 
   return (
     <>
@@ -87,34 +113,53 @@ export function ImportButton({ onImported, showToast }) {
         <Modal
           title="Import Roster"
           onClose={close}
-          footer={<button className="btn btn-primary" onClick={close}>Done</button>}
+          footer={
+            isPreview ? (
+              <>
+                <button className="btn btn-ghost" onClick={close}>Cancel</button>
+                <button className="btn btn-primary" onClick={confirm} disabled={busy}>
+                  {busy ? 'Importing…' : 'Looks right — import now'}
+                </button>
+              </>
+            ) : (
+              <button className="btn btn-primary" onClick={close}>Done</button>
+            )
+          }
         >
           {error && <div className="form-alert">{error}</div>}
 
-          <label
-            className={`dropzone ${drag ? 'drag' : ''}`}
-            onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={(e) => { e.preventDefault(); setDrag(false); upload(e.dataTransfer.files[0]); }}
-          >
-            <Icon name="upload" size={30} />
-            <div>
-              <strong>{busy ? 'Importing…' : 'Click to choose a file'}</strong> or drag it here
-            </div>
-            <div className="hint">
-              .xlsx or .csv with columns: ASSOCIATE NAME, COMPANY, LOCATION, CUSTOMER, BILLABLE (B/NB), PROJECT
-            </div>
-            <input type="file" accept=".xlsx,.csv" disabled={busy} onChange={(e) => upload(e.target.files[0])} />
-          </label>
+          {!summary && (
+            <label
+              className={`dropzone ${drag ? 'drag' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+              onDragLeave={() => setDrag(false)}
+              onDrop={(e) => { e.preventDefault(); setDrag(false); preview(e.dataTransfer.files[0]); }}
+            >
+              <Icon name="upload" size={30} />
+              <div>
+                <strong>{busy ? 'Analyzing…' : 'Click to choose a file'}</strong> or drag it here
+              </div>
+              <div className="hint">
+                .xlsx or .csv with columns: ASSOCIATE NAME, COMPANY, LOCATION, CUSTOMER, BILLABLE (B/NB), PROJECT, SKILL
+                — you'll see a preview before anything is saved
+              </div>
+              <input type="file" accept=".xlsx,.csv" disabled={busy} onChange={(e) => preview(e.target.files[0])} />
+            </label>
+          )}
 
           {summary && (
             <>
+              <p className="cell-sub" style={{ marginTop: 0 }}>
+                {isPreview
+                  ? 'Preview — nothing has been saved yet. This is what importing will do:'
+                  : 'Import complete.'}
+              </p>
               <div className="import-summary">
                 <div className="import-stat"><strong>{summary.rowsProcessed}</strong> rows processed</div>
-                <div className="import-stat"><strong>{summary.associatesCreated}</strong> associates added</div>
-                <div className="import-stat"><strong>{summary.clientsCreated}</strong> clients added</div>
-                <div className="import-stat"><strong>{summary.projectsCreated}</strong> projects added</div>
-                <div className="import-stat"><strong>{summary.allocationsCreated}</strong> allocations created</div>
+                <div className="import-stat"><strong>{summary.associatesCreated}</strong> associates {isPreview ? 'to add' : 'added'}</div>
+                <div className="import-stat"><strong>{summary.clientsCreated}</strong> clients {isPreview ? 'to add' : 'added'}</div>
+                <div className="import-stat"><strong>{summary.projectsCreated}</strong> projects {isPreview ? 'to add' : 'added'}</div>
+                <div className="import-stat"><strong>{summary.allocationsCreated}</strong> allocations {isPreview ? 'to create' : 'created'}</div>
                 <div className="import-stat"><strong>{summary.skipped}</strong> skipped (already present)</div>
               </div>
               {summary.errors.length > 0 && (

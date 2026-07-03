@@ -12,7 +12,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -28,23 +29,32 @@ import java.util.*;
  * Missing clients, projects and associates are created; existing rows are skipped.
  */
 @Service
-@Transactional
 public class ImportService {
 
     private final ClientRepository clients;
     private final ProjectRepository projects;
     private final AssociateRepository associates;
     private final AllocationRepository allocations;
+    private final AuditService auditService;
+    private final TransactionTemplate transactionTemplate;
 
     public ImportService(ClientRepository clients, ProjectRepository projects,
-                         AssociateRepository associates, AllocationRepository allocations) {
+                         AssociateRepository associates, AllocationRepository allocations,
+                         AuditService auditService, PlatformTransactionManager transactionManager) {
         this.clients = clients;
         this.projects = projects;
         this.associates = associates;
         this.allocations = allocations;
+        this.auditService = auditService;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
-    public ImportSummaryResponse importRoster(MultipartFile file) {
+    /**
+     * Imports the roster. With {@code dryRun} the exact same plan is executed inside
+     * a transaction that is rolled back at the end, so the summary is a faithful
+     * preview and the database is untouched.
+     */
+    public ImportSummaryResponse importRoster(MultipartFile file, boolean dryRun) {
         String filename = Optional.ofNullable(file.getOriginalFilename()).orElse("").toLowerCase();
         List<Map<String, String>> rows;
         if (filename.endsWith(".xlsx")) {
@@ -55,6 +65,16 @@ public class ImportService {
             throw new BadRequestException("Unsupported file type; upload an .xlsx or .csv file");
         }
 
+        return transactionTemplate.execute(status -> {
+            ImportSummaryResponse summary = processRows(rows, dryRun);
+            if (dryRun) {
+                status.setRollbackOnly();
+            }
+            return summary;
+        });
+    }
+
+    private ImportSummaryResponse processRows(List<Map<String, String>> rows, boolean dryRun) {
         int rowsProcessed = 0, clientsCreated = 0, projectsCreated = 0,
                 associatesCreated = 0, allocationsCreated = 0, skipped = 0;
         List<String> errors = new ArrayList<>();
@@ -133,8 +153,14 @@ public class ImportService {
             }
         }
 
+        if (!dryRun) {
+            auditService.record("IMPORTED", "Import", null,
+                    "Imported roster: " + rowsProcessed + " rows, " + associatesCreated + " associates, "
+                    + clientsCreated + " clients, " + projectsCreated + " projects, "
+                    + allocationsCreated + " allocations created, " + skipped + " skipped");
+        }
         return new ImportSummaryResponse(rowsProcessed, clientsCreated, projectsCreated,
-                associatesCreated, allocationsCreated, skipped, errors);
+                associatesCreated, allocationsCreated, skipped, errors, dryRun);
     }
 
     private List<Map<String, String>> parseXlsx(MultipartFile file) {

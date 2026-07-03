@@ -19,10 +19,13 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final ProjectRepository projectRepository;
+    private final AuditService auditService;
 
-    public ClientService(ClientRepository clientRepository, ProjectRepository projectRepository) {
+    public ClientService(ClientRepository clientRepository, ProjectRepository projectRepository,
+                         AuditService auditService) {
         this.clientRepository = clientRepository;
         this.projectRepository = projectRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -41,7 +44,9 @@ public class ClientService {
         }
         Client client = new Client();
         apply(client, request);
-        return ClientResponse.from(clientRepository.save(client));
+        client = clientRepository.save(client);
+        auditService.record("CREATED", "Client", client.getId(), "Created client " + client.getName());
+        return ClientResponse.from(client);
     }
 
     public ClientResponse update(Long id, ClientRequest request) {
@@ -51,6 +56,7 @@ public class ClientService {
             throw new ConflictException("A client named '" + request.name() + "' already exists");
         }
         apply(client, request);
+        auditService.record("UPDATED", "Client", client.getId(), "Updated client " + client.getName());
         return ClientResponse.from(client);
     }
 
@@ -60,6 +66,7 @@ public class ClientService {
             throw new ConflictException("Client has projects; remove or reassign them first");
         }
         clientRepository.delete(client);
+        auditService.record("DELETED", "Client", id, "Deleted client " + client.getName());
     }
 
     private Client find(Long id) {

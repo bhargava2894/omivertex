@@ -24,13 +24,17 @@ public class ProjectService {
     private final AllocationRepository allocationRepository;
     private final com.softility.omivertex.repository.OpenPositionRepository openPositionRepository;
 
+    private final AuditService auditService;
+
     public ProjectService(ProjectRepository projectRepository, ClientRepository clientRepository,
                           AllocationRepository allocationRepository,
-                          com.softility.omivertex.repository.OpenPositionRepository openPositionRepository) {
+                          com.softility.omivertex.repository.OpenPositionRepository openPositionRepository,
+                          AuditService auditService) {
         this.projectRepository = projectRepository;
         this.clientRepository = clientRepository;
         this.allocationRepository = allocationRepository;
         this.openPositionRepository = openPositionRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -52,7 +56,9 @@ public class ProjectService {
         }
         Project project = new Project();
         apply(project, request);
-        return ProjectResponse.from(projectRepository.save(project));
+        project = projectRepository.save(project);
+        auditService.record("CREATED", "Project", project.getId(), "Created project " + project.getName() + " (" + project.getCode() + ")");
+        return ProjectResponse.from(project);
     }
 
     public ProjectResponse update(Long id, ProjectRequest request) {
@@ -62,6 +68,7 @@ public class ProjectService {
             throw new ConflictException("A project with code '" + request.code() + "' already exists");
         }
         apply(project, request);
+        auditService.record("UPDATED", "Project", project.getId(), "Updated project " + project.getName());
         return ProjectResponse.from(project);
     }
 
@@ -74,6 +81,7 @@ public class ProjectService {
             throw new ConflictException("Project has open positions; close or delete them first");
         }
         projectRepository.delete(project);
+        auditService.record("DELETED", "Project", id, "Deleted project " + project.getName());
     }
 
     private Project find(Long id) {

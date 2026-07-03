@@ -9,6 +9,7 @@ import Positions from './pages/Positions.jsx';
 import Settings from './pages/Settings.jsx';
 import Login from './pages/Login.jsx';
 import AccessRequests from './pages/AccessRequests.jsx';
+import AuditLog from './pages/AuditLog.jsx';
 import { api } from './api.js';
 import { storedTheme, applyTheme, resolveTheme } from './theme.js';
 
@@ -20,6 +21,7 @@ const ROUTES = [
   { path: 'allocations', label: 'Allocations', icon: 'link', component: Allocations, sub: 'Assign associates to projects' },
   { path: 'demand', label: 'Demand', icon: 'target', component: Positions, sub: 'Open positions and bench matching' },
   { path: 'access-requests', label: 'Access Requests', icon: 'shield', component: AccessRequests, sub: 'Manage pending user access requests', adminOnly: true },
+  { path: 'audit', label: 'Audit Log', icon: 'list', component: AuditLog, sub: 'Who changed what, and when', adminOnly: true },
   { path: 'settings', label: 'Settings', icon: 'settings', component: Settings, sub: 'Appearance and data management' },
 ];
 

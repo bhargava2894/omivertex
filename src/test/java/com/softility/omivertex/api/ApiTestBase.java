@@ -21,9 +21,11 @@ public abstract class ApiTestBase {
     @Autowired protected AssociateRepository associateRepository;
     @Autowired protected AllocationRepository allocationRepository;
     @Autowired protected OpenPositionRepository openPositionRepository;
+    @Autowired protected AuditEntryRepository auditEntryRepository;
 
     @BeforeEach
     void cleanDatabase() {
+        auditEntryRepository.deleteAll();
         allocationRepository.deleteAll();
         openPositionRepository.deleteAll();
         projectRepository.deleteAll();

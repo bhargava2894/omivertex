@@ -25,9 +25,13 @@ public class AssociateService {
     private final AssociateRepository associateRepository;
     private final AllocationRepository allocationRepository;
 
-    public AssociateService(AssociateRepository associateRepository, AllocationRepository allocationRepository) {
+    private final AuditService auditService;
+
+    public AssociateService(AssociateRepository associateRepository, AllocationRepository allocationRepository,
+                            AuditService auditService) {
         this.associateRepository = associateRepository;
         this.allocationRepository = allocationRepository;
+        this.auditService = auditService;
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +59,9 @@ public class AssociateService {
         }
         Associate associate = new Associate();
         apply(associate, request);
-        return AssociateResponse.from(associateRepository.save(associate), List.of());
+        associate = associateRepository.save(associate);
+        auditService.record("CREATED", "Associate", associate.getId(), "Created associate " + associate.getName());
+        return AssociateResponse.from(associate, List.of());
     }
 
     public AssociateResponse update(Long id, AssociateRequest request) {
@@ -66,6 +72,7 @@ public class AssociateService {
         }
         apply(associate, request);
         associateRepository.save(associate);
+        auditService.record("UPDATED", "Associate", id, "Updated associate " + associate.getName());
         return get(id);
     }
 
@@ -75,6 +82,7 @@ public class AssociateService {
             throw new ConflictException("Associate has allocations; remove them first");
         }
         associateRepository.delete(associate);
+        auditService.record("DELETED", "Associate", id, "Deleted associate " + associate.getName());
     }
 
     private Associate find(Long id) {

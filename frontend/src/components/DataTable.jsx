@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import Icon from './Icon.jsx';
 
+const PAGE_SIZE = 25;
+
 export default function DataTable({ columns, rows, loading, emptyText, onEdit, onDelete }) {
+  const [page, setPage] = useState(0);
   if (loading) {
     return (
       <div>
@@ -22,6 +26,10 @@ export default function DataTable({ columns, rows, loading, emptyText, onEdit, o
     );
   }
 
+  const pageCount = Math.ceil(rows.length / PAGE_SIZE);
+  const safePage = Math.min(page, pageCount - 1);
+  const visible = rows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
   return (
     <div className="card table-wrap">
       <table>
@@ -34,7 +42,7 @@ export default function DataTable({ columns, rows, loading, emptyText, onEdit, o
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {visible.map((row) => (
             <tr key={row.id}>
               {columns.map((c) => (
                 <td key={c.key}>{c.render ? c.render(row) : row[c.key]}</td>
@@ -57,6 +65,21 @@ export default function DataTable({ columns, rows, loading, emptyText, onEdit, o
           ))}
         </tbody>
       </table>
+      {pageCount > 1 && (
+        <div className="table-pager">
+          <span className="cell-sub">
+            {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, rows.length)} of {rows.length}
+          </span>
+          <div className="pager-buttons">
+            <button className="btn btn-ghost btn-sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
+              Previous
+            </button>
+            <button className="btn btn-ghost btn-sm" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)}>
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,5 +9,6 @@ public record ImportSummaryResponse(
         int associatesCreated,
         int allocationsCreated,
         int skipped,
-        List<String> errors) {
+        List<String> errors,
+        boolean dryRun) {
 }

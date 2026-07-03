@@ -22,8 +22,9 @@ public class DataTransferController {
     }
 
     @PostMapping("/import")
-    public ImportSummaryResponse importRoster(@RequestParam("file") MultipartFile file) {
-        return importService.importRoster(file);
+    public ImportSummaryResponse importRoster(@RequestParam("file") MultipartFile file,
+                                              @RequestParam(defaultValue = "false") boolean dryRun) {
+        return importService.importRoster(file, dryRun);
     }
 
     @GetMapping("/export")

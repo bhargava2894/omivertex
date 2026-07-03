@@ -92,6 +92,33 @@ class DataTransferApiTest extends ApiTestBase {
     }
 
     @Test
+    void importDryRun_previewsWithoutPersisting() throws Exception {
+        var file = new MockMultipartFile("file", "roster.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", workbookBytes());
+
+        mockMvc.perform(multipart("/api/v1/data/import").file(file).param("dryRun", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dryRun").value(true))
+                .andExpect(jsonPath("$.rowsProcessed").value(3))
+                .andExpect(jsonPath("$.associatesCreated").value(3))
+                .andExpect(jsonPath("$.clientsCreated").value(2));
+
+        // nothing persisted
+        mockMvc.perform(get("/api/v1/associates"))
+                .andExpect(jsonPath("$", hasSize(0)));
+        mockMvc.perform(get("/api/v1/clients"))
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        // a real import afterwards persists the same plan
+        mockMvc.perform(multipart("/api/v1/data/import").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dryRun").value(false))
+                .andExpect(jsonPath("$.associatesCreated").value(3));
+        mockMvc.perform(get("/api/v1/associates"))
+                .andExpect(jsonPath("$", hasSize(3)));
+    }
+
+    @Test
     void import_unsupportedFileType_returns400() throws Exception {
         var file = new MockMultipartFile("file", "roster.txt", "text/plain", "hello".getBytes());
         mockMvc.perform(multipart("/api/v1/data/import").file(file))
