@@ -138,7 +138,15 @@ export default function Associates({ showToast, canEdit }) {
           { key: 'workMode', label: 'Shore', render: (r) => <Badge value={r.workMode} /> },
           { key: 'currentClient', label: 'Customer', render: (r) => r.currentClient || '—' },
           { key: 'currentProject', label: 'Project', render: (r) => r.currentProject || '—' },
-          { key: 'billable', label: 'Billability', render: (r) => <Badge value={billability(r)} /> },
+          {
+            key: 'billable', label: 'Billability',
+            render: (r) =>
+              r.benchDays != null ? (
+                <Badge value="Bench" label={`Bench · ${r.benchDays}d`} />
+              ) : (
+                <Badge value={billability(r)} />
+              ),
+          },
         ]}
       />
 

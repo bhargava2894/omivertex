@@ -120,6 +120,80 @@ class AllocationApiTest extends ApiTestBase {
     }
 
     @Test
+    void createAllocation_exceedingCapacity_returns409() throws Exception {
+        var acme = client("Acme Corp");
+        var proj1 = project("ACM-100", "Storefront Revamp", acme);
+        var proj2 = project("ACM-200", "Mobile App", acme);
+        var dev = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        allocation(dev, proj1, true); // 100% open allocation
+
+        mockMvc.perform(post("/api/v1/allocations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"associateId":%d,"projectId":%d,"billable":true,"allocationPercent":50,"startDate":"%s"}"""
+                                .formatted(dev.getId(), proj2.getId(), LocalDate.now())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("150%")));
+    }
+
+    @Test
+    void createAllocation_splitCapacity_isAllowed() throws Exception {
+        var acme = client("Acme Corp");
+        var proj1 = project("ACM-100", "Storefront Revamp", acme);
+        var proj2 = project("ACM-200", "Mobile App", acme);
+        var dev = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+
+        for (var p : new Long[]{proj1.getId(), proj2.getId()}) {
+            mockMvc.perform(post("/api/v1/allocations")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"associateId":%d,"projectId":%d,"billable":true,"allocationPercent":50,"startDate":"%s"}"""
+                                    .formatted(dev.getId(), p, LocalDate.now())))
+                    .andExpect(status().isCreated());
+        }
+    }
+
+    @Test
+    void createAllocation_afterOtherEnded_isAllowed() throws Exception {
+        var acme = client("Acme Corp");
+        var proj1 = project("ACM-100", "Storefront Revamp", acme);
+        var proj2 = project("ACM-200", "Mobile App", acme);
+        var dev = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        var old = allocation(dev, proj1, true);
+        old.setEndDate(LocalDate.now().minusDays(5));
+        allocationRepository.save(old);
+
+        mockMvc.perform(post("/api/v1/allocations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"associateId":%d,"projectId":%d,"billable":true,"allocationPercent":100,"startDate":"%s"}"""
+                                .formatted(dev.getId(), proj2.getId(), LocalDate.now())))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void updateAllocation_exceedingCapacity_returns409() throws Exception {
+        var acme = client("Acme Corp");
+        var proj1 = project("ACM-100", "Storefront Revamp", acme);
+        var proj2 = project("ACM-200", "Mobile App", acme);
+        var dev = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        // two 50% allocations, then try to raise one to 80%
+        var a1 = allocation(dev, proj1, true);
+        a1.setAllocationPercent(50);
+        allocationRepository.save(a1);
+        var a2 = allocation(dev, proj2, true);
+        a2.setAllocationPercent(50);
+        allocationRepository.save(a2);
+
+        mockMvc.perform(put("/api/v1/allocations/" + a2.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"billable":true,"allocationPercent":80,"startDate":"%s"}"""
+                                .formatted(a2.getStartDate())))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void deleteAllocation_removesAllocation() throws Exception {
         var acme = client("Acme Corp");
         var proj = project("ACM-100", "Storefront Revamp", acme);

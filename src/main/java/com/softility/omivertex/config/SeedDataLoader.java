@@ -103,10 +103,14 @@ public class SeedDataLoader implements ApplicationRunner {
         allocate(a14, heGrid, true, 100);
         allocate(a15, olTrack, true, 100);
         allocate(a16, olTrack, true, 100);
-        allocate(a17, mhData, false, 100);
         allocate(a18, vbFraud, true, 100);
         allocate(a19, vbCore, true, 100);
-        allocate(a20, ciClaims, false, 100);
+        // rolling off soon — feeds the roll-off radar
+        allocate(a17, mhData, false, 100, LocalDate.now().plusDays(6));
+        allocate(a20, ciClaims, false, 100, LocalDate.now().plusDays(18));
+        // ended engagements — feeds bench aging
+        allocate(a21, olTrack, true, 100, LocalDate.now().minusDays(45));
+        allocate(a22, ciClaims, true, 100, LocalDate.now().minusDays(75));
 
         log.info("Seeded {} clients, {} projects, {} associates, {} allocations",
                 clients.count(), projects.count(), associates.count(), allocations.count());
@@ -146,12 +150,17 @@ public class SeedDataLoader implements ApplicationRunner {
     }
 
     private void allocate(Associate associate, Project project, boolean billable, int percent) {
+        allocate(associate, project, billable, percent, null);
+    }
+
+    private void allocate(Associate associate, Project project, boolean billable, int percent, LocalDate endDate) {
         Allocation allocation = new Allocation();
         allocation.setAssociate(associate);
         allocation.setProject(project);
         allocation.setBillable(billable);
         allocation.setAllocationPercent(percent);
-        allocation.setStartDate(LocalDate.now().minusMonths(5));
+        allocation.setStartDate(LocalDate.now().minusMonths(7));
+        allocation.setEndDate(endDate);
         allocations.save(allocation);
     }
 }

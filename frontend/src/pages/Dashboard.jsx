@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Icon from '../components/Icon.jsx';
+import Badge from '../components/Badge.jsx';
 import { TrendChart, DonutChart, VBarChart } from '../components/charts.jsx';
 
 function StatCard({ icon, label, value, hint }) {
@@ -88,12 +89,73 @@ export default function Dashboard() {
 
       <div className="stat-grid">
         <StatCard icon="users" label="Total Associates" value={s.totalAssociates} hint={`${allocated} allocated to projects`} />
-        <StatCard icon="dollar" label="Billable" value={s.billableCount} hint={`${billablePct}% billability ratio`} />
+        <StatCard icon="activity" label="Billable Utilization" value={`${s.utilizationPercent}%`} hint="FTE-weighted, of total workforce" />
+        <StatCard icon="dollar" label="Billable" value={s.billableCount} hint={`${billablePct}% of headcount`} />
         <StatCard icon="bench" label="On Bench" value={s.benchCount} hint="No current allocation" />
         <StatCard icon="briefcase" label="Active Projects" value={s.activeProjects} hint={`across ${s.totalClients} clients`} />
       </div>
 
       <div className="panel-grid">
+        <div className="card panel">
+          <h2>
+            <Icon name="radar" size={15} /> Roll-off Radar — next 30 days
+          </h2>
+          {s.upcomingRolloffs.length === 0 ? (
+            <p className="stat-hint">No allocations ending in the next 30 days.</p>
+          ) : (
+            s.upcomingRolloffs.map((r) => (
+              <div className="radar-row" key={r.allocationId}>
+                <div>
+                  <div className="cell-main">{r.associateName}</div>
+                  <div className="cell-sub">{r.projectName} · {r.clientName}</div>
+                </div>
+                <div className="radar-right">
+                  <span className="cell-sub">{r.endDate}</span>
+                  <Badge
+                    tone={r.daysLeft <= 7 ? 'red' : r.daysLeft <= 14 ? 'amber' : 'blue'}
+                    label={r.daysLeft <= 0 ? 'today' : `${r.daysLeft}d left`}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="card panel">
+          <h2>
+            <Icon name="bench" size={15} /> Bench Aging
+          </h2>
+          <div className="bench-buckets">
+            <div className="bench-bucket">
+              <strong>{s.benchAging.days0to30}</strong>
+              <span>0–30 days</span>
+            </div>
+            <div className="bench-bucket warn">
+              <strong>{s.benchAging.days31to60}</strong>
+              <span>31–60 days</span>
+            </div>
+            <div className="bench-bucket danger">
+              <strong>{s.benchAging.days60plus}</strong>
+              <span>60+ days</span>
+            </div>
+          </div>
+          {s.benchAssociates.length === 0 ? (
+            <p className="stat-hint">Nobody on the bench — fully deployed.</p>
+          ) : (
+            s.benchAssociates.slice(0, 6).map((b) => (
+              <div className="radar-row" key={b.id}>
+                <div>
+                  <div className="cell-main">{b.name}</div>
+                  <div className="cell-sub">{b.designation || '—'}</div>
+                </div>
+                <Badge
+                  tone={b.benchDays > 60 ? 'red' : b.benchDays > 30 ? 'amber' : 'green'}
+                  label={`${b.benchDays}d on bench`}
+                />
+              </div>
+            ))
+          )}
+        </div>
         <div className="card panel">
           <h2>Billability Mix</h2>
           {viewMode === 'charts' ? (
@@ -139,6 +201,19 @@ export default function Dashboard() {
             </>
           )}
         </div>
+
+        {viewMode === 'charts' && (
+          <div className="card panel" style={{ gridColumn: '1 / -1' }}>
+            <h2>Staffing Trend — last 6 months</h2>
+            <TrendChart
+              points={s.staffingTrend}
+              series={[
+                { key: 'total', label: 'Allocated associates', color: 'var(--chart-1)' },
+                { key: 'billable', label: 'Billable', color: 'var(--chart-2)' },
+              ]}
+            />
+          </div>
+        )}
 
         <div className="card panel" style={{ gridColumn: '1 / -1' }}>
           <h2>Headcount by Client</h2>

@@ -12,7 +12,7 @@ const tones = {
   Ended: 'badge-gray',
 };
 
-export default function Badge({ value }) {
-  const label = String(value).replace('_', ' ');
-  return <span className={`badge ${tones[value] || 'badge-gray'}`}>{label}</span>;
+export default function Badge({ value, label, tone }) {
+  const cls = tone ? `badge-${tone}` : tones[value] || 'badge-gray';
+  return <span className={`badge ${cls}`}>{label || String(value).replace('_', ' ')}</span>;
 }

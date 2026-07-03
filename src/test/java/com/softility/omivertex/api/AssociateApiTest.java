@@ -77,6 +77,26 @@ class AssociateApiTest extends ApiTestBase {
     }
 
     @Test
+    void associateResponses_carryBenchDays() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var allocated = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        allocation(allocated, proj, true);
+        var rolledOff = associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE);
+        var ended = allocation(rolledOff, proj, true);
+        ended.setEndDate(java.time.LocalDate.now().minusDays(12));
+        allocationRepository.save(ended);
+        var fresh = associate("Anita Rao", "anita@softility.com", WorkMode.ONSHORE);
+
+        mockMvc.perform(get("/api/v1/associates/" + allocated.getId()))
+                .andExpect(jsonPath("$.benchDays").isEmpty());
+        mockMvc.perform(get("/api/v1/associates/" + rolledOff.getId()))
+                .andExpect(jsonPath("$.benchDays").value(12));
+        mockMvc.perform(get("/api/v1/associates/" + fresh.getId()))
+                .andExpect(jsonPath("$.benchDays").value(0));
+    }
+
+    @Test
     void getAssociate_unknownId_returns404() throws Exception {
         mockMvc.perform(get("/api/v1/associates/9999"))
                 .andExpect(status().isNotFound());

@@ -307,7 +307,34 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 @media (max-width: 900px) { .panel-grid { grid-template-columns: 1fr; } }
 
 .panel { padding: 22px; }
-.panel h2 { margin: 0 0 16px; font-size: 15px; font-weight: 700; }
+.panel h2 { margin: 0 0 16px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.panel h2 svg { color: var(--color-primary); }
+
+/* ---------- Roll-off radar & bench aging ---------- */
+.radar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.radar-row:last-child { border-bottom: none; }
+.radar-right { display: flex; align-items: center; gap: 12px; }
+
+.bench-buckets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.bench-bucket {
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  text-align: center;
+}
+.bench-bucket strong { display: block; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--color-accent); }
+.bench-bucket span { font-size: 11.5px; color: var(--color-muted-fg); font-weight: 600; }
+.bench-bucket.warn { background: var(--color-warn-soft); }
+.bench-bucket.warn strong { color: var(--color-warn); }
+.bench-bucket.danger { background: var(--color-destructive-soft); }
+.bench-bucket.danger strong { color: var(--color-destructive); }
 
 /* ---------- Split / distribution bars ---------- */
 .split-row { margin-bottom: 14px; }

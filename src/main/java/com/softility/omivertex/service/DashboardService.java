@@ -8,6 +8,7 @@ import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.ClientRepository;
 import com.softility.omivertex.repository.ProjectRepository;
+import com.softility.omivertex.web.dto.AssociateResponse;
 import com.softility.omivertex.web.dto.DashboardSummaryResponse;
 import com.softility.omivertex.web.dto.DashboardSummaryResponse.ClientHeadcount;
 import org.springframework.stereotype.Service;
@@ -16,10 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -42,7 +45,10 @@ public class DashboardService {
 
     public DashboardSummaryResponse summary() {
         List<Associate> associates = associateRepository.findAll();
-        List<Allocation> current = allocationRepository.findCurrent(LocalDate.now());
+        List<Allocation> all = allocationRepository.findAllWithDetails();
+        List<Allocation> current = all.stream().filter(Allocation::isCurrent).toList();
+        Map<Long, List<Allocation>> byAssociate = all.stream()
+                .collect(Collectors.groupingBy(a -> a.getAssociate().getId()));
 
         Set<Long> billableIds = current.stream()
                 .filter(Allocation::isBillable)
@@ -67,9 +73,46 @@ public class DashboardService {
                         .thenComparing(ClientHeadcount::clientName))
                 .toList();
 
+        // FTE-weighted utilization: each associate contributes their current billable
+        // allocation percentage, capped at 100
+        Map<Long, Integer> billablePctByAssociate = current.stream()
+                .filter(Allocation::isBillable)
+                .collect(Collectors.groupingBy(a -> a.getAssociate().getId(),
+                        Collectors.summingInt(Allocation::getAllocationPercent)));
+        double billableFte = billablePctByAssociate.values().stream()
+                .mapToDouble(pct -> Math.min(pct, 100) / 100.0).sum();
+        long utilization = associates.isEmpty() ? 0 : Math.round(billableFte / associates.size() * 100);
+
+        // bench aging
+        List<DashboardSummaryResponse.BenchAssociate> benchAssociates = associates.stream()
+                .map(a -> {
+                    Long days = AssociateResponse.benchDays(a, byAssociate.getOrDefault(a.getId(), List.of()));
+                    return days == null ? null
+                            : new DashboardSummaryResponse.BenchAssociate(a.getId(), a.getName(), a.getDesignation(), days);
+                })
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparingLong(DashboardSummaryResponse.BenchAssociate::benchDays).reversed())
+                .toList();
+        DashboardSummaryResponse.BenchAging benchAging = new DashboardSummaryResponse.BenchAging(
+                benchAssociates.stream().filter(b -> b.benchDays() <= 30).count(),
+                benchAssociates.stream().filter(b -> b.benchDays() > 30 && b.benchDays() <= 60).count(),
+                benchAssociates.stream().filter(b -> b.benchDays() > 60).count());
+
+        // roll-off radar: current allocations ending within 30 days
+        LocalDate today = LocalDate.now();
+        List<DashboardSummaryResponse.Rolloff> rolloffs = current.stream()
+                .filter(a -> a.getEndDate() != null && !a.getEndDate().isAfter(today.plusDays(30)))
+                .sorted(Comparator.comparing(Allocation::getEndDate))
+                .map(a -> new DashboardSummaryResponse.Rolloff(a.getId(),
+                        a.getAssociate().getId(), a.getAssociate().getName(),
+                        a.getProject().getName(), a.getProject().getClient().getName(),
+                        a.getEndDate(), ChronoUnit.DAYS.between(today, a.getEndDate())))
+                .toList();
+
         return new DashboardSummaryResponse(associates.size(), billableCount, nonBillableCount, benchCount,
                 onshore, offshore, clientRepository.count(),
                 projectRepository.findAll().stream().filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count(),
+                utilization, benchAging, benchAssociates, rolloffs,
                 headcounts, staffingTrend());
     }
 

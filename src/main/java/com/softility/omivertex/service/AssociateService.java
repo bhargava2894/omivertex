@@ -32,11 +32,11 @@ public class AssociateService {
 
     @Transactional(readOnly = true)
     public List<AssociateResponse> list(WorkMode workMode, Boolean billable, Boolean bench) {
-        Map<Long, List<Allocation>> currentByAssociate = allocationRepository.findCurrent(LocalDate.now()).stream()
+        Map<Long, List<Allocation>> allocationsByAssociate = allocationRepository.findAllWithDetails().stream()
                 .collect(Collectors.groupingBy(a -> a.getAssociate().getId()));
         return associateRepository.findAll().stream()
                 .map(associate -> AssociateResponse.from(associate,
-                        currentByAssociate.getOrDefault(associate.getId(), List.of())))
+                        allocationsByAssociate.getOrDefault(associate.getId(), List.of())))
                 .filter(r -> workMode == null || r.workMode() == workMode)
                 .filter(r -> billable == null || r.billable() == billable)
                 .filter(r -> bench == null || (r.currentProjectId() == null) == bench)
@@ -46,9 +46,7 @@ public class AssociateService {
     @Transactional(readOnly = true)
     public AssociateResponse get(Long id) {
         Associate associate = find(id);
-        List<Allocation> current = allocationRepository.findByAssociateId(id).stream()
-                .filter(Allocation::isCurrent).toList();
-        return AssociateResponse.from(associate, current);
+        return AssociateResponse.from(associate, allocationRepository.findByAssociateId(id));
     }
 
     public AssociateResponse create(AssociateRequest request) {

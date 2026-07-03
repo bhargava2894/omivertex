@@ -56,6 +56,8 @@ public class AllocationService {
                 request.associateId(), request.projectId())) {
             throw new ConflictException(associate.getName() + " already has an open allocation on " + project.getName());
         }
+        int percent = request.allocationPercent() == null ? 100 : request.allocationPercent();
+        assertCapacity(associate, null, percent, request.startDate(), request.endDate());
         Allocation allocation = new Allocation();
         allocation.setAssociate(associate);
         allocation.setProject(project);
@@ -68,6 +70,9 @@ public class AllocationService {
 
     public AllocationResponse update(Long id, AllocationUpdateRequest request) {
         Allocation allocation = find(id);
+        int percent = request.allocationPercent() == null
+                ? allocation.getAllocationPercent() : request.allocationPercent();
+        assertCapacity(allocation.getAssociate(), id, percent, request.startDate(), request.endDate());
         allocation.setBillable(request.billable());
         if (request.allocationPercent() != null) {
             allocation.setAllocationPercent(request.allocationPercent());
@@ -83,5 +88,29 @@ public class AllocationService {
 
     private Allocation find(Long id) {
         return allocationRepository.findById(id).orElseThrow(() -> new NotFoundException("Allocation", id));
+    }
+
+    /**
+     * An associate is 100% capacity: the sum of allocation percentages across
+     * date-overlapping allocations may never exceed it.
+     */
+    private void assertCapacity(Associate associate, Long excludeAllocationId, int newPercent,
+                                java.time.LocalDate newStart, java.time.LocalDate newEnd) {
+        int existing = allocationRepository.findByAssociateId(associate.getId()).stream()
+                .filter(a -> !a.getId().equals(excludeAllocationId))
+                .filter(a -> overlaps(a, newStart, newEnd))
+                .mapToInt(Allocation::getAllocationPercent)
+                .sum();
+        int total = existing + newPercent;
+        if (total > 100) {
+            throw new ConflictException(associate.getName() + " would be allocated " + total
+                    + "% in this period; the maximum is 100%. Roll off or reduce another allocation first.");
+        }
+    }
+
+    private static boolean overlaps(Allocation a, java.time.LocalDate start, java.time.LocalDate end) {
+        boolean endsBeforeNewStarts = a.getEndDate() != null && a.getEndDate().isBefore(start);
+        boolean startsAfterNewEnds = end != null && a.getStartDate().isAfter(end);
+        return !endsBeforeNewStarts && !startsAfterNewEnds;
     }
 }
