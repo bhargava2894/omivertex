@@ -40,7 +40,7 @@ public class ExportService {
     }
 
     public ExportFile export(String format) {
-        List<AssociateResponse> roster = associateService.list(null, null, null);
+        List<AssociateResponse> roster = associateService.list(null, null, null, null, null, null);
         return switch (format == null ? "" : format.toLowerCase()) {
             case "xlsx" -> new ExportFile("associates.xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx(roster));

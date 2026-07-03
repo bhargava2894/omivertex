@@ -6,6 +6,7 @@ import com.softility.omivertex.domain.AssociateSkill;
 import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.domain.EntityStatus;
 import com.softility.omivertex.domain.WorkMode;
+import com.softility.omivertex.domain.Proficiency;
 import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.AssociateSkillRepository;
@@ -45,7 +46,8 @@ public class AssociateService {
     }
 
     @Transactional(readOnly = true)
-    public List<AssociateResponse> list(WorkMode workMode, Boolean billable, Boolean bench) {
+    public List<AssociateResponse> list(WorkMode workMode, Boolean billable, Boolean bench,
+                                        Long categoryId, Long skillId, Proficiency minProficiency) {
         Map<Long, List<Allocation>> allocationsByAssociate = allocationRepository.findAllWithDetails().stream()
                 .collect(Collectors.groupingBy(a -> a.getAssociate().getId()));
         Map<Long, List<AssociateSkill>> skillsByAssociate = associateSkillRepository.findAllWithDetails().stream()
@@ -57,6 +59,18 @@ public class AssociateService {
                 .filter(r -> workMode == null || r.workMode() == workMode)
                 .filter(r -> billable == null || r.billable() == billable)
                 .filter(r -> bench == null || (r.currentProjectId() == null) == bench)
+                .filter(r -> {
+                    if (categoryId == null && skillId == null && minProficiency == null) {
+                        return true;
+                    }
+                    List<AssociateSkill> heldSkills = skillsByAssociate.getOrDefault(r.id(), List.of());
+                    return heldSkills.stream().anyMatch(s -> {
+                        boolean matchCategory = categoryId == null || s.getSkill().getCategory().getId().equals(categoryId);
+                        boolean matchSkill = skillId == null || s.getSkill().getId().equals(skillId);
+                        boolean matchProficiency = minProficiency == null || s.getProficiency().ordinal() >= minProficiency.ordinal();
+                        return matchCategory && matchSkill && matchProficiency;
+                    });
+                })
                 .toList();
     }
 

@@ -22,16 +22,24 @@ export default function Associates({ showToast, canEdit }) {
   const [staffing, setStaffing] = useState(''); // '' | billable | nonbillable | bench
   const [workMode, setWorkMode] = useState('');
   const [search, setSearch] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [skillId, setSkillId] = useState('');
+  const [minProficiency, setMinProficiency] = useState('');
+
+  const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
 
   const params = {};
   if (workMode) params.workMode = workMode;
   if (staffing === 'bench') params.bench = 'true';
   if (staffing === 'billable') params.billable = 'true';
   if (staffing === 'nonbillable') { params.billable = 'false'; params.bench = 'false'; }
+  if (categoryId) params.categoryId = categoryId;
+  if (skillId) params.skillId = skillId;
+  if (minProficiency) params.minProficiency = minProficiency;
 
   const { data, loading, reload } = useLoad(
     () => api.list('associates', params),
-    [staffing, workMode]
+    [staffing, workMode, categoryId, skillId, minProficiency]
   );
   const [editing, setEditing] = useState(null);
   const [errors, setErrors] = useState({});
@@ -105,6 +113,46 @@ export default function Associates({ showToast, canEdit }) {
             <option value="">Onshore + Offshore</option>
             <option value="ONSHORE">Onshore</option>
             <option value="OFFSHORE">Offshore</option>
+          </select>
+          <select
+            className="filter-select"
+            value={categoryId}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+              setSkillId('');
+            }}
+            aria-label="Filter by skill category"
+          >
+            <option value="">All Categories</option>
+            {(taxonomy || []).map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+          <select
+            className="filter-select"
+            value={skillId}
+            onChange={(e) => setSkillId(e.target.value)}
+            disabled={!categoryId}
+            aria-label="Filter by specific skill"
+          >
+            <option value="">All Skills</option>
+            {((taxonomy || []).find((c) => String(c.id) === categoryId)?.skills || []).map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <select
+            className="filter-select"
+            value={minProficiency}
+            onChange={(e) => setMinProficiency(e.target.value)}
+            aria-label="Filter by minimum proficiency"
+          >
+            <option value="">Any Level</option>
+            <option value="NOVICE">Novice+</option>
+            <option value="FOUNDATIONAL">Foundational+</option>
+            <option value="INTERMEDIATE">Intermediate+</option>
+            <option value="FUNCTIONAL_USER">Functional User+</option>
+            <option value="ADVANCE">Advance+</option>
+            <option value="MASTERY">Mastery</option>
           </select>
         </div>
         <div className="toolbar-actions">

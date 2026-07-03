@@ -190,4 +190,54 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(delete("/api/v1/associates/" + saved.getId()))
                 .andExpect(status().isConflict());
     }
+
+    @Test
+    void listAssociates_facetedSkillSearch_filtersCorrectly() throws Exception {
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        var rahul = associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE);
+        var anita = associate("Anita Rao", "anita@softility.com", WorkMode.OFFSHORE);
+
+        var db = skill("Database", "PostgreSQL");
+        var cloud = skill("Cloud", "AWS");
+        var devops = skill("Cloud", "Docker");
+
+        rateSkill(priya, db, com.softility.omivertex.domain.Proficiency.MASTERY);
+        rateSkill(rahul, cloud, com.softility.omivertex.domain.Proficiency.FOUNDATIONAL);
+        rateSkill(anita, devops, com.softility.omivertex.domain.Proficiency.INTERMEDIATE);
+
+        // 1. Filter by category
+        mockMvc.perform(get("/api/v1/associates").param("categoryId", String.valueOf(cloud.getCategory().getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2))) // rahul and anita
+                .andExpect(jsonPath("$[?(@.name=='Rahul Verma')]").exists())
+                .andExpect(jsonPath("$[?(@.name=='Anita Rao')]").exists());
+
+        // 2. Filter by skill
+        mockMvc.perform(get("/api/v1/associates").param("skillId", String.valueOf(cloud.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Rahul Verma"));
+
+        // 3. Filter by skill + min proficiency (should match)
+        mockMvc.perform(get("/api/v1/associates")
+                        .param("skillId", String.valueOf(cloud.getId()))
+                        .param("minProficiency", "FOUNDATIONAL"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+
+        // 4. Filter by skill + min proficiency (should NOT match)
+        mockMvc.perform(get("/api/v1/associates")
+                        .param("skillId", String.valueOf(cloud.getId()))
+                        .param("minProficiency", "MASTERY"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        // 5. Filter by category + min proficiency
+        mockMvc.perform(get("/api/v1/associates")
+                        .param("categoryId", String.valueOf(cloud.getCategory().getId()))
+                        .param("minProficiency", "INTERMEDIATE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1))) // only Anita matches, Rahul is excluded
+                .andExpect(jsonPath("$[0].name").value("Anita Rao"));
+    }
 }

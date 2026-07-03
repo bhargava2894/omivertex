@@ -23,8 +23,11 @@ public class AssociateController {
     @GetMapping
     public List<AssociateResponse> list(@RequestParam(required = false) WorkMode workMode,
                                         @RequestParam(required = false) Boolean billable,
-                                        @RequestParam(required = false) Boolean bench) {
-        return associateService.list(workMode, billable, bench);
+                                        @RequestParam(required = false) Boolean bench,
+                                        @RequestParam(required = false) Long categoryId,
+                                        @RequestParam(required = false) Long skillId,
+                                        @RequestParam(required = false) com.softility.omivertex.domain.Proficiency minProficiency) {
+        return associateService.list(workMode, billable, bench, categoryId, skillId, minProficiency);
     }
 
     @GetMapping("/{id}")
