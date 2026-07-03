@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 
 /* Shared chart primitives. Colors come from --chart-* tokens (validated for both
    themes); text always wears text tokens, never the series color. */
@@ -68,6 +69,7 @@ function niceTicks(max) {
 export function TrendChart({ points, series }) {
   const [ref, width] = useWidth();
   const [hover, setHover] = useState(null); // index
+  const reduceMotion = useReducedMotion();
   const height = 210;
   const m = { top: 14, right: 44, bottom: 26, left: 34 };
 
@@ -110,14 +112,20 @@ export function TrendChart({ points, series }) {
           {hover != null && (
             <line x1={x(hover)} x2={x(hover)} y1={m.top} y2={m.top + ih} className="chart-crosshair" />
           )}
-          {series.map((s) => {
+          {series.map((s, si) => {
             const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(p[s.key])}`).join(' ');
             const last = points.length - 1;
             return (
               <g key={s.key}>
-                <path d={d} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                <motion.path
+                  d={d} fill="none" stroke={s.color} strokeWidth="2"
+                  strokeLinejoin="round" strokeLinecap="round"
+                  initial={reduceMotion ? false : { pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.9, ease: 'easeOut', delay: si * 0.18 }}
+                />
                 {points.map((p, i) => (
-                  <circle
+                  <motion.circle
                     key={i}
                     cx={x(i)}
                     cy={y(p[s.key])}
@@ -125,6 +133,10 @@ export function TrendChart({ points, series }) {
                     fill={s.color}
                     stroke="var(--color-surface)"
                     strokeWidth="2"
+                    initial={reduceMotion ? false : { opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.25 + si * 0.18 + i * 0.07 }}
+                    style={{ transformBox: 'fill-box', transformOrigin: '50% 50%' }}
                   />
                 ))}
                 <text x={x(last) + 10} y={y(points[last][s.key]) + 4} className="chart-endlabel">
@@ -301,6 +313,7 @@ export function DonutChart({ segments }) {
   const [ref, width] = useWidth();
   const [tip, setTip] = useState(null);
   const [hoveredIdx, setHoveredIdx] = useState(null);
+  const reduceMotion = useReducedMotion();
   const height = 180;
   
   const sum = segments.reduce((a, s) => a + s.value, 0);
@@ -340,14 +353,17 @@ export function DonutChart({ segments }) {
               const hovered = hoveredIdx === s.index;
               const active = hoveredIdx !== null;
               return (
-                <path
+                <motion.path
                   key={s.label}
                   d={s.path}
                   fill={s.color}
-                  fillOpacity={active ? (hovered ? 0.25 : 0.08) : 0.15}
+                  fillOpacity={active ? (hovered ? 1 : 0.07) : 0.15}
                   stroke={s.color}
-                  strokeWidth={hovered ? 2.5 : 1.5}
+                  strokeWidth={hovered ? 0 : 1.5}
                   strokeLinejoin="round"
+                  initial={reduceMotion ? false : { scale: 0.4, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: 'spring', stiffness: 280, damping: 18, delay: s.index * 0.09 }}
                   onPointerMove={(e) => {
                     const box = e.currentTarget.closest('.chart-box').getBoundingClientRect();
                     setHoveredIdx(s.index);
@@ -365,7 +381,10 @@ export function DonutChart({ segments }) {
                   }}
                   style={{
                     cursor: 'pointer',
-                    transition: 'all 0.18s ease-in-out',
+                    transformBox: 'view-box',
+                    transformOrigin: `${cx}px ${cy}px`,
+                    transition: 'fill-opacity 0.18s ease, stroke-width 0.18s ease, filter 0.18s ease',
+                    filter: hovered ? `drop-shadow(0 3px 12px ${s.color})` : 'none',
                   }}
                 />
               );
@@ -385,6 +404,7 @@ export function VBarChart({ rows, unit }) {
   const [ref, width] = useWidth();
   const [tip, setTip] = useState(null);
   const [hoveredIdx, setHoveredIdx] = useState(null);
+  const reduceMotion = useReducedMotion();
   const height = 240;
   const m = { top: 20, right: 20, bottom: 54, left: 34 };
   
@@ -450,13 +470,21 @@ export function VBarChart({ rows, unit }) {
                 <rect x={m.left + i * colW} y={m.top} width={colW} height={ih} fill="transparent" />
                 
                 {r.value > 0 && (
-                  <path
+                  <motion.path
                     d={getBarPath(x, y, barW, h, 4)}
                     fill={color}
-                    fillOpacity={active ? (hovered ? 0.25 : 0.08) : 0.15}
+                    fillOpacity={active ? (hovered ? 1 : 0.07) : 0.15}
                     stroke={color}
-                    strokeWidth={hovered ? 2.5 : 1.5}
-                    style={{ transition: 'all 0.18s ease-in-out' }}
+                    strokeWidth={hovered ? 0 : 1.5}
+                    initial={reduceMotion ? false : { scaleY: 0 }}
+                    animate={{ scaleY: 1 }}
+                    transition={{ type: 'spring', stiffness: 320, damping: 17, mass: 0.9, delay: i * 0.055 }}
+                    style={{
+                      transformBox: 'fill-box',
+                      transformOrigin: '50% 100%',
+                      transition: 'fill-opacity 0.18s ease, stroke-width 0.18s ease, filter 0.18s ease',
+                      filter: hovered ? `drop-shadow(0 4px 14px ${color})` : 'none',
+                    }}
                   />
                 )}
                 
