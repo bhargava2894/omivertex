@@ -59,8 +59,8 @@ omivertex/
 │     └─ error/        GlobalExceptionHandler + typed exceptions
 ├─ src/main/resources/
 │  ├─ application.properties
-│  ├─ templates/index.html        ← Thymeleaf shell hosting the SPA
-│  └─ static/                     ← Vite build output (git-ignored)
+│  └─ templates/index.html        ← Thymeleaf shell hosting the SPA
+│     (Vite output lives in frontend/dist/, copied to target/classes/static by Maven)
 ├─ src/test/java/…/api/           HTTP-level tests (one class per resource)
 ├─ frontend/                      Vite React app
 │  ├─ public/logo.png, logo-mark.png
@@ -233,9 +233,11 @@ cd frontend && npm install && npm run build && cd ..   # SPA → static/
 cd frontend && npm run dev                              # Vite on :5173, /api proxied
 ```
 
-- `npm run build` outputs straight into `src/main/resources/static/` with stable
-  asset names (`assets/app.js|css`) referenced by `templates/index.html`, then
-  deletes Vite's own `index.html` so the Thymeleaf shell stays canonical.
+- `npm run build` outputs to `frontend/dist/` with stable asset names
+  (`assets/app.js|css`). A `maven-resources-plugin` execution copies `dist/`
+  into `target/classes/static/` at `process-resources` — excluding Vite's
+  `index.html`, so the Thymeleaf shell stays canonical for `/`. The bundle never
+  lives under `src/`, keeping git and the graphify knowledge graph clean.
 - Seeding: `SeedDataLoader` runs when `omivertex.seed=true` **and the clients
   table is empty** (idempotent). Disable in properties for a clean start.
 - Packaging: `./mvnw package` → single runnable jar (build the frontend first).

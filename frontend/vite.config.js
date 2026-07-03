@@ -1,12 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Builds straight into the Spring Boot static resources folder with stable
-// filenames so the Thymeleaf shell template can reference them.
+// Builds into frontend/dist with stable filenames; Maven copies dist/ into
+// target/classes/static at process-resources so the bundle never lives in src/.
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: '../src/main/resources/static',
+    outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {
       output: {

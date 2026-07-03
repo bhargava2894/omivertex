@@ -34,6 +34,7 @@ build/
 
 ### OmiVertex ###
 frontend/node_modules/
-src/main/resources/static/
+frontend/dist/
+graphify-out/
 *.log
 .DS_Store
