@@ -2,14 +2,18 @@ package com.softility.omivertex.web.dto;
 
 import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
+import com.softility.omivertex.domain.AssociateSkill;
 import com.softility.omivertex.domain.EntityStatus;
+import com.softility.omivertex.domain.Proficiency;
 import com.softility.omivertex.domain.WorkMode;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public record AssociateResponse(
         Long id,
@@ -26,10 +30,18 @@ public record AssociateResponse(
         Long currentProjectId,
         String currentProject,
         String currentClient,
-        Long benchDays) {
+        Long benchDays,
+        List<SkillGroup> skillGroups) {
 
-    /** Builds the response from the associate plus their full allocation history. */
-    public static AssociateResponse from(Associate associate, List<Allocation> allocations) {
+    public record RatedSkill(Long skillId, String name, Proficiency proficiency) {
+    }
+
+    public record SkillGroup(String category, List<RatedSkill> skills) {
+    }
+
+    /** Builds the response from the associate plus their full allocation history and rated skills. */
+    public static AssociateResponse from(Associate associate, List<Allocation> allocations,
+                                         List<AssociateSkill> ratedSkills) {
         List<Allocation> current = allocations.stream().filter(Allocation::isCurrent).toList();
         boolean billable = current.stream().anyMatch(Allocation::isBillable);
         Allocation primary = current.stream()
@@ -42,7 +54,22 @@ public record AssociateResponse(
                 primary == null ? null : primary.getProject().getId(),
                 primary == null ? null : primary.getProject().getName(),
                 primary == null ? null : primary.getProject().getClient().getName(),
-                benchDays(associate, allocations));
+                benchDays(associate, allocations),
+                groupSkills(ratedSkills));
+    }
+
+    /** Groups rated skills by category name, categories and skills alphabetical. */
+    public static List<SkillGroup> groupSkills(List<AssociateSkill> ratedSkills) {
+        Map<String, List<RatedSkill>> byCategory = new LinkedHashMap<>();
+        ratedSkills.stream()
+                .sorted(Comparator.comparing((AssociateSkill s) -> s.getSkill().getCategory().getName())
+                        .thenComparing(s -> s.getSkill().getName()))
+                .forEach(s -> byCategory
+                        .computeIfAbsent(s.getSkill().getCategory().getName(), k -> new java.util.ArrayList<>())
+                        .add(new RatedSkill(s.getSkill().getId(), s.getSkill().getName(), s.getProficiency())));
+        return byCategory.entrySet().stream()
+                .map(e -> new SkillGroup(e.getKey(), List.copyOf(e.getValue())))
+                .toList();
     }
 
     /**

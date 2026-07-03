@@ -89,6 +89,53 @@ class AssociateApiTest extends ApiTestBase {
     }
 
     @Test
+    void replaceSkills_upsertsRatedSkillsGroupedByCategory() throws Exception {
+        var dev = associate("Priya Sharma", "priya@softility.com", com.softility.omivertex.domain.WorkMode.OFFSHORE);
+        var jenkins = skill("CI/CD", "Jenkins");
+        var aws = skill("Cloud Platforms", "AWS");
+
+        mockMvc.perform(put("/api/v1/associates/" + dev.getId() + "/skills")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"skills":[{"skillId":%d,"proficiency":"INTERMEDIATE"},{"skillId":%d,"proficiency":"MASTERY"}]}"""
+                                .formatted(jenkins.getId(), aws.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skillGroups", hasSize(2)))
+                .andExpect(jsonPath("$.skillGroups[?(@.category=='CI/CD')].skills[0].name").value("Jenkins"))
+                .andExpect(jsonPath("$.skillGroups[?(@.category=='CI/CD')].skills[0].proficiency").value("INTERMEDIATE"))
+                .andExpect(jsonPath("$.skillGroups[?(@.category=='Cloud Platforms')].skills[0].proficiency").value("MASTERY"));
+
+        // replace is total: second PUT with one skill drops the other
+        mockMvc.perform(put("/api/v1/associates/" + dev.getId() + "/skills")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"skills":[{"skillId":%d,"proficiency":"ADVANCE"}]}""".formatted(jenkins.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skillGroups", hasSize(1)))
+                .andExpect(jsonPath("$.skillGroups[0].skills[0].proficiency").value("ADVANCE"));
+    }
+
+    @Test
+    void replaceSkills_unknownSkill_returns404() throws Exception {
+        var dev = associate("Priya Sharma", "priya@softility.com", com.softility.omivertex.domain.WorkMode.OFFSHORE);
+        mockMvc.perform(put("/api/v1/associates/" + dev.getId() + "/skills")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"skills":[{"skillId":9999,"proficiency":"NOVICE"}]}"""))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void listAssociates_includesSkillGroups() throws Exception {
+        var dev = associate("Priya Sharma", "priya@softility.com", com.softility.omivertex.domain.WorkMode.OFFSHORE);
+        rateSkill(dev, skill("DB", "MySQL"), com.softility.omivertex.domain.Proficiency.FOUNDATIONAL);
+
+        mockMvc.perform(get("/api/v1/associates"))
+                .andExpect(jsonPath("$[0].skillGroups[0].category").value("DB"))
+                .andExpect(jsonPath("$[0].skillGroups[0].skills[0].name").value("MySQL"));
+    }
+
+    @Test
     void associateResponses_carryBenchDays() throws Exception {
         var acme = client("Acme Corp");
         var proj = project("ACM-100", "Storefront Revamp", acme);

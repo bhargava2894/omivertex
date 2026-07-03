@@ -43,6 +43,12 @@ public class AssociateController {
         return associateService.update(id, request);
     }
 
+    @PutMapping("/{id}/skills")
+    public AssociateResponse replaceSkills(@PathVariable Long id,
+                                           @Valid @RequestBody com.softility.omivertex.web.dto.SkillAssignmentRequest request) {
+        return associateService.replaceSkills(id, request);
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

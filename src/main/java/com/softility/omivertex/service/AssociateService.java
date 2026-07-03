@@ -2,12 +2,17 @@ package com.softility.omivertex.service;
 
 import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
+import com.softility.omivertex.domain.AssociateSkill;
+import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.domain.EntityStatus;
 import com.softility.omivertex.domain.WorkMode;
 import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
+import com.softility.omivertex.repository.AssociateSkillRepository;
+import com.softility.omivertex.repository.SkillRepository;
 import com.softility.omivertex.web.dto.AssociateRequest;
 import com.softility.omivertex.web.dto.AssociateResponse;
+import com.softility.omivertex.web.dto.SkillAssignmentRequest;
 import com.softility.omivertex.web.error.ConflictException;
 import com.softility.omivertex.web.error.NotFoundException;
 import org.springframework.stereotype.Service;
@@ -26,21 +31,29 @@ public class AssociateService {
     private final AllocationRepository allocationRepository;
 
     private final AuditService auditService;
+    private final AssociateSkillRepository associateSkillRepository;
+    private final SkillRepository skillRepository;
 
     public AssociateService(AssociateRepository associateRepository, AllocationRepository allocationRepository,
-                            AuditService auditService) {
+                            AuditService auditService, AssociateSkillRepository associateSkillRepository,
+                            SkillRepository skillRepository) {
         this.associateRepository = associateRepository;
         this.allocationRepository = allocationRepository;
         this.auditService = auditService;
+        this.associateSkillRepository = associateSkillRepository;
+        this.skillRepository = skillRepository;
     }
 
     @Transactional(readOnly = true)
     public List<AssociateResponse> list(WorkMode workMode, Boolean billable, Boolean bench) {
         Map<Long, List<Allocation>> allocationsByAssociate = allocationRepository.findAllWithDetails().stream()
                 .collect(Collectors.groupingBy(a -> a.getAssociate().getId()));
+        Map<Long, List<AssociateSkill>> skillsByAssociate = associateSkillRepository.findAllWithDetails().stream()
+                .collect(Collectors.groupingBy(s -> s.getAssociate().getId()));
         return associateRepository.findAll().stream()
                 .map(associate -> AssociateResponse.from(associate,
-                        allocationsByAssociate.getOrDefault(associate.getId(), List.of())))
+                        allocationsByAssociate.getOrDefault(associate.getId(), List.of()),
+                        skillsByAssociate.getOrDefault(associate.getId(), List.of())))
                 .filter(r -> workMode == null || r.workMode() == workMode)
                 .filter(r -> billable == null || r.billable() == billable)
                 .filter(r -> bench == null || (r.currentProjectId() == null) == bench)
@@ -50,7 +63,27 @@ public class AssociateService {
     @Transactional(readOnly = true)
     public AssociateResponse get(Long id) {
         Associate associate = find(id);
-        return AssociateResponse.from(associate, allocationRepository.findByAssociateId(id));
+        return AssociateResponse.from(associate, allocationRepository.findByAssociateId(id),
+                associateSkillRepository.findByAssociateId(id));
+    }
+
+    /** Replaces the associate's entire rated-skill set with the given entries. */
+    public AssociateResponse replaceSkills(Long id, SkillAssignmentRequest request) {
+        Associate associate = find(id);
+        associateSkillRepository.deleteByAssociateId(id);
+        associateSkillRepository.flush(); // deletes must hit the DB before re-inserts touch the unique constraint
+        for (SkillAssignmentRequest.Entry entry : request.skills()) {
+            Skill skill = skillRepository.findById(entry.skillId())
+                    .orElseThrow(() -> new NotFoundException("Skill", entry.skillId()));
+            AssociateSkill rated = new AssociateSkill();
+            rated.setAssociate(associate);
+            rated.setSkill(skill);
+            rated.setProficiency(entry.proficiency());
+            associateSkillRepository.save(rated);
+        }
+        auditService.record("UPDATED", "Associate", id,
+                "Updated skills of " + associate.getName() + " (" + request.skills().size() + " rated skills)");
+        return get(id);
     }
 
     public AssociateResponse create(AssociateRequest request) {
@@ -61,7 +94,7 @@ public class AssociateService {
         apply(associate, request);
         associate = associateRepository.save(associate);
         auditService.record("CREATED", "Associate", associate.getId(), "Created associate " + associate.getName());
-        return AssociateResponse.from(associate, List.of());
+        return AssociateResponse.from(associate, List.of(), List.of());
     }
 
     public AssociateResponse update(Long id, AssociateRequest request) {
