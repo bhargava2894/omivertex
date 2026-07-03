@@ -88,6 +88,10 @@ Client 1 ──── * Project 1 ──── * Allocation * ──── 1 Ass
 | **Associate** | name, email, company, location, workMode (ONSHORE/OFFSHORE), designation, status | `email` unique |
 | **Allocation** | associate FK, project FK, billable (bool), allocationPercent (1–100), startDate, endDate (null = open) | see business rules |
 | **AppUser** | email, name, role (VIEWER/ADMIN), status (PENDING/APPROVED/REJECTED) | `email` unique; backs the company-email sign-in flow |
+| **SkillCategory** | name | `name` unique |
+| **Skill** | name, category FK | `(name, category_id)` unique |
+| **AssociateSkill** | associate FK, skill FK, proficiency (NOVICE, FOUNDATIONAL, INTERMEDIATE, FUNCTIONAL_USER, ADVANCE, MASTERY) | `(associate_id, skill_id)` unique |
+| **Certification** | associate FK, name, authority, credentialId, issuedDate, expiryDate | — |
 
 **Derived, never stored:** an associate's `currentProject`, `currentClient`,
 `billable`, and `benchDays` are computed from allocations at read time
@@ -118,10 +122,18 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 |---|---|---|
 | `/clients` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | — |
 | `/projects` | same | `?clientId=` |
-| `/associates` | same | `?workMode=&billable=&bench=` |
+| `/associates` | same | `?workMode=&billable=&bench=&categoryId=&skillId=&minProficiency=` |
 | `/allocations` | same (PUT uses `AllocationUpdateRequest` — no re-parenting) | `?projectId=&associateId=&active=` |
+| `/taxonomy` | GET (nested alphabetical tree) | — |
+| `/taxonomy/categories` | POST, DELETE/{id} (ADMIN) | — |
+| `/taxonomy/skills` | POST, DELETE/{id} (ADMIN) | — |
+| `/associates/{id}/skills` | PUT (idempotent rated-skills replace; ADMIN) | — |
+| `/associates/{id}/certifications` | GET, POST (ADMIN) | — |
+| `/certifications` | GET (org-wide, alphabetical soonest expiry first) | `?q=` (search by name, authority, associate name) |
+| `/certifications/{id}` | DELETE (ADMIN) | — |
+| `/reports/skills` | GET (proficiency distribution tree) | — |
 | `/dashboard/summary` | GET | — |
-| `/data/import` | POST multipart `file` (.xlsx/.csv) | — |
+| `/data/import` | POST multipart `file` (.xlsx/.csv) | `?ignoreNovice=` |
 | `/data/export` | GET | `?format=xlsx|csv|pdf|docx` |
 | `/auth` | POST `/login`, POST `/google`, POST `/logout`, GET `/me` | — |
 | `/admin/access-requests` | GET, POST `/{id}/approve`, POST `/{id}/reject` (ADMIN) | — |
@@ -150,6 +162,7 @@ upcomingRolloffs [ { allocationId, associateId, associateName,
                      projectName, clientName, endDate, daysLeft } ]  // ≤30 days
 clientHeadcounts [ { clientName, headcount } ]
 staffingTrend    [ { month, total, billable } ]             // trailing 6 months
+expiringCertifications [ { certificationId, associateId, associateName, name, expiryDate, daysLeft } ] // ≤90 days
 ```
 
 ## 7. Security
@@ -182,22 +195,21 @@ Two sign-in paths coexist:
 
 ## 8. Import / export
 
-**Import** (`ImportService`): accepts `.xlsx` (POI, first sheet) or `.csv`
-(quoted-field-aware splitter). Header names matched case-insensitively:
-`ASSOCIATE NAME, COMPANY, LOCATION, CUSTOMER, BILLABLE, PROJECT`
-(aliases: NAME/CLIENT/WORK MODE/SHORE/BILLING). Per row:
+**Import** (`ImportService`): accepts `.xlsx` (POI) or `.csv` files. It supports two modes:
 
-- name cleaned (trailing `*` stripped); email generated as
-  `first.last@softility.com` — this is also the idempotency key
-- `LOCATION` containing ONSHORE/OFFSHORE maps to workMode, otherwise stored as city
-- `BILLABLE`: B/Y/YES/TRUE/1 → true, everything else → false
-- client found-or-created by name; project found-or-created by (name, client) with
-  a generated unique code `CLI-PROJECTNAME[-n]`
-- allocation created at 100%/today unless an open one already exists (→ `skipped`)
-- row failures collected into `errors[]`, never abort the batch
+1. **Legacy Single-Sheet / CSV Import**:
+   Reads the active sheet. Header names matched case-insensitively: `ASSOCIATE NAME, COMPANY, LOCATION, CUSTOMER, BILLABLE, PROJECT` (aliases: NAME/CLIENT/WORK MODE/SHORE/BILLING).
+   - Email is generated as `first.last@softility.com` (idempotency key).
+   - Client and project are found-or-created.
+   - Allocation created at 100% starting today.
 
-Returns `ImportSummaryResponse` (counts + errors). Re-importing the same file is a
-no-op.
+2. **Multi-Sheet Excel Workbook Import (v2)**:
+   Triggered if the workbook contains a sheet named `Employees`. It reads three sheets:
+   - **`Employees`**: Columns `Name, Email, Designation, Company, Location, Work Mode` (Shore).
+   - **`EmployeeSkills`**: Columns `Email, Category, Skill, Proficiency` (mapped to `Proficiency` enum). Accepts query parameter `?ignoreNovice=true` to skip importing "Novice" rated skills.
+   - **`Certifications`**: Columns `Email, Name, Authority, Credential ID, Issued Date, Expiry Date`.
+
+Per-row failures are collected into `errors[]` and do not abort the batch. Returns `ImportSummaryResponse` (counts of records imported/skipped + error details).
 
 **Export** (`ExportService`): renders the associate roster (with derived fields)
 to xlsx (POI, styled header), csv, pdf (OpenPDF, landscape A4, zebra table), or

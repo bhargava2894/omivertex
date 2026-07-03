@@ -1,11 +1,5 @@
 # OmiVertex — Remaining Work
 
-> **ACTIVE EPIC (2026-07-04): SkillCloud integration.** Full task-by-task plan with
-> live DONE/PENDING tracker: `docs/superpowers/plans/2026-07-04-skillcloud-integration.md`.
-> **Any agent picking up this project: open that plan first, find the first PENDING
-> task, and continue TDD from there.** Everything in the plan's status table marked
-> DONE is committed and its tests are green.
-
 Prioritized backlog as of 2026-07-04. Everything above the line blocks calling
 this "production"; everything below improves an already-usable pilot.
 
@@ -37,10 +31,8 @@ this "production"; everything below improves an already-usable pilot.
 
 ## P2 — Product roadmap (in rough impact order)
 
-- [ ] **SkillCloud integration epic (IN PROGRESS)** — taxonomy, proficiencies,
-      certifications, profile page, faceted search, matching upgrade, skill
-      reports, cert-expiry radar. See the plan file referenced at the top.
-- [ ] ~~Associate profile page~~ — absorbed into the SkillCloud epic (Task 6).
+- [ ] **Export skills and certifications** — include skill and certification columns in spreadsheet/document exports.
+- [ ] **Seed data for skill taxonomy** — database seeding for a comprehensive default set of categories and skills.
 - [ ] **Visa / work-authorization tracking** — status + expiry with a 90-day
       alert on the dashboard; standard for onshore/offshore staffing.
 - [ ] **Bill rates & margin** — rate on the allocation → revenue/margin by
@@ -50,8 +42,6 @@ this "production"; everything below improves an already-usable pilot.
       bench > 30 days, so the dashboard comes to the managers.
 - [ ] **Monthly snapshot reporting** — "headcount as of <date>" filter (the
       trend chart already computes this logic; expose it as a parameter).
-- [ ] **Export polish** — include skill columns; optionally respect the current
-      page filters instead of always exporting the full roster.
 
 ## P3 — Nice to have
 
@@ -62,10 +52,4 @@ this "production"; everything below improves an already-usable pilot.
 
 ## Done (for reference)
 
-Domain model + enforced rules (capacity guard, protective deletes, uniqueness) ·
-74 HTTP-level TDD tests · Excel/CSV import with dry-run preview + idempotency ·
-xlsx/csv/pdf/docx export · dashboard (utilization, bench aging, roll-off radar,
-trend, charts) · demand matching (skills, open positions, one-click fill) ·
-role-gated UI with server-side enforcement · audit trail with admin UI ·
-dark/light themes · animated premium UI + login · docs for devs and sales ·
-graphify knowledge graph integration · Vite build relocated out of `src/`.
+SkillCloud Integration (structured skill taxonomy, associate profile pages with skills & certs tracking, faceted skill search, skill proficiency reports, cert-expiry dashboard radar, multi-sheet v2 imports, and smart demand matching) · Domain model + enforced rules (capacity guard, protective deletes, uniqueness) · 88 HTTP-level TDD tests · Excel/CSV import with dry-run preview + idempotency · xlsx/csv/pdf/docx export · dashboard (utilization, bench aging, roll-off radar, trend, charts) · demand matching (skills, open positions, one-click fill) · role-gated UI with server-side enforcement · audit trail with admin UI · dark/light themes · animated premium UI + login · docs for devs and sales · graphify knowledge graph integration · Vite build relocated out of `src/`.
