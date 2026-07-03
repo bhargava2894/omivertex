@@ -74,5 +74,9 @@ Domain rules enforced by the API:
 
 ## Documentation
 
-- Design: `docs/superpowers/specs/2026-07-02-omivertex-design.md`
+- **Technical reference (developers):** [docs/TECHNICAL.md](docs/TECHNICAL.md) —
+  architecture, data model, API contract, security, business rules, build & test.
+- **Functional overview (sales / business):** [docs/FUNCTIONAL_OVERVIEW.md](docs/FUNCTIONAL_OVERVIEW.md) —
+  what OmiVertex does, who it's for, feature tour, value story, FAQ, roadmap.
+- Original design: `docs/superpowers/specs/2026-07-02-omivertex-design.md`
 - Implementation plan: `docs/superpowers/plans/2026-07-02-omivertex-implementation-plan.md`
