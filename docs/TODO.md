@@ -1,6 +1,12 @@
 # OmiVertex — Remaining Work
 
-Prioritized backlog as of 2026-07-03. Everything above the line blocks calling
+> **ACTIVE EPIC (2026-07-04): SkillCloud integration.** Full task-by-task plan with
+> live DONE/PENDING tracker: `docs/superpowers/plans/2026-07-04-skillcloud-integration.md`.
+> **Any agent picking up this project: open that plan first, find the first PENDING
+> task, and continue TDD from there.** Everything in the plan's status table marked
+> DONE is committed and its tests are green.
+
+Prioritized backlog as of 2026-07-04. Everything above the line blocks calling
 this "production"; everything below improves an already-usable pilot.
 
 ## P0 — Security & deployment blockers
@@ -31,8 +37,10 @@ this "production"; everything below improves an already-usable pilot.
 
 ## P2 — Product roadmap (in rough impact order)
 
-- [ ] **Associate profile page** — click a roster row → tenure, skills, full
-      allocation timeline (data already stored, no UI), notes.
+- [ ] **SkillCloud integration epic (IN PROGRESS)** — taxonomy, proficiencies,
+      certifications, profile page, faceted search, matching upgrade, skill
+      reports, cert-expiry radar. See the plan file referenced at the top.
+- [ ] ~~Associate profile page~~ — absorbed into the SkillCloud epic (Task 6).
 - [ ] **Visa / work-authorization tracking** — status + expiry with a 90-day
       alert on the dashboard; standard for onshore/offshore staffing.
 - [ ] **Bill rates & margin** — rate on the allocation → revenue/margin by

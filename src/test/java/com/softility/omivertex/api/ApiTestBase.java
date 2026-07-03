@@ -22,15 +22,44 @@ public abstract class ApiTestBase {
     @Autowired protected AllocationRepository allocationRepository;
     @Autowired protected OpenPositionRepository openPositionRepository;
     @Autowired protected AuditEntryRepository auditEntryRepository;
+    @Autowired protected AssociateSkillRepository associateSkillRepository;
+    @Autowired protected CertificationRepository certificationRepository;
+    @Autowired protected SkillRepository skillRepository;
+    @Autowired protected SkillCategoryRepository skillCategoryRepository;
 
     @BeforeEach
     void cleanDatabase() {
         auditEntryRepository.deleteAll();
+        associateSkillRepository.deleteAll();
+        certificationRepository.deleteAll();
         allocationRepository.deleteAll();
         openPositionRepository.deleteAll();
         projectRepository.deleteAll();
         associateRepository.deleteAll();
         clientRepository.deleteAll();
+        skillRepository.deleteAll();
+        skillCategoryRepository.deleteAll();
+    }
+
+    protected Skill skill(String categoryName, String skillName) {
+        SkillCategory category = skillCategoryRepository.findByNameIgnoreCase(categoryName)
+                .orElseGet(() -> {
+                    SkillCategory c = new SkillCategory();
+                    c.setName(categoryName);
+                    return skillCategoryRepository.save(c);
+                });
+        Skill s = new Skill();
+        s.setName(skillName);
+        s.setCategory(category);
+        return skillRepository.save(s);
+    }
+
+    protected AssociateSkill rateSkill(Associate associate, Skill skill, Proficiency proficiency) {
+        AssociateSkill as = new AssociateSkill();
+        as.setAssociate(associate);
+        as.setSkill(skill);
+        as.setProficiency(proficiency);
+        return associateSkillRepository.save(as);
     }
 
     protected Client client(String name) {
