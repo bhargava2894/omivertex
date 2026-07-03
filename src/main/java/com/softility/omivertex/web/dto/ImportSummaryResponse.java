@@ -8,6 +8,8 @@ public record ImportSummaryResponse(
         int projectsCreated,
         int associatesCreated,
         int allocationsCreated,
+        int skillsImported,
+        int certificationsImported,
         int skipped,
         List<String> errors,
         boolean dryRun) {

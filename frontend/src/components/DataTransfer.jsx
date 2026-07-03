@@ -50,11 +50,12 @@ export function ImportButton({ onImported, showToast }) {
   const [file, setFile] = useState(null);
   const [summary, setSummary] = useState(null); // dry-run preview or final result
   const [error, setError] = useState(null);
+  const [ignoreNovice, setIgnoreNovice] = useState(false);
 
   const post = async (theFile, dryRun) => {
     const form = new FormData();
     form.append('file', theFile);
-    const res = await fetch(`/api/v1/data/import?dryRun=${dryRun}`, { method: 'POST', body: form });
+    const res = await fetch(`/api/v1/data/import?dryRun=${dryRun}&ignoreNovice=${ignoreNovice}`, { method: 'POST', body: form });
     const body = await res.json();
     if (!res.ok) throw new Error(body.message || 'Import failed');
     return body;
@@ -100,6 +101,7 @@ export function ImportButton({ onImported, showToast }) {
     setSummary(null);
     setError(null);
     setDrag(false);
+    setIgnoreNovice(false);
   };
 
   const isPreview = summary?.dryRun;
@@ -129,22 +131,36 @@ export function ImportButton({ onImported, showToast }) {
           {error && <div className="form-alert">{error}</div>}
 
           {!summary && (
-            <label
-              className={`dropzone ${drag ? 'drag' : ''}`}
-              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-              onDragLeave={() => setDrag(false)}
-              onDrop={(e) => { e.preventDefault(); setDrag(false); preview(e.dataTransfer.files[0]); }}
-            >
-              <Icon name="upload" size={30} />
-              <div>
-                <strong>{busy ? 'Analyzing…' : 'Click to choose a file'}</strong> or drag it here
+            <>
+              <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  id="ignore-novice"
+                  checked={ignoreNovice}
+                  onChange={(e) => setIgnoreNovice(e.target.checked)}
+                  disabled={busy}
+                />
+                <label htmlFor="ignore-novice" style={{ fontSize: '13.5px', color: 'var(--color-foreground)', cursor: 'pointer' }}>
+                  Ignore novice level skills (EmployeeSkills sheet only)
+                </label>
               </div>
-              <div className="hint">
-                .xlsx or .csv with columns: ASSOCIATE NAME, COMPANY, LOCATION, CUSTOMER, BILLABLE (B/NB), PROJECT, SKILL
-                — you'll see a preview before anything is saved
-              </div>
-              <input type="file" accept=".xlsx,.csv" disabled={busy} onChange={(e) => preview(e.target.files[0])} />
-            </label>
+              <label
+                className={`dropzone ${drag ? 'drag' : ''}`}
+                onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                onDragLeave={() => setDrag(false)}
+                onDrop={(e) => { e.preventDefault(); setDrag(false); preview(e.dataTransfer.files[0]); }}
+              >
+                <Icon name="upload" size={30} />
+                <div>
+                  <strong>{busy ? 'Analyzing…' : 'Click to choose a file'}</strong> or drag it here
+                </div>
+                <div className="hint">
+                  .xlsx or .csv (Roster: ASSOCIATE NAME, COMPANY, etc. OR SkillCloud workbook: 'employees', 'employeeskills', and 'certifications' sheets)
+                  — you'll see a preview before anything is saved
+                </div>
+                <input type="file" accept=".xlsx,.csv" disabled={busy} onChange={(e) => preview(e.target.files[0])} />
+              </label>
+            </>
           )}
 
           {summary && (
@@ -160,7 +176,13 @@ export function ImportButton({ onImported, showToast }) {
                 <div className="import-stat"><strong>{summary.clientsCreated}</strong> clients {isPreview ? 'to add' : 'added'}</div>
                 <div className="import-stat"><strong>{summary.projectsCreated}</strong> projects {isPreview ? 'to add' : 'added'}</div>
                 <div className="import-stat"><strong>{summary.allocationsCreated}</strong> allocations {isPreview ? 'to create' : 'created'}</div>
-                <div className="import-stat"><strong>{summary.skipped}</strong> skipped (already present)</div>
+                {summary.skillsImported > 0 && (
+                  <div className="import-stat"><strong>{summary.skillsImported}</strong> skills {isPreview ? 'to import' : 'imported'}</div>
+                )}
+                {summary.certificationsImported > 0 && (
+                  <div className="import-stat"><strong>{summary.certificationsImported}</strong> certifications {isPreview ? 'to import' : 'imported'}</div>
+                )}
+                <div className="import-stat"><strong>{summary.skipped}</strong> skipped</div>
               </div>
               {summary.errors.length > 0 && (
                 <ul className="import-errors">

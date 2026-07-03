@@ -1,6 +1,10 @@
 package com.softility.omivertex.service;
 
 import com.softility.omivertex.domain.*;
+import com.softility.omivertex.repository.AssociateSkillRepository;
+import com.softility.omivertex.repository.CertificationRepository;
+import com.softility.omivertex.repository.SkillCategoryRepository;
+import com.softility.omivertex.repository.SkillRepository;
 import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.ClientRepository;
@@ -37,16 +41,26 @@ public class ImportService {
     private final AllocationRepository allocations;
     private final AuditService auditService;
     private final TransactionTemplate transactionTemplate;
+    private final SkillCategoryRepository skillCategories;
+    private final SkillRepository skills;
+    private final AssociateSkillRepository associateSkills;
+    private final CertificationRepository certifications;
 
     public ImportService(ClientRepository clients, ProjectRepository projects,
                          AssociateRepository associates, AllocationRepository allocations,
-                         AuditService auditService, PlatformTransactionManager transactionManager) {
+                         AuditService auditService, PlatformTransactionManager transactionManager,
+                         SkillCategoryRepository skillCategories, SkillRepository skills,
+                         AssociateSkillRepository associateSkills, CertificationRepository certifications) {
         this.clients = clients;
         this.projects = projects;
         this.associates = associates;
         this.allocations = allocations;
         this.auditService = auditService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.skillCategories = skillCategories;
+        this.skills = skills;
+        this.associateSkills = associateSkills;
+        this.certifications = certifications;
     }
 
     /**
@@ -54,27 +68,167 @@ public class ImportService {
      * a transaction that is rolled back at the end, so the summary is a faithful
      * preview and the database is untouched.
      */
-    public ImportSummaryResponse importRoster(MultipartFile file, boolean dryRun) {
+    public ImportSummaryResponse importRoster(MultipartFile file, boolean dryRun, boolean ignoreNovice) {
         String filename = Optional.ofNullable(file.getOriginalFilename()).orElse("").toLowerCase();
-        List<Map<String, String>> rows;
         if (filename.endsWith(".xlsx")) {
-            rows = parseXlsx(file);
-        } else if (filename.endsWith(".csv")) {
-            rows = parseCsv(file);
-        } else {
-            throw new BadRequestException("Unsupported file type; upload an .xlsx or .csv file");
+            Map<String, List<Map<String, String>>> sheets = parseAllSheets(file);
+            boolean v2 = sheets.containsKey("employees") || sheets.containsKey("employeeskills")
+                    || sheets.containsKey("certifications");
+            return transactionTemplate.execute(status -> {
+                ImportSummaryResponse summary = v2
+                        ? processWorkbook(sheets, dryRun, ignoreNovice)
+                        : processRows(sheets.values().iterator().next(), dryRun, true, 0, 0);
+                if (dryRun) {
+                    status.setRollbackOnly();
+                }
+                return summary;
+            });
         }
-
-        return transactionTemplate.execute(status -> {
-            ImportSummaryResponse summary = processRows(rows, dryRun);
-            if (dryRun) {
-                status.setRollbackOnly();
-            }
-            return summary;
-        });
+        if (filename.endsWith(".csv")) {
+            List<Map<String, String>> rows = parseCsv(file);
+            return transactionTemplate.execute(status -> {
+                ImportSummaryResponse summary = processRows(rows, dryRun, true, 0, 0);
+                if (dryRun) {
+                    status.setRollbackOnly();
+                }
+                return summary;
+            });
+        }
+        throw new BadRequestException("Unsupported file type; upload an .xlsx or .csv file");
     }
 
-    private ImportSummaryResponse processRows(List<Map<String, String>> rows, boolean dryRun) {
+    /** Skill Cloud style workbook: Employees / EmployeeSkills / Certifications sheets. */
+    private ImportSummaryResponse processWorkbook(Map<String, List<Map<String, String>>> sheets,
+                                                  boolean dryRun, boolean ignoreNovice) {
+        List<Map<String, String>> employeeRows = sheets.getOrDefault("employees", List.of());
+        ImportSummaryResponse base = processRows(employeeRows, dryRun, false, 0, 0);
+        List<String> errors = new ArrayList<>(base.errors());
+
+        int skillsImported = 0;
+        int certsImported = 0;
+        int skipped = base.skipped();
+
+        int rowNum = 1;
+        for (Map<String, String> row : sheets.getOrDefault("employeeskills", List.of())) {
+            rowNum++;
+            try {
+                String name = clean(value(row, "EMPLOYEE NAME", "ASSOCIATE NAME", "NAME"));
+                if (name.isEmpty()) continue;
+                Associate associate = associates.findByEmailIgnoreCase(emailFor(name)).orElse(null);
+                if (associate == null) {
+                    errors.add("EmployeeSkills row " + rowNum + ": unknown employee '" + name + "'");
+                    continue;
+                }
+                String categoryName = clean(value(row, "CATEGORY", "SKILL CATEGORY"));
+                String skillName = clean(value(row, "SKILL", "TOOL", "SKILL/TOOL"));
+                Proficiency proficiency = parseProficiency(value(row, "PROFICIENCY", "LEVEL"));
+                if (categoryName.isEmpty() || skillName.isEmpty() || proficiency == null) {
+                    errors.add("EmployeeSkills row " + rowNum + ": CATEGORY, SKILL and a valid PROFICIENCY are required");
+                    continue;
+                }
+                if (ignoreNovice && proficiency == Proficiency.NOVICE) {
+                    skipped++;
+                    continue;
+                }
+                SkillCategory category = skillCategories.findByNameIgnoreCase(categoryName).orElseGet(() -> {
+                    SkillCategory c = new SkillCategory();
+                    c.setName(categoryName);
+                    return skillCategories.save(c);
+                });
+                Skill skill = skills.findByNameIgnoreCaseAndCategoryId(skillName, category.getId()).orElseGet(() -> {
+                    Skill sk = new Skill();
+                    sk.setName(skillName);
+                    sk.setCategory(category);
+                    return skills.save(sk);
+                });
+                AssociateSkill rated = associateSkills.findByAssociateId(associate.getId()).stream()
+                        .filter(as -> as.getSkill().getId().equals(skill.getId()))
+                        .findFirst().orElse(null);
+                if (rated == null) {
+                    rated = new AssociateSkill();
+                    rated.setAssociate(associate);
+                    rated.setSkill(skill);
+                }
+                rated.setProficiency(proficiency);
+                associateSkills.save(rated);
+                skillsImported++;
+            } catch (Exception ex) {
+                errors.add("EmployeeSkills row " + rowNum + ": " + ex.getMessage());
+            }
+        }
+
+        rowNum = 1;
+        for (Map<String, String> row : sheets.getOrDefault("certifications", List.of())) {
+            rowNum++;
+            try {
+                String name = clean(value(row, "EMPLOYEE NAME", "ASSOCIATE NAME", "NAME"));
+                String certName = clean(value(row, "CERTIFICATE NAME", "CERTIFICATION", "CERT NAME"));
+                if (name.isEmpty() || certName.isEmpty()) continue;
+                Associate associate = associates.findByEmailIgnoreCase(emailFor(name)).orElse(null);
+                if (associate == null) {
+                    errors.add("Certifications row " + rowNum + ": unknown employee '" + name + "'");
+                    continue;
+                }
+                boolean exists = certifications.findByAssociateIdOrderByExpiryDateAsc(associate.getId()).stream()
+                        .anyMatch(c -> c.getName().equalsIgnoreCase(certName));
+                if (exists) {
+                    skipped++;
+                    continue;
+                }
+                Certification cert = new Certification();
+                cert.setAssociate(associate);
+                cert.setName(certName);
+                cert.setAuthority(emptyToNull(clean(value(row, "AUTHORITY", "ISSUING AUTHORITY"))));
+                cert.setCredentialId(emptyToNull(clean(value(row, "CREDENTIAL ID", "CREDENTIAL"))));
+                cert.setIssuedDate(parseDate(value(row, "ISSUED", "ISSUED DATE"), errors, "Certifications row " + rowNum + " ISSUED"));
+                cert.setExpiryDate(parseDate(value(row, "EXPIRES", "EXPIRY", "EXPIRY DATE"), errors, "Certifications row " + rowNum + " EXPIRES"));
+                certifications.save(cert);
+                certsImported++;
+            } catch (Exception ex) {
+                errors.add("Certifications row " + rowNum + ": " + ex.getMessage());
+            }
+        }
+
+        if (!dryRun) {
+            auditService.record("IMPORTED", "Import", null,
+                    "Imported Skill Cloud workbook: " + base.rowsProcessed() + " employee rows, "
+                    + base.associatesCreated() + " associates, " + skillsImported + " skills, "
+                    + certsImported + " certifications, " + skipped + " skipped");
+        }
+        return new ImportSummaryResponse(base.rowsProcessed(), base.clientsCreated(), base.projectsCreated(),
+                base.associatesCreated(), base.allocationsCreated(), skillsImported, certsImported,
+                skipped, errors, dryRun);
+    }
+
+    private static Proficiency parseProficiency(String value) {
+        String v = value.trim().toUpperCase().replace(" ", "_").replace("-", "_");
+        if (v.isEmpty()) return null;
+        if (v.equals("FUNCTIONALUSER")) return Proficiency.FUNCTIONAL_USER;
+        if (v.equals("ADVANCED")) return Proficiency.ADVANCE;
+        try {
+            return Proficiency.valueOf(v);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private static java.time.LocalDate parseDate(String value, List<String> errors, String context) {
+        String v = value.trim();
+        if (v.isEmpty()) return null;
+        for (var fmt : List.of(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE,
+                java.time.format.DateTimeFormatter.ofPattern("M/d/yyyy"),
+                java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy", java.util.Locale.ENGLISH))) {
+            try {
+                return java.time.LocalDate.parse(v, fmt);
+            } catch (java.time.format.DateTimeParseException ignored) {
+            }
+        }
+        errors.add(context + ": unparseable date '" + v + "'");
+        return null;
+    }
+
+    private ImportSummaryResponse processRows(List<Map<String, String>> rows, boolean dryRun,
+                                              boolean recordAudit, int skillsImported, int certificationsImported) {
         int rowsProcessed = 0, clientsCreated = 0, projectsCreated = 0,
                 associatesCreated = 0, allocationsCreated = 0, skipped = 0;
         List<String> errors = new ArrayList<>();
@@ -153,36 +307,45 @@ public class ImportService {
             }
         }
 
-        if (!dryRun) {
+        if (!dryRun && recordAudit) {
             auditService.record("IMPORTED", "Import", null,
                     "Imported roster: " + rowsProcessed + " rows, " + associatesCreated + " associates, "
                     + clientsCreated + " clients, " + projectsCreated + " projects, "
                     + allocationsCreated + " allocations created, " + skipped + " skipped");
         }
         return new ImportSummaryResponse(rowsProcessed, clientsCreated, projectsCreated,
-                associatesCreated, allocationsCreated, skipped, errors, dryRun);
+                associatesCreated, allocationsCreated, skillsImported, certificationsImported,
+                skipped, errors, dryRun);
     }
 
-    private List<Map<String, String>> parseXlsx(MultipartFile file) {
+    /** Parses every sheet: key = sheet name lower-cased, value = rows keyed by upper-cased header. */
+    private Map<String, List<Map<String, String>>> parseAllSheets(MultipartFile file) {
         try (XSSFWorkbook wb = new XSSFWorkbook(file.getInputStream())) {
-            Sheet sheet = wb.getSheetAt(0);
             DataFormatter fmt = new DataFormatter();
-            Iterator<Row> it = sheet.iterator();
-            if (!it.hasNext()) return List.of();
-            List<String> headers = new ArrayList<>();
-            for (var cell : it.next()) {
-                headers.add(fmt.formatCellValue(cell).trim().toUpperCase());
-            }
-            List<Map<String, String>> rows = new ArrayList<>();
-            while (it.hasNext()) {
-                Row row = it.next();
-                Map<String, String> values = new HashMap<>();
-                for (int c = 0; c < headers.size(); c++) {
-                    values.put(headers.get(c), fmt.formatCellValue(row.getCell(c)).trim());
+            Map<String, List<Map<String, String>>> sheets = new java.util.LinkedHashMap<>();
+            for (int i = 0; i < wb.getNumberOfSheets(); i++) {
+                Sheet sheet = wb.getSheetAt(i);
+                Iterator<Row> it = sheet.iterator();
+                if (!it.hasNext()) continue;
+                List<String> headers = new ArrayList<>();
+                for (var cell : it.next()) {
+                    headers.add(fmt.formatCellValue(cell).trim().toUpperCase());
                 }
-                rows.add(values);
+                List<Map<String, String>> rows = new ArrayList<>();
+                while (it.hasNext()) {
+                    Row row = it.next();
+                    Map<String, String> values = new HashMap<>();
+                    for (int c = 0; c < headers.size(); c++) {
+                        values.put(headers.get(c), fmt.formatCellValue(row.getCell(c)).trim());
+                    }
+                    rows.add(values);
+                }
+                sheets.put(sheet.getSheetName().trim().toLowerCase(), rows);
             }
-            return rows;
+            if (sheets.isEmpty()) {
+                sheets.put("sheet1", List.of());
+            }
+            return sheets;
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {

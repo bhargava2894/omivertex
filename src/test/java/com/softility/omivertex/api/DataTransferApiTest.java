@@ -118,6 +118,83 @@ class DataTransferApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$", hasSize(3)));
     }
 
+    private byte[] v2Workbook() throws Exception {
+        String[][] employees = {
+                {"ASSOCIATE NAME", "COMPANY", "LOCATION", "CUSTOMER", "BILLABLE", "Project"},
+                {"Kiran Rao", "Softility", "OFFSHORE", "COX", "B", "ARINA"},
+        };
+        String[][] skills = {
+                {"EMPLOYEE NAME", "CATEGORY", "SKILL", "PROFICIENCY"},
+                {"Kiran Rao", "CI/CD", "Jenkins", "Intermediate"},
+                {"Kiran Rao", "CI/CD", "GitHub", "Novice"},
+        };
+        String[][] certs = {
+                {"EMPLOYEE NAME", "CERTIFICATE NAME", "AUTHORITY", "CREDENTIAL ID", "ISSUED", "EXPIRES"},
+                {"Kiran Rao", "Certified Kubernetes Administrator", "CNCF", "CKA-987", "2025-01-01", "2027-01-01"},
+        };
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            for (var entry : java.util.Map.of("Employees", employees, "EmployeeSkills", skills, "Certifications", certs).entrySet()) {
+                var sheet = wb.createSheet(entry.getKey());
+                String[][] data = entry.getValue();
+                for (int r = 0; r < data.length; r++) {
+                    var row = sheet.createRow(r);
+                    for (int c = 0; c < data[r].length; c++) row.createCell(c).setCellValue(data[r][c]);
+                }
+            }
+            wb.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void importV2_multiSheet_createsSkillsAndCertifications() throws Exception {
+        var file = new MockMultipartFile("file", "skillcloud.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", v2Workbook());
+
+        mockMvc.perform(multipart("/api/v1/data/import").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.associatesCreated").value(1))
+                .andExpect(jsonPath("$.skillsImported").value(2))
+                .andExpect(jsonPath("$.certificationsImported").value(1))
+                .andExpect(jsonPath("$.errors", hasSize(0)));
+
+        org.junit.jupiter.api.Assertions.assertEquals(2, associateSkillRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(1, certificationRepository.count());
+
+        // idempotent: re-import creates nothing new
+        mockMvc.perform(multipart("/api/v1/data/import").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.associatesCreated").value(0))
+                .andExpect(jsonPath("$.certificationsImported").value(0));
+        org.junit.jupiter.api.Assertions.assertEquals(2, associateSkillRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(1, certificationRepository.count());
+    }
+
+    @Test
+    void importV2_ignoreNovice_skipsNoviceRatings() throws Exception {
+        var file = new MockMultipartFile("file", "skillcloud.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", v2Workbook());
+
+        mockMvc.perform(multipart("/api/v1/data/import").file(file).param("ignoreNovice", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skillsImported").value(1));
+        org.junit.jupiter.api.Assertions.assertEquals(1, associateSkillRepository.count());
+    }
+
+    @Test
+    void importV2_dryRun_writesNothing() throws Exception {
+        var file = new MockMultipartFile("file", "skillcloud.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", v2Workbook());
+
+        mockMvc.perform(multipart("/api/v1/data/import").file(file).param("dryRun", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dryRun").value(true))
+                .andExpect(jsonPath("$.skillsImported").value(2));
+        org.junit.jupiter.api.Assertions.assertEquals(0, associateSkillRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(0, certificationRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(0, associateRepository.count());
+    }
+
     @Test
     void import_unsupportedFileType_returns400() throws Exception {
         var file = new MockMultipartFile("file", "roster.txt", "text/plain", "hello".getBytes());
