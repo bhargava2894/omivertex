@@ -14,7 +14,7 @@
 
 | Task | Description | Status |
 |---|---|---|
-| 1 | Skill model entities + repositories | ⬜ PENDING |
+| 1 | Skill model entities + repositories | ✅ DONE |
 | 2 | Taxonomy API (categories/skills CRUD) | ⬜ PENDING |
 | 3 | Associate skills API (grouped read + replace write) | ⬜ PENDING |
 | 4 | Certifications API (per-associate + org-wide report) | ⬜ PENDING |
