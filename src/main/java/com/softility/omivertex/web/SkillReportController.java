@@ -22,7 +22,10 @@ public class SkillReportController {
 
     public record SkillReportResponse(String category, List<SkillCountResponse> skills) {}
 
-    public record SkillCountResponse(String skill, Map<Proficiency, Long> counts) {}
+    public record SkillCountResponse(String skill, Map<Proficiency, Long> counts, List<Person> people) {}
+
+    /** One associate behind a bar segment — lets the UI answer "who exactly?". */
+    public record Person(Long associateId, String name, Proficiency proficiency) {}
 
     @GetMapping
     public List<SkillReportResponse> getReport() {
@@ -51,7 +54,12 @@ public class SkillReportController {
                 }
                 // Populate counts
                 associateSkills.forEach(s -> counts.put(s.getProficiency(), counts.get(s.getProficiency()) + 1));
-                skillResponses.add(new SkillCountResponse(skillName, counts));
+                List<Person> people = associateSkills.stream()
+                        .map(s -> new Person(s.getAssociate().getId(), s.getAssociate().getName(), s.getProficiency()))
+                        .sorted(Comparator.comparing(Person::proficiency, Comparator.reverseOrder())
+                                .thenComparing(Person::name))
+                        .toList();
+                skillResponses.add(new SkillCountResponse(skillName, counts, people));
             });
             response.add(new SkillReportResponse(categoryName, skillResponses));
         });
