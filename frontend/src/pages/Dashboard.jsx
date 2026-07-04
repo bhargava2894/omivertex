@@ -260,7 +260,7 @@ export default function Dashboard() {
                     className="rank-fill"
                     style={{
                       width: `${(c.headcount / maxHeadcount) * 100}%`,
-                      backgroundColor: `var(--chart-${(i % 5) + 1})`,
+                      background: `var(--chart-${(i % 5) + 1})`,
                     }}
                   />
                 </div>
