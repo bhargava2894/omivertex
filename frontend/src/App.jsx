@@ -81,13 +81,14 @@ export default function App() {
 
   const canEdit = user?.role === 'ADMIN';
   const visibleRoutes = ROUTES.filter((r) => !r.adminOnly || canEdit);
-  let active = visibleRoutes.find((r) => r.path === route);
+  const baseRoute = route.split('?')[0];
+  let active = visibleRoutes.find((r) => r.path === baseRoute);
   let isProfile = false;
   let profileId = null;
-  if (!active && route.startsWith('associates/')) {
+  if (!active && baseRoute.startsWith('associates/')) {
     active = visibleRoutes.find((r) => r.path === 'associates');
     isProfile = true;
-    profileId = Number(route.split('/')[1]);
+    profileId = Number(baseRoute.split('/')[1]);
   }
   if (!active) {
     active = visibleRoutes[0];

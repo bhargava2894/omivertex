@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import DataTable from '../components/DataTable.jsx';
@@ -19,14 +19,54 @@ function billability(row) {
 }
 
 export default function Associates({ showToast, canEdit }) {
+  const getParam = (name) => {
+    const hash = window.location.hash;
+    const searchPart = hash.split('?')[1];
+    if (!searchPart) return '';
+    const searchParams = new URLSearchParams(searchPart);
+    return searchParams.get(name) || '';
+  };
+
   const [staffing, setStaffing] = useState(''); // '' | billable | nonbillable | bench
   const [workMode, setWorkMode] = useState('');
   const [search, setSearch] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [skillId, setSkillId] = useState('');
-  const [minProficiency, setMinProficiency] = useState('');
+  const [categoryId, setCategoryId] = useState(() => getParam('categoryId'));
+  const [skillId, setSkillId] = useState(() => getParam('skillId'));
+  const [minProficiency, setMinProficiency] = useState(() => getParam('minProficiency'));
 
   const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
+
+  useEffect(() => {
+    if (!taxonomy) return;
+    const initialSkillId = getParam('skillId');
+    if (initialSkillId && !categoryId) {
+      const cat = (taxonomy || []).find((c) => (c.skills || []).some((s) => String(s.id) === String(initialSkillId)));
+      if (cat) {
+        setCategoryId(String(cat.id));
+      }
+    }
+  }, [taxonomy]);
+
+  useEffect(() => {
+    const syncFiltersFromUrl = () => {
+      const cat = getParam('categoryId');
+      const sk = getParam('skillId');
+      const minP = getParam('minProficiency');
+
+      setCategoryId(cat);
+      setSkillId(sk);
+      setMinProficiency(minP);
+
+      if (taxonomy && sk && !cat) {
+        const foundCat = (taxonomy || []).find((c) => (c.skills || []).some((s) => String(s.id) === String(sk)));
+        if (foundCat) {
+          setCategoryId(String(foundCat.id));
+        }
+      }
+    };
+    window.addEventListener('hashchange', syncFiltersFromUrl);
+    return () => window.removeEventListener('hashchange', syncFiltersFromUrl);
+  }, [taxonomy]);
 
   const params = {};
   if (workMode) params.workMode = workMode;

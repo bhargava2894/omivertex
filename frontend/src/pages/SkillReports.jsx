@@ -149,9 +149,36 @@ function CategoryPanel({ category, skills, onDrillDown }) {
 
 export default function SkillReports() {
   const { data: reports, loading } = useLoad(() => api.list('reports/skills'), []);
+  const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
   const [drill, setDrill] = useState(null); // { skill, prof, people }
 
   const onDrillDown = (skill, prof, people) => setDrill({ skill, prof, people });
+
+  const findTaxonomyIds = (skillName) => {
+    if (!taxonomy) return {};
+    for (const cat of taxonomy) {
+      const sk = (cat.skills || []).find((s) => s.name === skillName);
+      if (sk) {
+        return { categoryId: cat.id, skillId: sk.id };
+      }
+    }
+    return {};
+  };
+
+  const handleShowInRoster = () => {
+    if (!drill) return;
+    const { categoryId, skillId } = findTaxonomyIds(drill.skill);
+    let url = `#/associates`;
+    const params = [];
+    if (categoryId) params.push(`categoryId=${categoryId}`);
+    if (skillId) params.push(`skillId=${skillId}`);
+    if (drill.prof) params.push(`minProficiency=${drill.prof}`);
+    if (params.length) {
+      url += `?${params.join('&')}`;
+    }
+    window.location.hash = url;
+    setDrill(null);
+  };
 
   if (loading) {
     return (
@@ -182,7 +209,14 @@ export default function SkillReports() {
         <Modal
           title={`${drill.skill} — ${PROF_LABELS[drill.prof]} (${drill.people.length})`}
           onClose={() => setDrill(null)}
-          footer={<button className="btn btn-ghost" onClick={() => setDrill(null)}>Close</button>}
+          footer={
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-primary" onClick={handleShowInRoster}>
+                Show in Roster
+              </button>
+              <button className="btn btn-ghost" onClick={() => setDrill(null)}>Close</button>
+            </div>
+          }
         >
           {drill.people.map((p) => (
             <div className="radar-row" key={p.associateId}>
