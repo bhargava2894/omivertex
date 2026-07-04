@@ -1,12 +1,7 @@
 package com.softility.omivertex.config;
 
 import com.softility.omivertex.domain.*;
-import com.softility.omivertex.repository.AllocationRepository;
-import com.softility.omivertex.repository.AssociateRepository;
-import com.softility.omivertex.repository.ClientRepository;
-import com.softility.omivertex.repository.ProjectRepository;
-import com.softility.omivertex.repository.SkillCategoryRepository;
-import com.softility.omivertex.repository.SkillRepository;
+import com.softility.omivertex.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -29,16 +24,19 @@ public class SeedDataLoader implements ApplicationRunner {
     private final AllocationRepository allocations;
     private final SkillCategoryRepository skillCategories;
     private final SkillRepository skills;
+    private final AssociateSkillRepository associateSkills;
 
     public SeedDataLoader(ClientRepository clients, ProjectRepository projects,
                           AssociateRepository associates, AllocationRepository allocations,
-                          SkillCategoryRepository skillCategories, SkillRepository skills) {
+                          SkillCategoryRepository skillCategories, SkillRepository skills,
+                          AssociateSkillRepository associateSkills) {
         this.clients = clients;
         this.projects = projects;
         this.associates = associates;
         this.allocations = allocations;
         this.skillCategories = skillCategories;
         this.skills = skills;
+        this.associateSkills = associateSkills;
     }
 
     @Override
@@ -46,6 +44,7 @@ public class SeedDataLoader implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         seedTaxonomy();
         if (clients.count() > 0) {
+            seedAssociateSkills();
             return;
         }
         log.info("Seeding OmiVertex demo data");
@@ -122,6 +121,7 @@ public class SeedDataLoader implements ApplicationRunner {
 
         log.info("Seeded {} clients, {} projects, {} associates, {} allocations",
                 clients.count(), projects.count(), associates.count(), allocations.count());
+        seedAssociateSkills();
     }
 
     /** Seeds the full skill taxonomy once (independent of the demo-roster guard). */
@@ -189,6 +189,41 @@ public class SeedDataLoader implements ApplicationRunner {
             }
         }
         log.info("Seeded {} skill categories, {} skills", taxonomy.size(), count);
+    }
+
+    private void seedAssociateSkills() {
+        Skill java = skills.findFirstByNameIgnoreCase("Java").orElse(null);
+        if (java == null) {
+            return;
+        }
+        java.util.List<Associate> list = associates.findAll();
+        if (list.isEmpty()) {
+            return;
+        }
+        long currentJavaCount = associateSkills.findAll().stream()
+                .filter(as -> as.getSkill().getId().equals(java.getId()))
+                .count();
+        if (currentJavaCount >= 11) {
+            return;
+        }
+        log.info("Resetting and seeding 11 Java Mastery associate ratings");
+        // Delete existing Java ratings to start fresh
+        associateSkills.findAll().stream()
+                .filter(as -> as.getSkill().getId().equals(java.getId()))
+                .forEach(associateSkills::delete);
+
+        int count = 0;
+        for (Associate a : list) {
+            AssociateSkill as = new AssociateSkill();
+            as.setAssociate(a);
+            as.setSkill(java);
+            as.setProficiency(Proficiency.MASTERY);
+            associateSkills.save(as);
+            count++;
+            if (count >= 11) {
+                break;
+            }
+        }
     }
 
     private Client client(String name, String industry, String location) {

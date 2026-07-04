@@ -251,12 +251,18 @@ export default function Dashboard() {
               unit="associates"
             />
           ) : (
-            s.clientHeadcounts.map((c) => (
+            s.clientHeadcounts.map((c, i) => (
               <div className="rank-row" key={c.clientName}>
                 <span className="rank-name">{c.clientName}</span>
                 <span className="rank-count">{c.headcount} associates</span>
                 <div className="rank-track" role="img" aria-label={`${c.clientName}: ${c.headcount} associates`}>
-                  <div className="rank-fill" style={{ width: `${(c.headcount / maxHeadcount) * 100}%` }} />
+                  <div
+                    className="rank-fill"
+                    style={{
+                      width: `${(c.headcount / maxHeadcount) * 100}%`,
+                      backgroundColor: `var(--chart-${(i % 5) + 1})`,
+                    }}
+                  />
                 </div>
               </div>
             ))
