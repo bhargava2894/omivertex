@@ -5,6 +5,8 @@ import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.ClientRepository;
 import com.softility.omivertex.repository.ProjectRepository;
+import com.softility.omivertex.repository.SkillCategoryRepository;
+import com.softility.omivertex.repository.SkillRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -25,18 +27,24 @@ public class SeedDataLoader implements ApplicationRunner {
     private final ProjectRepository projects;
     private final AssociateRepository associates;
     private final AllocationRepository allocations;
+    private final SkillCategoryRepository skillCategories;
+    private final SkillRepository skills;
 
     public SeedDataLoader(ClientRepository clients, ProjectRepository projects,
-                          AssociateRepository associates, AllocationRepository allocations) {
+                          AssociateRepository associates, AllocationRepository allocations,
+                          SkillCategoryRepository skillCategories, SkillRepository skills) {
         this.clients = clients;
         this.projects = projects;
         this.associates = associates;
         this.allocations = allocations;
+        this.skillCategories = skillCategories;
+        this.skills = skills;
     }
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        seedTaxonomy();
         if (clients.count() > 0) {
             return;
         }
@@ -114,6 +122,73 @@ public class SeedDataLoader implements ApplicationRunner {
 
         log.info("Seeded {} clients, {} projects, {} associates, {} allocations",
                 clients.count(), projects.count(), associates.count(), allocations.count());
+    }
+
+    /** Seeds the full skill taxonomy once (independent of the demo-roster guard). */
+    private void seedTaxonomy() {
+        if (skillCategories.count() > 0) {
+            return;
+        }
+        log.info("Seeding skill taxonomy");
+        java.util.Map<String, java.util.List<String>> taxonomy = new java.util.LinkedHashMap<>();
+        taxonomy.put("Programming & Scripting", java.util.List.of(
+                "Java", "Python", "JavaScript", "TypeScript", "C#", "Go", "Ruby", "PHP",
+                "Scala", "Kotlin", "Shell Scripting", "PowerShell"));
+        taxonomy.put("Frontend", java.util.List.of(
+                "React", "Angular", "Vue.js", "Next.js", "HTML/CSS", "Tailwind CSS", "Redux"));
+        taxonomy.put("Backend & Frameworks", java.util.List.of(
+                "Spring Boot", "Node.js", ".NET Core", "Django", "Flask", "Express.js",
+                "Hibernate", "Microservices", "GraphQL", "REST API Design"));
+        taxonomy.put("Cloud Platforms", java.util.List.of(
+                "AWS", "Azure", "GCP", "Oracle Cloud", "IBM Cloud"));
+        taxonomy.put("CI/CD", java.util.List.of(
+                "Jenkins", "GitHub", "GitLab", "BitBucket", "Harness", "JFrog Artifactory",
+                "Nexus", "Harbor", "Azure DevOps", "ArgoCD"));
+        taxonomy.put("Containers & Orchestration", java.util.List.of(
+                "Docker", "Kubernetes", "OpenShift", "Helm", "Rancher", "Amazon ECS"));
+        taxonomy.put("Infrastructure as Code", java.util.List.of(
+                "Terraform", "Ansible", "CloudFormation", "Puppet", "Chef", "Pulumi"));
+        taxonomy.put("Observability", java.util.List.of(
+                "Splunk", "Grafana", "Grafana Tempo", "Grafana Mimir", "Prometheus",
+                "OpenSearch", "ELK Stack", "Datadog", "New Relic", "AppDynamics", "Alerting"));
+        taxonomy.put("Databases", java.util.List.of(
+                "MySQL", "PostgreSQL", "Oracle", "SQL Server", "MongoDB", "Cassandra",
+                "Redis", "DynamoDB", "Snowflake", "ETL Tools"));
+        taxonomy.put("Data Engineering & Analytics", java.util.List.of(
+                "Apache Spark", "Hadoop", "Kafka", "Airflow", "Databricks",
+                "Power BI", "Tableau", "Informatica"));
+        taxonomy.put("AI / ML", java.util.List.of(
+                "TensorFlow", "PyTorch", "scikit-learn", "LangChain", "OpenAI APIs",
+                "MLflow", "Hugging Face"));
+        taxonomy.put("ITSM", java.util.List.of(
+                "ServiceNow", "Remedy", "Jira", "Jira Confluence", "PagerDuty"));
+        taxonomy.put("SA Tools", java.util.List.of(
+                "ScienceLogic", "Edge Dashboard", "SolarWinds", "Nagios"));
+        taxonomy.put("Secret Management", java.util.List.of(
+                "HashiCorp Vault", "CyberArk", "AWS Secrets Manager", "Azure Key Vault"));
+        taxonomy.put("Operating Systems", java.util.List.of(
+                "Linux", "Windows Server", "Unix", "macOS"));
+        taxonomy.put("Security", java.util.List.of(
+                "SonarQube", "Qualys", "Burp Suite", "OWASP", "Wiz", "CrowdStrike"));
+        taxonomy.put("Testing & QA", java.util.List.of(
+                "Selenium", "Cypress", "Playwright", "JUnit", "TestNG", "Postman", "JMeter"));
+        taxonomy.put("Project & Agile", java.util.List.of(
+                "Scrum", "Kanban", "SAFe", "MS Project"));
+
+        int count = 0;
+        for (var entry : taxonomy.entrySet()) {
+            SkillCategory category = new SkillCategory();
+            category.setName(entry.getKey());
+            category = skillCategories.save(category);
+            for (String skillName : entry.getValue()) {
+                Skill skill = new Skill();
+                skill.setName(skillName);
+                skill.setCategory(category);
+                skills.save(skill);
+                count++;
+            }
+        }
+        log.info("Seeded {} skill categories, {} skills", taxonomy.size(), count);
     }
 
     private Client client(String name, String industry, String location) {

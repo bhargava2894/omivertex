@@ -32,7 +32,7 @@ this "production"; everything below improves an already-usable pilot.
 ## P2 — Product roadmap (in rough impact order)
 
 - [ ] **Export skills and certifications** — include skill and certification columns in spreadsheet/document exports.
-- [ ] **Seed data for skill taxonomy** — database seeding for a comprehensive default set of categories and skills.
+- [x] **Seed data for skill taxonomy** — DONE: SeedDataLoader seeds 18 categories / 126 skills once when the taxonomy is empty.
 - [ ] **Visa / work-authorization tracking** — status + expiry with a 90-day
       alert on the dashboard; standard for onshore/offshore staffing.
 - [ ] **Bill rates & margin** — rate on the allocation → revenue/margin by
