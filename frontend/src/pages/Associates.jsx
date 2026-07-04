@@ -85,6 +85,10 @@ export default function Associates({ showToast, canEdit }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  const allSkills = (taxonomy || []).reduce((acc, cat) => {
+    return acc.concat((cat.skills || []).map(s => s.name));
+  }, []).sort();
+
   const rows = (data || []).filter(
     (a) =>
       a.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -271,10 +275,20 @@ export default function Associates({ showToast, canEdit }) {
               <input value={editing.form.designation} onChange={(e) => set('designation', e.target.value)} />
             </Field>
             <Field label="Primary skill" error={errors.primarySkill}>
-              <input value={editing.form.primarySkill} onChange={(e) => set('primarySkill', e.target.value)} placeholder="e.g. Java" />
+              <select value={editing.form.primarySkill} onChange={(e) => set('primarySkill', e.target.value)}>
+                <option value="">Select primary skill...</option>
+                {allSkills.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Secondary skill" error={errors.secondarySkill}>
-              <input value={editing.form.secondarySkill} onChange={(e) => set('secondarySkill', e.target.value)} placeholder="e.g. AWS" />
+              <select value={editing.form.secondarySkill} onChange={(e) => set('secondarySkill', e.target.value)}>
+                <option value="">Select secondary skill...</option>
+                {allSkills.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Location" error={errors.location}>
               <input value={editing.form.location} onChange={(e) => set('location', e.target.value)} />

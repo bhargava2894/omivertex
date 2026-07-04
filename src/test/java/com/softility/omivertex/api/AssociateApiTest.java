@@ -78,6 +78,9 @@ class AssociateApiTest extends ApiTestBase {
 
     @Test
     void createAssociate_withSkills_returnsSkills() throws Exception {
+        skill("Programming & Scripting", "Java");
+        skill("Cloud Platforms", "AWS");
+
         mockMvc.perform(post("/api/v1/associates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -86,6 +89,16 @@ class AssociateApiTest extends ApiTestBase {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.primarySkill").value("Java"))
                 .andExpect(jsonPath("$.secondarySkill").value("AWS"));
+    }
+
+    @Test
+    void createAssociate_withInvalidSkills_returnsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/associates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                 "workMode":"OFFSHORE","primarySkill":"NonExistentSkillXYZ","secondarySkill":"AWS"}"""))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

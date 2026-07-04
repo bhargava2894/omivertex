@@ -16,6 +16,7 @@ import com.softility.omivertex.web.dto.AssociateResponse;
 import com.softility.omivertex.web.dto.SkillAssignmentRequest;
 import com.softility.omivertex.web.error.ConflictException;
 import com.softility.omivertex.web.error.NotFoundException;
+import com.softility.omivertex.web.error.BadRequestException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -104,6 +105,7 @@ public class AssociateService {
         if (associateRepository.existsByEmailIgnoreCase(request.email())) {
             throw new ConflictException("An associate with email '" + request.email() + "' already exists");
         }
+        validateSkills(request);
         Associate associate = new Associate();
         apply(associate, request);
         associate = associateRepository.save(associate);
@@ -117,6 +119,7 @@ public class AssociateService {
                 && associateRepository.existsByEmailIgnoreCase(request.email())) {
             throw new ConflictException("An associate with email '" + request.email() + "' already exists");
         }
+        validateSkills(request);
         apply(associate, request);
         associateRepository.save(associate);
         auditService.record("UPDATED", "Associate", id, "Updated associate " + associate.getName());
@@ -146,5 +149,18 @@ public class AssociateService {
         associate.setPrimarySkill(request.primarySkill());
         associate.setSecondarySkill(request.secondarySkill());
         associate.setStatus(request.status() == null ? EntityStatus.ACTIVE : request.status());
+    }
+
+    private void validateSkills(AssociateRequest request) {
+        if (request.primarySkill() != null && !request.primarySkill().isBlank()) {
+            if (skillRepository.findFirstByNameIgnoreCase(request.primarySkill().trim()).isEmpty()) {
+                throw new BadRequestException("Primary skill '" + request.primarySkill() + "' is not a recognized skill in the taxonomy.");
+            }
+        }
+        if (request.secondarySkill() != null && !request.secondarySkill().isBlank()) {
+            if (skillRepository.findFirstByNameIgnoreCase(request.secondarySkill().trim()).isEmpty()) {
+                throw new BadRequestException("Secondary skill '" + request.secondarySkill() + "' is not a recognized skill in the taxonomy.");
+            }
+        }
     }
 }
