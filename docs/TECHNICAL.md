@@ -49,12 +49,12 @@ omivertex/
 ├─ src/main/java/com/softility/omivertex/
 │  ├─ OmivertexApplication.java
 │  ├─ config/          SecurityConfig, SeedDataLoader
-│  ├─ domain/          Client, Project, Associate, Allocation + enums
-│  ├─ repository/      Spring Data interfaces (one per aggregate)
+│  ├─ domain/          Client, Project, Associate, Allocation, OpenPosition + enums
+│  ├─ repository/      Spring Data interfaces (one per aggregate, e.g. PositionRepository)
 │  ├─ service/         ClientService, ProjectService, AssociateService,
-│  │                   AllocationService, DashboardService,
+│  │                   AllocationService, DashboardService, PositionService,
 │  │                   ImportService, ExportService
-│  └─ web/             REST controllers, AuthController, HomeController
+│  └─ web/             REST controllers, AuthController, HomeController, PositionController
 │     ├─ dto/          request/response records (never entities on the wire)
 │     └─ error/        GlobalExceptionHandler + typed exceptions
 ├─ src/main/resources/
@@ -79,6 +79,8 @@ omivertex/
 
 ```
 Client 1 ──── * Project 1 ──── * Allocation * ──── 1 Associate
+               │
+               └──── * OpenPosition
 ```
 
 | Entity | Key fields | Constraints |
@@ -92,6 +94,7 @@ Client 1 ──── * Project 1 ──── * Allocation * ──── 1 Ass
 | **Skill** | name, category FK | `(name, category_id)` unique |
 | **AssociateSkill** | associate FK, skill FK, proficiency (NOVICE, FOUNDATIONAL, INTERMEDIATE, FUNCTIONAL_USER, ADVANCE, MASTERY) | `(associate_id, skill_id)` unique |
 | **Certification** | associate FK, name, authority, credentialId, issuedDate, expiryDate | — |
+| **OpenPosition** | title, project FK, requiredSkillRef FK, minProficiency, billable, allocationPercent, startDate, status (OPEN/FILLED/CANCELLED) | — |
 
 **Derived, never stored:** an associate's `currentProject`, `currentClient`,
 `billable`, and `benchDays` are computed from allocations at read time
@@ -113,6 +116,7 @@ introduce Flyway before making breaking changes.
    associate with allocations → 409. Delete order: allocations → projects/associates → clients.
 5. **Bench** — associate with no current allocation. `benchDays` = days since the
    latest past `endDate`, or since `createdAt` if never allocated.
+6. **Skill validation** — on associate create/update, any provided primary or secondary skill must match a recognized skill name in the taxonomy (case-insensitive) → 400.
 
 ## 6. REST API
 
@@ -124,6 +128,9 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/projects` | same | `?clientId=` |
 | `/associates` | same | `?workMode=&billable=&bench=&categoryId=&skillId=&minProficiency=` |
 | `/allocations` | same (PUT uses `AllocationUpdateRequest` — no re-parenting) | `?projectId=&associateId=&active=` |
+| `/positions` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | `?status=&projectId=` |
+| `/positions/{id}/matches` | GET (returns scored candidates; ADMIN) | — |
+| `/positions/{id}/fill` | POST (fills position by creating allocation; ADMIN) | — |
 | `/taxonomy` | GET (nested alphabetical tree) | — |
 | `/taxonomy/categories` | POST, DELETE/{id} (ADMIN) | — |
 | `/taxonomy/skills` | POST, DELETE/{id} (ADMIN) | — |
@@ -241,7 +248,7 @@ docx (POI XWPF). Returned as `attachment` with correct MIME type.
 # prerequisites: Java 21, Node 18+, PostgreSQL with database "omivertex"
 cd frontend && npm install && npm run build && cd ..   # SPA → static/
 ./mvnw spring-boot:run                                  # http://localhost:8080
-./mvnw test                                             # 58 tests
+./mvnw test                                             # 94 tests
 cd frontend && npm run dev                              # Vite on :5173, /api proxied
 ```
 
@@ -263,7 +270,7 @@ cd frontend && npm run dev                              # Vite on :5173, /api pr
   `AuthApiTest` exercises real logins with `MockHttpSession` instead.
 - The project is built **strictly TDD**: write the failing test first, watch it
   fail for the right reason, implement to green. Every business rule in §5 has
-  both a happy-path and a conflict test. Current suite: **58 tests**.
+  both a happy-path and a conflict test. Current suite: **94 tests**.
 
 ## 12. Known limitations / next steps
 
