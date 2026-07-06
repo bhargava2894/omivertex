@@ -434,8 +434,7 @@ public class ImportService {
     }
 
     private static String emailFor(String name) {
-        String slug = name.toLowerCase().replaceAll("[^a-z0-9]+", ".").replaceAll("^\\.|\\.$", "");
-        return slug + "@softility.com";
+        return EmailNaming.forName(name);
     }
 
     private String uniqueProjectCode(String clientName, String projectName) {

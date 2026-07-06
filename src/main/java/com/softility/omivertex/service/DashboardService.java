@@ -31,6 +31,14 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class DashboardService {
 
+    /** Bench-aging bucket boundaries (days). The dashboard UI mirrors these tones. */
+    static final int BENCH_FRESH_MAX_DAYS = 30;
+    static final int BENCH_WARN_MAX_DAYS = 60;
+    /** How far ahead the roll-off radar looks for ending allocations (days). */
+    static final int ROLLOFF_HORIZON_DAYS = 30;
+    /** How far ahead the certification-expiry radar looks (days). */
+    static final int CERT_EXPIRY_HORIZON_DAYS = 90;
+
     private final AssociateRepository associateRepository;
     private final ClientRepository clientRepository;
     private final ProjectRepository projectRepository;
@@ -101,14 +109,14 @@ public class DashboardService {
                 .sorted(Comparator.comparingLong(DashboardSummaryResponse.BenchAssociate::benchDays).reversed())
                 .toList();
         DashboardSummaryResponse.BenchAging benchAging = new DashboardSummaryResponse.BenchAging(
-                benchAssociates.stream().filter(b -> b.benchDays() <= 30).count(),
-                benchAssociates.stream().filter(b -> b.benchDays() > 30 && b.benchDays() <= 60).count(),
-                benchAssociates.stream().filter(b -> b.benchDays() > 60).count());
+                benchAssociates.stream().filter(b -> b.benchDays() <= BENCH_FRESH_MAX_DAYS).count(),
+                benchAssociates.stream().filter(b -> b.benchDays() > BENCH_FRESH_MAX_DAYS && b.benchDays() <= BENCH_WARN_MAX_DAYS).count(),
+                benchAssociates.stream().filter(b -> b.benchDays() > BENCH_WARN_MAX_DAYS).count());
 
-        // roll-off radar: current allocations ending within 30 days
+        // roll-off radar: current allocations ending within the horizon
         LocalDate today = LocalDate.now();
         List<DashboardSummaryResponse.Rolloff> rolloffs = current.stream()
-                .filter(a -> a.getEndDate() != null && !a.getEndDate().isAfter(today.plusDays(30)))
+                .filter(a -> a.getEndDate() != null && !a.getEndDate().isAfter(today.plusDays(ROLLOFF_HORIZON_DAYS)))
                 .sorted(Comparator.comparing(Allocation::getEndDate))
                 .map(a -> new DashboardSummaryResponse.Rolloff(a.getId(),
                         a.getAssociate().getId(), a.getAssociate().getName(),
@@ -116,8 +124,8 @@ public class DashboardService {
                         a.getEndDate(), ChronoUnit.DAYS.between(today, a.getEndDate())))
                 .toList();
 
-        // expiring certifications: certifications expiring within 90 days
-        LocalDate certExpiryLimit = today.plusDays(90);
+        // expiring certifications: certifications expiring within the horizon
+        LocalDate certExpiryLimit = today.plusDays(CERT_EXPIRY_HORIZON_DAYS);
         List<DashboardSummaryResponse.ExpiringCert> expiringCerts = certificationRepository.findAllWithAssociate().stream()
                 .filter(c -> c.getExpiryDate() != null
                         && !c.getExpiryDate().isBefore(today)
