@@ -40,7 +40,11 @@ export const api = {
   googleLogin: (idToken) =>
     request('/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }),
   listRequests: () => request('/admin/access-requests'),
-  approveRequest: (id) => request(`/admin/access-requests/${id}/approve`, { method: 'POST' }),
+  approveRequest: (id, role = 'VIEWER') =>
+    request(`/admin/access-requests/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ role }),
+    }),
   rejectRequest: (id) => request(`/admin/access-requests/${id}/reject`, { method: 'POST' }),
   replaceSkills: (associateId, skills) =>
     request(`/associates/${associateId}/skills`, {

@@ -8,13 +8,15 @@ export default function AccessRequests({ showToast }) {
   const [filter, setFilter] = useState('PENDING'); // PENDING, APPROVED, REJECTED, ALL
   const { data, loading, reload } = useLoad(() => api.listRequests(), []);
   const [processing, setProcessing] = useState(null); // id of current processing action
+  const [roleChoice, setRoleChoice] = useState({}); // per-request role to grant on approve
 
   const handleApprove = async (id) => {
     if (processing) return;
     setProcessing(id);
     try {
-      await api.approveRequest(id);
-      showToast('Access request approved successfully');
+      const role = roleChoice[id] || 'VIEWER';
+      await api.approveRequest(id, role);
+      showToast(`Access approved as ${role === 'ADMIN' ? 'Admin' : 'Viewer'}`);
       reload();
     } catch (err) {
       showToast(err.message, true);
@@ -89,7 +91,7 @@ export default function AccessRequests({ showToast }) {
                 <th scope="col">Email</th>
                 <th scope="col">Requested Date</th>
                 <th scope="col">Status</th>
-                <th scope="col" aria-label="Actions" style={{ width: '180px' }} />
+                <th scope="col" aria-label="Actions" style={{ width: '260px' }} />
               </tr>
             </thead>
             <tbody>
@@ -113,7 +115,20 @@ export default function AccessRequests({ showToast }) {
                   </td>
                   <td className="actions" style={{ textAlign: 'right' }}>
                     {row.status === 'PENDING' && (
-                      <div style={{ display: 'inline-flex', gap: '8px' }}>
+                      <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
+                        <select
+                          className="input input-sm"
+                          aria-label={`Role to grant ${row.name}`}
+                          disabled={processing !== null}
+                          value={roleChoice[row.id] || 'VIEWER'}
+                          onChange={(e) =>
+                            setRoleChoice((prev) => ({ ...prev, [row.id]: e.target.value }))
+                          }
+                          style={{ padding: '4px 8px', fontSize: '13px' }}
+                        >
+                          <option value="VIEWER">Viewer</option>
+                          <option value="ADMIN">Admin</option>
+                        </select>
                         <button
                           className="btn btn-primary btn-sm"
                           disabled={processing !== null}

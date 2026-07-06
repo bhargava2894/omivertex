@@ -2,6 +2,7 @@ package com.softility.omivertex.web;
 
 import com.softility.omivertex.domain.AccessStatus;
 import com.softility.omivertex.domain.AppUser;
+import com.softility.omivertex.domain.Role;
 import com.softility.omivertex.repository.AppUserRepository;
 import com.softility.omivertex.web.dto.AccessRequestResponse;
 import com.softility.omivertex.web.error.NotFoundException;
@@ -26,19 +27,29 @@ public class AdminUserController {
     }
 
     @PostMapping("/{id}/approve")
-    public AccessRequestResponse approveRequest(@PathVariable Long id) {
-        return AccessRequestResponse.from(setStatus(id, AccessStatus.APPROVED));
+    public AccessRequestResponse approveRequest(@PathVariable Long id,
+                                                @RequestBody(required = false) ApproveRequest body) {
+        AppUser user = find(id);
+        user.setStatus(AccessStatus.APPROVED);
+        // The role is what the approving admin grants; default to read-only Viewer
+        // when the caller doesn't specify one (backward-compatible with a bare POST).
+        user.setRole(body != null && body.role() != null ? body.role() : Role.VIEWER);
+        return AccessRequestResponse.from(userRepository.save(user));
     }
 
     @PostMapping("/{id}/reject")
     public AccessRequestResponse rejectRequest(@PathVariable Long id) {
-        return AccessRequestResponse.from(setStatus(id, AccessStatus.REJECTED));
+        AppUser user = find(id);
+        user.setStatus(AccessStatus.REJECTED);
+        return AccessRequestResponse.from(userRepository.save(user));
     }
 
-    private AppUser setStatus(Long id, AccessStatus status) {
-        AppUser user = userRepository.findById(id)
+    private AppUser find(Long id) {
+        return userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("AccessRequest", id));
-        user.setStatus(status);
-        return userRepository.save(user);
+    }
+
+    /** Optional approval payload: the role to grant the approved user. */
+    public record ApproveRequest(Role role) {
     }
 }

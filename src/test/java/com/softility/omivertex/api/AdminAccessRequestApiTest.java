@@ -4,6 +4,7 @@ import com.softility.omivertex.domain.AccessStatus;
 import com.softility.omivertex.domain.AppUser;
 import com.softility.omivertex.domain.Role;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -45,6 +46,33 @@ class AdminAccessRequestApiTest extends ApiTestBase {
 
         org.junit.jupiter.api.Assertions.assertEquals(
                 AccessStatus.APPROVED, appUserRepository.findById(u.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void approve_withAdminRole_promotesUser() throws Exception {
+        var u = appUser("lead@softility.com", AccessStatus.PENDING);
+
+        mockMvc.perform(post("/api/v1/admin/access-requests/" + u.getId() + "/approve")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"ADMIN"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.role").value("ADMIN"));
+
+        var saved = appUserRepository.findById(u.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(Role.ADMIN, saved.getRole());
+        org.junit.jupiter.api.Assertions.assertEquals(AccessStatus.APPROVED, saved.getStatus());
+    }
+
+    @Test
+    void approve_withoutBody_defaultsToViewer() throws Exception {
+        var u = appUser("newbie@softility.com", AccessStatus.PENDING);
+
+        mockMvc.perform(post("/api/v1/admin/access-requests/" + u.getId() + "/approve"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.role").value("VIEWER"));
     }
 
     @Test
