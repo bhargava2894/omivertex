@@ -26,9 +26,11 @@ public abstract class ApiTestBase {
     @Autowired protected CertificationRepository certificationRepository;
     @Autowired protected SkillRepository skillRepository;
     @Autowired protected SkillCategoryRepository skillCategoryRepository;
+    @Autowired protected AppUserRepository appUserRepository;
 
     @BeforeEach
     void cleanDatabase() {
+        appUserRepository.deleteAll();
         auditEntryRepository.deleteAll();
         associateSkillRepository.deleteAll();
         certificationRepository.deleteAll();

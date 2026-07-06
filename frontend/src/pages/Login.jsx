@@ -74,14 +74,13 @@ export default function Login({ onLogin }) {
     setBusy(true);
     setError(null);
     try {
-      const user = await api.googleLogin(account.email, account.name);
+      // account.idToken is a real Google ID token when GIS is wired up (needs
+      // VITE_GOOGLE_CLIENT_ID); until then the backend safely rejects and we show why.
+      const user = await api.googleLogin(account.idToken || account.email);
       onLogin(user);
     } catch (err) {
-      if (
-        err.message.toLowerCase().includes('pending') ||
-        err.message.toLowerCase().includes('requested') ||
-        err.status === 401
-      ) {
+      const msg = err.message.toLowerCase();
+      if (msg.includes('pending') || msg.includes('requested')) {
         setPendingEmail(account.email);
         setLoginMode('pending');
       } else {

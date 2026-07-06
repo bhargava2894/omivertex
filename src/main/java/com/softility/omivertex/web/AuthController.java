@@ -35,7 +35,7 @@ public class AuthController {
     public record LoginRequest(@NotBlank String username, @NotBlank String password) {
     }
 
-    public record GoogleLoginRequest(@NotBlank String email, @NotBlank String name) {
+    public record GoogleLoginRequest(@NotBlank String idToken) {
     }
 
     public record UserResponse(String username, String role, String displayName) {
@@ -51,11 +51,14 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final AppUserRepository appUserRepository;
+    private final com.softility.omivertex.service.GoogleTokenVerifier googleTokenVerifier;
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
-    public AuthController(AuthenticationManager authenticationManager, AppUserRepository appUserRepository) {
+    public AuthController(AuthenticationManager authenticationManager, AppUserRepository appUserRepository,
+                          com.softility.omivertex.service.GoogleTokenVerifier googleTokenVerifier) {
         this.authenticationManager = authenticationManager;
         this.appUserRepository = appUserRepository;
+        this.googleTokenVerifier = googleTokenVerifier;
     }
 
     @PostMapping("/login")
@@ -78,7 +81,11 @@ public class AuthController {
     @PostMapping("/google")
     public UserResponse googleLogin(@jakarta.validation.Valid @RequestBody GoogleLoginRequest googleRequest,
                                     HttpServletRequest request, HttpServletResponse response) {
-        String email = googleRequest.email().trim().toLowerCase();
+        // Trust only what Google's signature proves — never the client-supplied identity.
+        var identity = googleTokenVerifier.verify(googleRequest.idToken())
+                .orElseThrow(() -> new UnauthorizedException(
+                        "Could not verify your Google sign-in. Google login may not be configured."));
+        String email = identity.email().trim().toLowerCase();
         if (!email.endsWith("@softility.com")) {
             throw new BadRequestException("Only @softility.com company email addresses are allowed.");
         }
@@ -86,7 +93,7 @@ public class AuthController {
         AppUser appUser = appUserRepository.findByEmailIgnoreCase(email).orElseGet(() -> {
             AppUser newRequest = new AppUser();
             newRequest.setEmail(email);
-            newRequest.setName(googleRequest.name());
+            newRequest.setName(identity.name());
             newRequest.setStatus(AccessStatus.PENDING);
             return appUserRepository.save(newRequest);
         });
