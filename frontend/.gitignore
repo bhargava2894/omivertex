@@ -1,0 +1,4 @@
+# Local environment overrides (e.g. VITE_GOOGLE_CLIENT_ID for local testing) —
+# never commit these; real deployments inject the value at build time.
+.env.local
+.env.*.local
