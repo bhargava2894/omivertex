@@ -30,6 +30,12 @@ public class Associate {
 
     private String designation;
 
+    // Informal free-text "headline" skills only: a roster quick-glance value and the
+    // target of the CSV SKILL column on import. The authoritative skill model is the
+    // structured AssociateSkill graph (proficiency-rated, category-organized), which
+    // powers search, reports, and demand matching. These two fields are intentionally
+    // NOT that system; PositionService uses them only as a text-match fallback when a
+    // position has no structured required skill. Do not build new features on them.
     private String primarySkill;
 
     private String secondarySkill;

@@ -26,8 +26,9 @@ this "production"; everything below improves an already-usable pilot.
       the shared `admin`/`viewer` logins so the audit trail names real people.
 - [ ] **Optimistic locking** (`@Version` on Allocation/Associate) so two managers
       editing the same record don't silently overwrite each other.
-- [ ] **Server-side pagination + search** on list endpoints (client-side paging
-      covers to ~1k rows; move the slicing to the API before then).
+- [~] **Server-side pagination + search** — DONE for the associates roster
+      (paged envelope + `q` search, backward compatible). Remaining lists tracked
+      in P3.
 
 ## P2 — Product roadmap (in rough impact order)
 
@@ -49,7 +50,19 @@ this "production"; everything below improves an already-usable pilot.
       the duplicate-open-allocation rule are described in docs but weakly
       cross-referenced to their code.
 - [ ] `graphify --wiki` for an agent/human-crawlable architecture wiki.
+- [ ] Server-side pagination for the remaining lists (clients/projects/allocations).
+      Associates is already server-paged+searched; the others are small and use
+      derived-field filters, so deferred until volume warrants it.
+
+## Resolved decisions
+
+- **Legacy `primarySkill`/`secondarySkill`** (2026-07): KEPT, deliberately demoted
+  to informal free-text "headline" fields (roster quick-glance + CSV `SKILL`-column
+  import + text-match fallback in `PositionService`). The structured `AssociateSkill`
+  graph is authoritative for search, reports, and matching. Not removed because that
+  would drop the fallback + import convenience (a functionality loss). Do not build
+  new features on the free-text fields. See `Associate.java`.
 
 ## Done (for reference)
 
-SkillCloud Integration (structured skill taxonomy, associate profile pages with skills & certs tracking, faceted skill search, skill proficiency reports, cert-expiry dashboard radar, multi-sheet v2 imports, and smart demand matching) · Domain model + enforced rules (capacity guard, protective deletes, uniqueness) · 92 HTTP-level TDD tests · Excel/CSV import with dry-run preview + idempotency · xlsx/csv/pdf/docx export · dashboard (utilization, bench aging, roll-off radar, trend, charts) · demand matching (skills, open positions, one-click fill) · role-gated UI with server-side enforcement · audit trail with admin UI · dark/light themes · animated premium UI + login · docs for devs and sales · graphify knowledge graph integration · Vite build relocated out of `src/`.
+SkillCloud Integration (structured skill taxonomy, associate profile pages with skills & certs tracking, faceted skill search, skill proficiency reports, cert-expiry dashboard radar, multi-sheet v2 imports, and smart demand matching) · Domain model + enforced rules (capacity guard, protective deletes, uniqueness) · 95 HTTP-level TDD tests · Excel/CSV import with dry-run preview + idempotency · xlsx/csv/pdf/docx export · dashboard (utilization, bench aging, roll-off radar, trend, charts) · demand matching (skills, open positions, one-click fill) · role-gated UI with server-side enforcement · audit trail with admin UI · dark/light themes · animated premium UI + login · docs for devs and sales · graphify knowledge graph integration · Vite build relocated out of `src/`.
