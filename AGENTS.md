@@ -14,7 +14,7 @@ The **workforce graph is the product**; keep its data true and its code consiste
 1. **TDD, always.** Write the failing test first (`src/test/java/.../api/`), watch it
    fail for the right reason, then write minimal code to pass. No production code
    without a red test first. Run `./mvnw test` — **the full suite must be green before
-   every commit.** It is currently 95 tests; never commit red.
+   every commit.** It is currently 101 tests (95 API + 6 architecture); never commit red.
 2. **Consult the graph before exploring.** A graphify knowledge graph lives in
    `graphify-out/`. Before answering architecture questions or hunting through files,
    read `graphify-out/GRAPH_REPORT.md` (god nodes + structure). Open the *minimum*
