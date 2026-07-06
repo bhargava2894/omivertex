@@ -5,15 +5,7 @@ import Modal from '../components/Modal.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
 import Badge from '../components/Badge.jsx';
-
-const PROFICIENCIES = [
-  { value: 'NOVICE', label: 'Novice', tone: 'gray' },
-  { value: 'FOUNDATIONAL', label: 'Foundational', tone: 'amber' },
-  { value: 'INTERMEDIATE', label: 'Intermediate', tone: 'blue' },
-  { value: 'FUNCTIONAL_USER', label: 'Functional User', tone: 'blue' },
-  { value: 'ADVANCE', label: 'Advance', tone: 'green' },
-  { value: 'MASTERY', label: 'Mastery', tone: 'green' },
-];
+import { PROFICIENCIES, proficiencyInfo } from '../proficiency.js';
 
 export default function Profile({ id, showToast, canEdit }) {
   const { data: associate, loading: loadAssoc, reload: reloadAssoc } = useLoad(() => api.get('associates', id), [id]);
@@ -63,10 +55,6 @@ export default function Profile({ id, showToast, canEdit }) {
       </div>
     );
   }
-
-  const getProficiencyInfo = (val) => {
-    return PROFICIENCIES.find(p => p.value === val) || { label: val, tone: 'gray' };
-  };
 
   const handleSaveSkills = async () => {
     setSavingSkills(true);
@@ -188,7 +176,7 @@ export default function Profile({ id, showToast, canEdit }) {
                   </div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {group.skills.map(skill => {
-                      const info = getProficiencyInfo(skill.proficiency);
+                      const info = proficiencyInfo(skill.proficiency);
                       return (
                         <Badge
                           key={skill.skillId}

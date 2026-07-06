@@ -6,6 +6,7 @@ import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
+import { PROFICIENCIES } from '../proficiency.js';
 
 const EMPTY = {
   title: '', projectId: '', requiredSkill: '', requiredSkillId: '', minProficiency: '', billable: true,
@@ -214,12 +215,9 @@ export default function Positions({ showToast, canEdit }) {
                 disabled={!editing.form.requiredSkillId}
               >
                 <option value="">Any Level</option>
-                <option value="NOVICE">Novice</option>
-                <option value="FOUNDATIONAL">Foundational</option>
-                <option value="INTERMEDIATE">Intermediate</option>
-                <option value="FUNCTIONAL_USER">Functional User</option>
-                <option value="ADVANCE">Advance</option>
-                <option value="MASTERY">Mastery</option>
+                {PROFICIENCIES.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
               </select>
             </Field>
             <Field label="Legacy Required Skill (Text fallback)" error={errors.requiredSkill} full>

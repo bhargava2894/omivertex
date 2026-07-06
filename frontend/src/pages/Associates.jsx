@@ -7,6 +7,7 @@ import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
 import { ExportMenu, ImportButton } from '../components/DataTransfer.jsx';
+import { PROFICIENCIES } from '../proficiency.js';
 
 const EMPTY = {
   name: '', email: '', company: 'Softility', location: '',
@@ -191,12 +192,11 @@ export default function Associates({ showToast, canEdit }) {
             aria-label="Filter by minimum proficiency"
           >
             <option value="">Any Level</option>
-            <option value="NOVICE">Novice+</option>
-            <option value="FOUNDATIONAL">Foundational+</option>
-            <option value="INTERMEDIATE">Intermediate+</option>
-            <option value="FUNCTIONAL_USER">Functional User+</option>
-            <option value="ADVANCE">Advance+</option>
-            <option value="MASTERY">Mastery</option>
+            {PROFICIENCIES.map((p, i) => (
+              <option key={p.value} value={p.value}>
+                {p.label}{i < PROFICIENCIES.length - 1 ? '+' : ''}
+              </option>
+            ))}
           </select>
         </div>
         <div className="toolbar-actions">

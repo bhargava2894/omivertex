@@ -4,29 +4,7 @@ import { useLoad } from '../hooks.js';
 import Icon from '../components/Icon.jsx';
 import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
-
-const PROF_COLORS = {
-  NOVICE: '#9ca3af',
-  FOUNDATIONAL: 'var(--chart-3)',
-  INTERMEDIATE: 'var(--chart-1)',
-  FUNCTIONAL_USER: 'var(--chart-2)',
-  ADVANCE: 'var(--chart-5)',
-  MASTERY: 'var(--chart-4)',
-};
-
-const PROF_LABELS = {
-  NOVICE: 'Novice',
-  FOUNDATIONAL: 'Foundational',
-  INTERMEDIATE: 'Intermediate',
-  FUNCTIONAL_USER: 'Functional User',
-  ADVANCE: 'Advance',
-  MASTERY: 'Mastery',
-};
-
-const PROF_TONES = {
-  NOVICE: 'gray', FOUNDATIONAL: 'amber', INTERMEDIATE: 'blue',
-  FUNCTIONAL_USER: 'green', ADVANCE: 'blue', MASTERY: 'green',
-};
+import { PROF_COLORS, PROF_LABELS, PROF_TONES } from '../proficiency.js';
 
 const MAX_TOOLTIP_NAMES = 8;
 
