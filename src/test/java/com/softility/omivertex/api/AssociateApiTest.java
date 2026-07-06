@@ -169,6 +169,29 @@ class AssociateApiTest extends ApiTestBase {
     }
 
     @Test
+    void listAssociates_paginatesWhenPageSupplied() throws Exception {
+        associate("A One", "a1@softility.com", WorkMode.ONSHORE);
+        associate("B Two", "b2@softility.com", WorkMode.OFFSHORE);
+        associate("C Three", "c3@softility.com", WorkMode.ONSHORE);
+
+        mockMvc.perform(get("/api/v1/associates").param("page", "0").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2));
+
+        mockMvc.perform(get("/api/v1/associates").param("page", "1").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(1)));
+
+        mockMvc.perform(get("/api/v1/associates"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)));
+    }
+
+    @Test
     void getAssociate_unknownId_returns404() throws Exception {
         mockMvc.perform(get("/api/v1/associates/9999"))
                 .andExpect(status().isNotFound());

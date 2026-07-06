@@ -3,8 +3,14 @@ import Icon from './Icon.jsx';
 
 const PAGE_SIZE = 25;
 
-export default function DataTable({ columns, rows, loading, emptyText, onEdit, onDelete }) {
-  const [page, setPage] = useState(0);
+/**
+ * Renders a table. Pagination is client-side by default (slices `rows`). Pass
+ * `serverPagination={{ page, size, totalElements, totalPages, onPage }}` when the
+ * caller already fetched a single page from the API — then `rows` is that page and
+ * the pager drives `onPage`.
+ */
+export default function DataTable({ columns, rows, loading, emptyText, onEdit, onDelete, serverPagination }) {
+  const [clientPage, setClientPage] = useState(0);
   if (loading) {
     return (
       <div>
@@ -15,7 +21,9 @@ export default function DataTable({ columns, rows, loading, emptyText, onEdit, o
     );
   }
 
-  if (!rows.length) {
+  const server = serverPagination || null;
+  const isEmpty = server ? server.totalElements === 0 : rows.length === 0;
+  if (isEmpty) {
     return (
       <div className="card">
         <div className="empty-state">
@@ -26,9 +34,15 @@ export default function DataTable({ columns, rows, loading, emptyText, onEdit, o
     );
   }
 
-  const pageCount = Math.ceil(rows.length / PAGE_SIZE);
-  const safePage = Math.min(page, pageCount - 1);
-  const visible = rows.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+  // client mode slices locally; server mode shows the page it was given
+  const pageCount = server ? server.totalPages : Math.ceil(rows.length / PAGE_SIZE);
+  const page = server ? server.page : Math.min(clientPage, pageCount - 1);
+  const size = server ? server.size : PAGE_SIZE;
+  const total = server ? server.totalElements : rows.length;
+  const visible = server ? rows : rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const goTo = server ? server.onPage : setClientPage;
+  const rangeStart = page * size + 1;
+  const rangeEnd = server ? page * size + rows.length : Math.min((page + 1) * PAGE_SIZE, rows.length);
 
   return (
     <div className="card table-wrap">
@@ -67,14 +81,12 @@ export default function DataTable({ columns, rows, loading, emptyText, onEdit, o
       </table>
       {pageCount > 1 && (
         <div className="table-pager">
-          <span className="cell-sub">
-            {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, rows.length)} of {rows.length}
-          </span>
+          <span className="cell-sub">{rangeStart}–{rangeEnd} of {total}</span>
           <div className="pager-buttons">
-            <button className="btn btn-ghost btn-sm" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
+            <button className="btn btn-ghost btn-sm" disabled={page === 0} onClick={() => goTo(page - 1)}>
               Previous
             </button>
-            <button className="btn btn-ghost btn-sm" disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)}>
+            <button className="btn btn-ghost btn-sm" disabled={page >= pageCount - 1} onClick={() => goTo(page + 1)}>
               Next
             </button>
           </div>

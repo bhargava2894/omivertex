@@ -20,14 +20,35 @@ public class AssociateController {
         this.associateService = associateService;
     }
 
+    /**
+     * Lists associates. Returns a plain array by default; when {@code page} is supplied
+     * returns a {@link com.softility.omivertex.web.dto.PagedResponse} so large rosters
+     * don't ship in full to the browser.
+     */
     @GetMapping
-    public List<AssociateResponse> list(@RequestParam(required = false) WorkMode workMode,
-                                        @RequestParam(required = false) Boolean billable,
-                                        @RequestParam(required = false) Boolean bench,
-                                        @RequestParam(required = false) Long categoryId,
-                                        @RequestParam(required = false) Long skillId,
-                                        @RequestParam(required = false) com.softility.omivertex.domain.Proficiency minProficiency) {
-        return associateService.list(workMode, billable, bench, categoryId, skillId, minProficiency);
+    public Object list(@RequestParam(required = false) WorkMode workMode,
+                       @RequestParam(required = false) Boolean billable,
+                       @RequestParam(required = false) Boolean bench,
+                       @RequestParam(required = false) Long categoryId,
+                       @RequestParam(required = false) Long skillId,
+                       @RequestParam(required = false) com.softility.omivertex.domain.Proficiency minProficiency,
+                       @RequestParam(required = false) String q,
+                       @RequestParam(required = false) Integer page,
+                       @RequestParam(defaultValue = "25") int size) {
+        List<AssociateResponse> result =
+                associateService.list(workMode, billable, bench, categoryId, skillId, minProficiency);
+        if (q != null && !q.isBlank()) {
+            String needle = q.toLowerCase();
+            result = result.stream()
+                    .filter(a -> contains(a.name(), needle) || contains(a.email(), needle) || contains(a.company(), needle))
+                    .toList();
+        }
+        return page == null ? result
+                : com.softility.omivertex.web.dto.PagedResponse.of(result, page, size);
+    }
+
+    private static boolean contains(String value, String needle) {
+        return value != null && value.toLowerCase().contains(needle);
     }
 
     @GetMapping("/{id}")

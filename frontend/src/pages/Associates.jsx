@@ -31,9 +31,22 @@ export default function Associates({ showToast, canEdit }) {
   const [staffing, setStaffing] = useState(''); // '' | billable | nonbillable | bench
   const [workMode, setWorkMode] = useState('');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(0);
   const [categoryId, setCategoryId] = useState(() => getParam('categoryId'));
   const [skillId, setSkillId] = useState(() => getParam('skillId'));
   const [minProficiency, setMinProficiency] = useState(() => getParam('minProficiency'));
+
+  // debounce the search box so we don't refetch on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // any filter/search change returns to the first page
+  useEffect(() => {
+    setPage(0);
+  }, [staffing, workMode, categoryId, skillId, minProficiency, debouncedSearch]);
 
   const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
 
@@ -77,10 +90,13 @@ export default function Associates({ showToast, canEdit }) {
   if (categoryId) params.categoryId = categoryId;
   if (skillId) params.skillId = skillId;
   if (minProficiency) params.minProficiency = minProficiency;
+  if (debouncedSearch) params.q = debouncedSearch;
+  params.page = page;
+  params.size = 25;
 
   const { data, loading, reload } = useLoad(
     () => api.list('associates', params),
-    [staffing, workMode, categoryId, skillId, minProficiency]
+    [staffing, workMode, categoryId, skillId, minProficiency, debouncedSearch, page]
   );
   const [editing, setEditing] = useState(null);
   const [errors, setErrors] = useState({});
@@ -90,11 +106,15 @@ export default function Associates({ showToast, canEdit }) {
     return acc.concat((cat.skills || []).map(s => s.name));
   }, []).sort();
 
-  const rows = (data || []).filter(
-    (a) =>
-      a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.email.toLowerCase().includes(search.toLowerCase())
-  );
+  // server returns a paged envelope; search + filtering happen server-side now
+  const rows = data?.content || [];
+  const serverPagination = {
+    page: data?.page ?? 0,
+    size: data?.size ?? 25,
+    totalElements: data?.totalElements ?? 0,
+    totalPages: data?.totalPages ?? 0,
+    onPage: setPage,
+  };
 
   const openCreate = () => { setErrors({}); setEditing({ form: { ...EMPTY } }); };
   const openEdit = (row) => {
@@ -213,6 +233,7 @@ export default function Associates({ showToast, canEdit }) {
       <DataTable
         loading={loading}
         rows={rows}
+        serverPagination={serverPagination}
         emptyText="No associates match these filters."
         onEdit={canEdit ? openEdit : undefined}
         onDelete={canEdit ? remove : undefined}
