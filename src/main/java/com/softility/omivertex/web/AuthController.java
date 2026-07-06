@@ -1,5 +1,6 @@
 package com.softility.omivertex.web;
 
+import com.softility.omivertex.domain.AccessStatus;
 import com.softility.omivertex.domain.AppUser;
 import com.softility.omivertex.repository.AppUserRepository;
 import com.softility.omivertex.web.error.BadRequestException;
@@ -86,21 +87,21 @@ public class AuthController {
             AppUser newRequest = new AppUser();
             newRequest.setEmail(email);
             newRequest.setName(googleRequest.name());
-            newRequest.setStatus("PENDING");
+            newRequest.setStatus(AccessStatus.PENDING);
             return appUserRepository.save(newRequest);
         });
 
-        if ("PENDING".equals(appUser.getStatus())) {
+        if (appUser.getStatus() == AccessStatus.PENDING) {
             throw new UnauthorizedException("Your access request is pending approval by the Admin.");
         }
-        if ("REJECTED".equals(appUser.getStatus())) {
+        if (appUser.getStatus() == AccessStatus.REJECTED) {
             throw new UnauthorizedException("Your access request was rejected by the Admin.");
         }
 
         Authentication auth = new UsernamePasswordAuthenticationToken(
                 appUser.getEmail(),
                 null,
-                List.of(new SimpleGrantedAuthority("ROLE_" + appUser.getRole()))
+                List.of(new SimpleGrantedAuthority("ROLE_" + appUser.getRole().name()))
         );
 
         SecurityContext context = SecurityContextHolder.createEmptyContext();
@@ -108,7 +109,7 @@ public class AuthController {
         SecurityContextHolder.setContext(context);
         securityContextRepository.saveContext(context, request, response);
 
-        return new UserResponse(appUser.getEmail(), appUser.getRole(), appUser.getName());
+        return new UserResponse(appUser.getEmail(), appUser.getRole().name(), appUser.getName());
     }
 
     @GetMapping("/me")

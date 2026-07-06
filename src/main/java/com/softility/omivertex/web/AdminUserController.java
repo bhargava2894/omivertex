@@ -1,5 +1,6 @@
 package com.softility.omivertex.web;
 
+import com.softility.omivertex.domain.AccessStatus;
 import com.softility.omivertex.domain.AppUser;
 import com.softility.omivertex.repository.AppUserRepository;
 import com.softility.omivertex.web.error.NotFoundException;
@@ -25,7 +26,7 @@ public class AdminUserController {
     public AppUser approveRequest(@PathVariable Long id) {
         AppUser user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("AccessRequest", id));
-        user.setStatus("APPROVED");
+        user.setStatus(AccessStatus.APPROVED);
         return userRepository.save(user);
     }
 
@@ -33,7 +34,7 @@ public class AdminUserController {
     public AppUser rejectRequest(@PathVariable Long id) {
         AppUser user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("AccessRequest", id));
-        user.setStatus("REJECTED");
+        user.setStatus(AccessStatus.REJECTED);
         return userRepository.save(user);
     }
 }

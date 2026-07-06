@@ -18,11 +18,13 @@ public class AppUser {
     @Column(nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String role = "VIEWER"; // VIEWER, ADMIN
+    private Role role = Role.VIEWER;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status = "PENDING"; // PENDING, APPROVED, REJECTED
+    private AccessStatus status = AccessStatus.PENDING;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
@@ -34,9 +36,9 @@ public class AppUser {
     public void setEmail(String email) { this.email = email; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public Role getRole() { return role; }
+    public void setRole(Role role) { this.role = role; }
+    public AccessStatus getStatus() { return status; }
+    public void setStatus(AccessStatus status) { this.status = status; }
     public Instant getCreatedAt() { return createdAt; }
 }
