@@ -88,10 +88,13 @@ export default function Taxonomy({ showToast, canEdit }) {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '24px' }} className="form-grid">
+    <div
+      style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '24px' }}
+      className="form-grid"
+    >
       {/* Taxonomy list (left side) */}
       <div style={{ display: 'grid', gap: '18px', alignContent: 'start' }}>
-        {(!taxonomy || taxonomy.length === 0) ? (
+        {!taxonomy || taxonomy.length === 0 ? (
           <div className="card">
             <div className="empty-state">
               <Icon name="inbox" size={40} />
@@ -100,9 +103,28 @@ export default function Taxonomy({ showToast, canEdit }) {
           </div>
         ) : (
           taxonomy.map((cat) => (
-            <div key={cat.id} className="card" style={{ padding: '20px', animation: 'fade-in 0.25s ease' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <div
+              key={cat.id}
+              className="card"
+              style={{ padding: '20px', animation: 'fade-in 0.25s ease' }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '14px',
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: '15px',
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.03em',
+                  }}
+                >
                   {cat.name}
                 </h3>
                 {canEdit && (!cat.skills || cat.skills.length === 0) && (
@@ -116,8 +138,10 @@ export default function Taxonomy({ showToast, canEdit }) {
                   </button>
                 )}
               </div>
-              {(!cat.skills || cat.skills.length === 0) ? (
-                <p className="cell-sub" style={{ fontSize: '13px', margin: 0 }}>No skills defined in this category.</p>
+              {!cat.skills || cat.skills.length === 0 ? (
+                <p className="cell-sub" style={{ fontSize: '13px', margin: 0 }}>
+                  No skills defined in this category.
+                </p>
               ) : (
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {cat.skills.map((skill) => (

@@ -7,7 +7,10 @@ function ThemePreview({ mode }) {
   const side = dark ? '#0a0f1d' : '#0f172a';
   const line = dark ? '#25314a' : '#e2e8f0';
   return (
-    <div className="theme-preview" style={{ background: half ? 'linear-gradient(90deg, #f6f8fb 50%, #0b1120 50%)' : bg }}>
+    <div
+      className="theme-preview"
+      style={{ background: half ? 'linear-gradient(90deg, #f6f8fb 50%, #0b1120 50%)' : bg }}
+    >
       <div className="tp-side" style={{ background: side }} />
       <div className="tp-main">
         <div className="tp-line" style={{ background: '#2563eb', width: '55%' }} />
@@ -49,8 +52,8 @@ export default function Settings({ theme, setTheme, showToast, canEdit }) {
       <div className="card settings-section">
         <h2>Data</h2>
         <p className="desc">
-          Import a staffing roster from Excel or CSV, or export the current roster as
-          Excel, CSV, PDF, or Word.
+          Import a staffing roster from Excel or CSV, or export the current roster as Excel, CSV,
+          PDF, or Word.
         </p>
         <div className="toolbar-actions">
           {canEdit && <ImportButton onImported={() => {}} showToast={showToast} />}

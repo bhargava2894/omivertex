@@ -10,8 +10,12 @@ import Icon from '../components/Icon.jsx';
 const today = () => new Date().toISOString().slice(0, 10);
 
 const EMPTY = {
-  associateId: '', projectId: '', billable: true,
-  allocationPercent: 100, startDate: today(), endDate: '',
+  associateId: '',
+  projectId: '',
+  billable: true,
+  allocationPercent: 100,
+  startDate: today(),
+  endDate: '',
 };
 
 export default function Allocations({ showToast, canEdit }) {
@@ -29,15 +33,20 @@ export default function Allocations({ showToast, canEdit }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const openCreate = () => { setErrors({}); setEditing({ form: { ...EMPTY } }); };
+  const openCreate = () => {
+    setErrors({});
+    setEditing({ form: { ...EMPTY } });
+  };
   const openEdit = (row) => {
     setErrors({});
     setEditing({
       id: row.id,
       label: `${row.associateName} on ${row.projectName}`,
       form: {
-        billable: row.billable, allocationPercent: row.allocationPercent,
-        startDate: row.startDate, endDate: row.endDate || '',
+        billable: row.billable,
+        allocationPercent: row.allocationPercent,
+        startDate: row.startDate,
+        endDate: row.endDate || '',
       },
     });
   };
@@ -69,7 +78,10 @@ export default function Allocations({ showToast, canEdit }) {
       setEditing(null);
       reload();
     } catch (err) {
-      setErrors({ ...err.fieldErrors, _general: Object.keys(err.fieldErrors).length ? null : err.message });
+      setErrors({
+        ...err.fieldErrors,
+        _general: Object.keys(err.fieldErrors).length ? null : err.message,
+      });
     } finally {
       setSaving(false);
     }
@@ -90,13 +102,25 @@ export default function Allocations({ showToast, canEdit }) {
     <>
       <div className="toolbar">
         <div className="toolbar-filters">
-          <select className="filter-select" value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} aria-label="Filter by project">
+          <select
+            className="filter-select"
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            aria-label="Filter by project"
+          >
             <option value="">All projects</option>
             {(projects || []).map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
             ))}
           </select>
-          <select className="filter-select" value={activeOnly ? 'active' : ''} onChange={(e) => setActiveOnly(e.target.value === 'active')} aria-label="Filter by allocation state">
+          <select
+            className="filter-select"
+            value={activeOnly ? 'active' : ''}
+            onChange={(e) => setActiveOnly(e.target.value === 'active')}
+            aria-label="Filter by allocation state"
+          >
             <option value="active">Current only</option>
             <option value="">Including ended</option>
           </select>
@@ -115,9 +139,14 @@ export default function Allocations({ showToast, canEdit }) {
         onEdit={canEdit ? openEdit : undefined}
         onDelete={canEdit ? remove : undefined}
         columns={[
-          { key: 'associateName', label: 'Associate', render: (r) => <span className="cell-main">{r.associateName}</span> },
           {
-            key: 'projectName', label: 'Project',
+            key: 'associateName',
+            label: 'Associate',
+            render: (r) => <span className="cell-main">{r.associateName}</span>,
+          },
+          {
+            key: 'projectName',
+            label: 'Project',
             render: (r) => (
               <div>
                 <div>{r.projectName}</div>
@@ -125,11 +154,23 @@ export default function Allocations({ showToast, canEdit }) {
               </div>
             ),
           },
-          { key: 'billable', label: 'Billing', render: (r) => <Badge value={r.billable ? 'Billable' : 'Non-billable'} /> },
-          { key: 'allocationPercent', label: 'Allocation', render: (r) => `${r.allocationPercent}%` },
+          {
+            key: 'billable',
+            label: 'Billing',
+            render: (r) => <Badge value={r.billable ? 'Billable' : 'Non-billable'} />,
+          },
+          {
+            key: 'allocationPercent',
+            label: 'Allocation',
+            render: (r) => `${r.allocationPercent}%`,
+          },
           { key: 'startDate', label: 'Start' },
           { key: 'endDate', label: 'End', render: (r) => r.endDate || '—' },
-          { key: 'active', label: 'State', render: (r) => <Badge value={r.active ? 'Current' : 'Ended'} /> },
+          {
+            key: 'active',
+            label: 'State',
+            render: (r) => <Badge value={r.active ? 'Current' : 'Ended'} />,
+          },
         ]}
       />
 
@@ -139,7 +180,9 @@ export default function Allocations({ showToast, canEdit }) {
           onClose={() => setEditing(null)}
           footer={
             <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+              <button className="btn btn-ghost" onClick={() => setEditing(null)}>
+                Cancel
+              </button>
               <button className="btn btn-primary" onClick={save} disabled={saving}>
                 {saving ? 'Saving…' : editing.id ? 'Save Changes' : 'Assign'}
               </button>
@@ -151,7 +194,11 @@ export default function Allocations({ showToast, canEdit }) {
             {!editing.id && (
               <>
                 <Field label="Associate" required error={errors.associateId} full>
-                  <select value={editing.form.associateId} onChange={(e) => set('associateId', e.target.value)} className={errors.associateId ? 'invalid' : ''}>
+                  <select
+                    value={editing.form.associateId}
+                    onChange={(e) => set('associateId', e.target.value)}
+                    className={errors.associateId ? 'invalid' : ''}
+                  >
                     <option value="">Select associate…</option>
                     {(associates || []).map((a) => (
                       <option key={a.id} value={a.id}>
@@ -161,29 +208,54 @@ export default function Allocations({ showToast, canEdit }) {
                   </select>
                 </Field>
                 <Field label="Project" required error={errors.projectId} full>
-                  <select value={editing.form.projectId} onChange={(e) => set('projectId', e.target.value)} className={errors.projectId ? 'invalid' : ''}>
+                  <select
+                    value={editing.form.projectId}
+                    onChange={(e) => set('projectId', e.target.value)}
+                    className={errors.projectId ? 'invalid' : ''}
+                  >
                     <option value="">Select project…</option>
                     {(projects || []).map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} · {p.clientName}</option>
+                      <option key={p.id} value={p.id}>
+                        {p.name} · {p.clientName}
+                      </option>
                     ))}
                   </select>
                 </Field>
               </>
             )}
             <Field label="Allocation %" required error={errors.allocationPercent}>
-              <input type="number" min="1" max="100" value={editing.form.allocationPercent}
-                     onChange={(e) => set('allocationPercent', e.target.value)}
-                     className={errors.allocationPercent ? 'invalid' : ''} />
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={editing.form.allocationPercent}
+                onChange={(e) => set('allocationPercent', e.target.value)}
+                className={errors.allocationPercent ? 'invalid' : ''}
+              />
             </Field>
             <div className="checkbox-field">
-              <input id="billable" type="checkbox" checked={editing.form.billable} onChange={(e) => set('billable', e.target.checked)} />
+              <input
+                id="billable"
+                type="checkbox"
+                checked={editing.form.billable}
+                onChange={(e) => set('billable', e.target.checked)}
+              />
               <label htmlFor="billable">Billable engagement</label>
             </div>
             <Field label="Start date" required error={errors.startDate}>
-              <input type="date" value={editing.form.startDate} onChange={(e) => set('startDate', e.target.value)} className={errors.startDate ? 'invalid' : ''} />
+              <input
+                type="date"
+                value={editing.form.startDate}
+                onChange={(e) => set('startDate', e.target.value)}
+                className={errors.startDate ? 'invalid' : ''}
+              />
             </Field>
             <Field label="End date (roll-off)" error={errors.endDate}>
-              <input type="date" value={editing.form.endDate} onChange={(e) => set('endDate', e.target.value)} />
+              <input
+                type="date"
+                value={editing.form.endDate}
+                onChange={(e) => set('endDate', e.target.value)}
+              />
             </Field>
           </div>
         </Modal>

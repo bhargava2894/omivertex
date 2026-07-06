@@ -9,8 +9,15 @@ import Icon from '../components/Icon.jsx';
 import { PROFICIENCIES } from '../proficiency.js';
 
 const EMPTY = {
-  title: '', projectId: '', requiredSkill: '', requiredSkillId: '', minProficiency: '', billable: true,
-  allocationPercent: 100, startDate: '', status: 'OPEN',
+  title: '',
+  projectId: '',
+  requiredSkill: '',
+  requiredSkillId: '',
+  minProficiency: '',
+  billable: true,
+  allocationPercent: 100,
+  startDate: '',
+  status: 'OPEN',
 };
 
 export default function Positions({ showToast, canEdit }) {
@@ -27,18 +34,24 @@ export default function Positions({ showToast, canEdit }) {
   const [saving, setSaving] = useState(false);
   const [matching, setMatching] = useState(null); // { position, candidates|null, filling }
 
-  const openCreate = () => { setErrors({}); setEditing({ form: { ...EMPTY } }); };
+  const openCreate = () => {
+    setErrors({});
+    setEditing({ form: { ...EMPTY } });
+  };
   const openEdit = (row) => {
     setErrors({});
     setEditing({
       id: row.id,
       form: {
-        title: row.title, projectId: row.projectId,
+        title: row.title,
+        projectId: row.projectId,
         requiredSkill: row.requiredSkill || '',
         requiredSkillId: row.requiredSkillId || '',
         minProficiency: row.minProficiency || '',
-        billable: row.billable, allocationPercent: row.allocationPercent,
-        startDate: row.startDate || '', status: row.status,
+        billable: row.billable,
+        allocationPercent: row.allocationPercent,
+        startDate: row.startDate || '',
+        status: row.status,
       },
     });
   };
@@ -63,7 +76,10 @@ export default function Positions({ showToast, canEdit }) {
       setEditing(null);
       reload();
     } catch (err) {
-      setErrors({ ...err.fieldErrors, _general: Object.keys(err.fieldErrors).length ? null : err.message });
+      setErrors({
+        ...err.fieldErrors,
+        _general: Object.keys(err.fieldErrors).length ? null : err.message,
+      });
     } finally {
       setSaving(false);
     }
@@ -94,7 +110,9 @@ export default function Positions({ showToast, canEdit }) {
   const fill = async (candidate) => {
     setMatching((m) => ({ ...m, filling: candidate.associateId }));
     try {
-      await api.create(`positions/${matching.position.id}/fill`, { associateId: candidate.associateId });
+      await api.create(`positions/${matching.position.id}/fill`, {
+        associateId: candidate.associateId,
+      });
       showToast(`${candidate.name} allocated to ${matching.position.projectName}`);
       setMatching(null);
       reload();
@@ -108,7 +126,12 @@ export default function Positions({ showToast, canEdit }) {
     <>
       <div className="toolbar">
         <div className="toolbar-filters">
-          <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
+          <select
+            className="filter-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by status"
+          >
             <option value="OPEN">Open</option>
             <option value="FILLED">Filled</option>
             <option value="CANCELLED">Cancelled</option>
@@ -130,11 +153,14 @@ export default function Positions({ showToast, canEdit }) {
         onDelete={canEdit ? remove : undefined}
         columns={[
           {
-            key: 'title', label: 'Position',
+            key: 'title',
+            label: 'Position',
             render: (r) => (
               <div>
                 <div className="cell-main">{r.title}</div>
-                <div className="cell-sub">{r.projectName} · {r.clientName}</div>
+                <div className="cell-sub">
+                  {r.projectName} · {r.clientName}
+                </div>
               </div>
             ),
           },
@@ -143,9 +169,7 @@ export default function Positions({ showToast, canEdit }) {
             label: 'Skill',
             render: (r) => (
               <div>
-                <div className="cell-main">
-                  {r.requiredSkillName || r.requiredSkill || '—'}
-                </div>
+                <div className="cell-main">{r.requiredSkillName || r.requiredSkill || '—'}</div>
                 {r.minProficiency && (
                   <div className="cell-sub" style={{ fontSize: '11px' }}>
                     Min: {r.minProficiency.replace('_', ' ')}
@@ -154,12 +178,27 @@ export default function Positions({ showToast, canEdit }) {
               </div>
             ),
           },
-          { key: 'billable', label: 'Billing', render: (r) => <Badge value={r.billable ? 'Billable' : 'Non-billable'} /> },
-          { key: 'allocationPercent', label: 'Allocation', render: (r) => `${r.allocationPercent}%` },
-          { key: 'startDate', label: 'Start', render: (r) => r.startDate || '—' },
-          { key: 'status', label: 'Status', render: (r) => <Badge value={r.status === 'OPEN' ? 'ACTIVE' : r.status} label={r.status} /> },
           {
-            key: 'match', label: '',
+            key: 'billable',
+            label: 'Billing',
+            render: (r) => <Badge value={r.billable ? 'Billable' : 'Non-billable'} />,
+          },
+          {
+            key: 'allocationPercent',
+            label: 'Allocation',
+            render: (r) => `${r.allocationPercent}%`,
+          },
+          { key: 'startDate', label: 'Start', render: (r) => r.startDate || '—' },
+          {
+            key: 'status',
+            label: 'Status',
+            render: (r) => (
+              <Badge value={r.status === 'OPEN' ? 'ACTIVE' : r.status} label={r.status} />
+            ),
+          },
+          {
+            key: 'match',
+            label: '',
             render: (r) =>
               canEdit && r.status === 'OPEN' ? (
                 <button className="btn btn-ghost btn-sm" onClick={() => openMatches(r)}>
@@ -176,7 +215,9 @@ export default function Positions({ showToast, canEdit }) {
           onClose={() => setEditing(null)}
           footer={
             <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+              <button className="btn btn-ghost" onClick={() => setEditing(null)}>
+                Cancel
+              </button>
               <button className="btn btn-primary" onClick={save} disabled={saving}>
                 {saving ? 'Saving…' : 'Save Position'}
               </button>
@@ -186,23 +227,39 @@ export default function Positions({ showToast, canEdit }) {
           {errors._general && <div className="form-alert">{errors._general}</div>}
           <div className="form-grid">
             <Field label="Title" required error={errors.title} full>
-              <input value={editing.form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Senior Java Developer" className={errors.title ? 'invalid' : ''} />
+              <input
+                value={editing.form.title}
+                onChange={(e) => set('title', e.target.value)}
+                placeholder="e.g. Senior Java Developer"
+                className={errors.title ? 'invalid' : ''}
+              />
             </Field>
             <Field label="Project" required error={errors.projectId} full>
-              <select value={editing.form.projectId} onChange={(e) => set('projectId', e.target.value)} className={errors.projectId ? 'invalid' : ''}>
+              <select
+                value={editing.form.projectId}
+                onChange={(e) => set('projectId', e.target.value)}
+                className={errors.projectId ? 'invalid' : ''}
+              >
                 <option value="">Select project…</option>
                 {(projects || []).map((p) => (
-                  <option key={p.id} value={p.id}>{p.name} · {p.clientName}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name} · {p.clientName}
+                  </option>
                 ))}
               </select>
             </Field>
             <Field label="Required Skill (Structured)" error={errors.requiredSkillId}>
-              <select value={editing.form.requiredSkillId} onChange={(e) => set('requiredSkillId', e.target.value)}>
+              <select
+                value={editing.form.requiredSkillId}
+                onChange={(e) => set('requiredSkillId', e.target.value)}
+              >
                 <option value="">Select skill from taxonomy…</option>
                 {(taxonomy || []).map((cat) => (
                   <optgroup key={cat.id} label={cat.name}>
                     {(cat.skills || []).map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
                     ))}
                   </optgroup>
                 ))}
@@ -216,18 +273,34 @@ export default function Positions({ showToast, canEdit }) {
               >
                 <option value="">Any Level</option>
                 {PROFICIENCIES.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
                 ))}
               </select>
             </Field>
             <Field label="Legacy Required Skill (Text fallback)" error={errors.requiredSkill} full>
-              <input value={editing.form.requiredSkill} onChange={(e) => set('requiredSkill', e.target.value)} placeholder="e.g. Java, Python (legacy search fallback)" />
+              <input
+                value={editing.form.requiredSkill}
+                onChange={(e) => set('requiredSkill', e.target.value)}
+                placeholder="e.g. Java, Python (legacy search fallback)"
+              />
             </Field>
             <Field label="Allocation %" error={errors.allocationPercent}>
-              <input type="number" min="1" max="100" value={editing.form.allocationPercent} onChange={(e) => set('allocationPercent', e.target.value)} />
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={editing.form.allocationPercent}
+                onChange={(e) => set('allocationPercent', e.target.value)}
+              />
             </Field>
             <Field label="Start date" error={errors.startDate}>
-              <input type="date" value={editing.form.startDate} onChange={(e) => set('startDate', e.target.value)} />
+              <input
+                type="date"
+                value={editing.form.startDate}
+                onChange={(e) => set('startDate', e.target.value)}
+              />
             </Field>
             {editing.id ? (
               <Field label="Status">
@@ -237,9 +310,16 @@ export default function Positions({ showToast, canEdit }) {
                   <option value="CANCELLED">Cancelled</option>
                 </select>
               </Field>
-            ) : <div />}
+            ) : (
+              <div />
+            )}
             <div className="checkbox-field">
-              <input id="pos-billable" type="checkbox" checked={editing.form.billable} onChange={(e) => set('billable', e.target.checked)} />
+              <input
+                id="pos-billable"
+                type="checkbox"
+                checked={editing.form.billable}
+                onChange={(e) => set('billable', e.target.checked)}
+              />
               <label htmlFor="pos-billable">Billable seat</label>
             </div>
           </div>
@@ -250,15 +330,19 @@ export default function Positions({ showToast, canEdit }) {
         <Modal
           title={`Candidates — ${matching.position.title}`}
           onClose={() => setMatching(null)}
-          footer={<button className="btn btn-ghost" onClick={() => setMatching(null)}>Close</button>}
+          footer={
+            <button className="btn btn-ghost" onClick={() => setMatching(null)}>
+              Close
+            </button>
+          }
         >
           <p className="cell-sub" style={{ marginTop: 0 }}>
             {matching.position.requiredSkillName
               ? ` · needs ${matching.position.requiredSkillName}${matching.position.minProficiency ? ` (${matching.position.minProficiency.replace('_', ' ')}+)` : ''}`
               : matching.position.requiredSkill
-              ? ` · needs ${matching.position.requiredSkill}`
-              : ''} ·{' '}
-            {matching.position.allocationPercent}%
+                ? ` · needs ${matching.position.requiredSkill}`
+                : ''}{' '}
+            · {matching.position.allocationPercent}%
           </p>
           {matching.candidates == null ? (
             <div className="skeleton-row" />
@@ -278,13 +362,17 @@ export default function Positions({ showToast, canEdit }) {
                     )}
                   </div>
                   <div className="cell-sub">
-                    {[c.designation, c.primarySkill, c.secondarySkill].filter(Boolean).join(' · ') || '—'}
+                    {[c.designation, c.primarySkill, c.secondarySkill]
+                      .filter(Boolean)
+                      .join(' · ') || '—'}
                   </div>
                 </div>
                 <div className="radar-right">
                   <Badge
                     tone={c.benchDays != null ? 'red' : 'blue'}
-                    label={c.benchDays != null ? `bench ${c.benchDays}d` : `${c.availablePercent}% free`}
+                    label={
+                      c.benchDays != null ? `bench ${c.benchDays}d` : `${c.availablePercent}% free`
+                    }
                   />
                   <button
                     className="btn btn-primary btn-sm"

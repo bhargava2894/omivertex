@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{js,jsx}\" \"*.{js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx}\" \"*.{js,json}\"",
+    "check": "prettier --check \"src/**/*.{js,jsx}\" \"*.{js,json}\" && eslint .",
+    "prebuild": "npm run check",
     "build": "vite build"
   },
   "dependencies": {
@@ -13,7 +18,15 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@vitejs/plugin-react": "^4.3.4",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4",
     "vite": "^5.4.11"
   }
 }

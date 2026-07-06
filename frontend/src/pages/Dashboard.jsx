@@ -30,7 +30,11 @@ function SplitBar({ label, value, total, color }) {
           {value} · {pct}%
         </strong>
       </div>
-      <div className="split-track" role="img" aria-label={`${label}: ${value} of ${total} (${pct}%)`}>
+      <div
+        className="split-track"
+        role="img"
+        aria-label={`${label}: ${value} of ${total} (${pct}%)`}
+      >
         <div className="split-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
     </div>
@@ -38,7 +42,9 @@ function SplitBar({ label, value, total, color }) {
 }
 
 export default function Dashboard() {
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('ov-dashboard-view') || 'charts');
+  const [viewMode, setViewMode] = useState(
+    () => localStorage.getItem('ov-dashboard-view') || 'charts'
+  );
 
   const toggleViewMode = (mode) => {
     setViewMode(mode);
@@ -60,17 +66,35 @@ export default function Dashboard() {
 
   const s = data;
   const allocated = s.billableCount + s.nonBillableCount;
-  const billablePct = s.totalAssociates > 0 ? Math.round((s.billableCount / s.totalAssociates) * 100) : 0;
+  const billablePct =
+    s.totalAssociates > 0 ? Math.round((s.billableCount / s.totalAssociates) * 100) : 0;
 
   const maxHeadcount = Math.max(1, ...s.clientHeadcounts.map((c) => c.headcount));
 
   return (
     <>
       <div className="toolbar" style={{ justifyContent: 'flex-end', marginBottom: '16px' }}>
-        <div className="toolbar-actions" style={{ background: 'var(--color-muted)', padding: '2px', borderRadius: 'var(--radius-sm)', display: 'flex', gap: '2px' }}>
+        <div
+          className="toolbar-actions"
+          style={{
+            background: 'var(--color-muted)',
+            padding: '2px',
+            borderRadius: 'var(--radius-sm)',
+            display: 'flex',
+            gap: '2px',
+          }}
+        >
           <button
             className={`btn btn-sm ${viewMode === 'charts' ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ border: 'none', minHeight: '30px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+            style={{
+              border: 'none',
+              minHeight: '30px',
+              padding: '4px 10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+            }}
             onClick={() => toggleViewMode('charts')}
           >
             <Icon name="dashboard" size={13} />
@@ -78,7 +102,15 @@ export default function Dashboard() {
           </button>
           <button
             className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ border: 'none', minHeight: '30px', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}
+            style={{
+              border: 'none',
+              minHeight: '30px',
+              padding: '4px 10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+            }}
             onClick={() => toggleViewMode('list')}
           >
             <Icon name="list" size={13} />
@@ -88,12 +120,37 @@ export default function Dashboard() {
       </div>
 
       <div className="stat-grid">
-        <StatCard icon="users" label="Total Associates" value={s.totalAssociates} hint={`${allocated} allocated to projects`} />
-        <StatCard icon="activity" label="Billable Utilization" value={`${s.utilizationPercent}%`} hint="FTE-weighted, of total workforce" />
-        <StatCard icon="dollar" label="Billable" value={s.billableCount} hint={`${billablePct}% of headcount`} />
+        <StatCard
+          icon="users"
+          label="Total Associates"
+          value={s.totalAssociates}
+          hint={`${allocated} allocated to projects`}
+        />
+        <StatCard
+          icon="activity"
+          label="Billable Utilization"
+          value={`${s.utilizationPercent}%`}
+          hint="FTE-weighted, of total workforce"
+        />
+        <StatCard
+          icon="dollar"
+          label="Billable"
+          value={s.billableCount}
+          hint={`${billablePct}% of headcount`}
+        />
         <StatCard icon="bench" label="On Bench" value={s.benchCount} hint="No current allocation" />
-        <StatCard icon="briefcase" label="Active Projects" value={s.activeProjects} hint={`across ${s.totalClients} clients`} />
-        <StatCard icon="target" label="Open Demand" value={s.openPositions} hint="Positions awaiting a match" />
+        <StatCard
+          icon="briefcase"
+          label="Active Projects"
+          value={s.activeProjects}
+          hint={`across ${s.totalClients} clients`}
+        />
+        <StatCard
+          icon="target"
+          label="Open Demand"
+          value={s.openPositions}
+          hint="Positions awaiting a match"
+        />
       </div>
 
       <div className="panel-grid">
@@ -108,7 +165,9 @@ export default function Dashboard() {
               <div className="radar-row" key={r.allocationId}>
                 <div>
                   <div className="cell-main">{r.associateName}</div>
-                  <div className="cell-sub">{r.projectName} · {r.clientName}</div>
+                  <div className="cell-sub">
+                    {r.projectName} · {r.clientName}
+                  </div>
                 </div>
                 <div className="radar-right">
                   <span className="cell-sub">{r.endDate}</span>
@@ -194,9 +253,24 @@ export default function Dashboard() {
             />
           ) : (
             <>
-              <SplitBar label="Billable" value={s.billableCount} total={s.totalAssociates} color="var(--color-accent)" />
-              <SplitBar label="Non-billable" value={s.nonBillableCount} total={s.totalAssociates} color="var(--color-warn)" />
-              <SplitBar label="Bench" value={s.benchCount} total={s.totalAssociates} color="var(--color-destructive)" />
+              <SplitBar
+                label="Billable"
+                value={s.billableCount}
+                total={s.totalAssociates}
+                color="var(--color-accent)"
+              />
+              <SplitBar
+                label="Non-billable"
+                value={s.nonBillableCount}
+                total={s.totalAssociates}
+                color="var(--color-warn)"
+              />
+              <SplitBar
+                label="Bench"
+                value={s.benchCount}
+                total={s.totalAssociates}
+                color="var(--color-destructive)"
+              />
             </>
           )}
         </div>
@@ -212,8 +286,18 @@ export default function Dashboard() {
             />
           ) : (
             <>
-              <SplitBar label="Onshore" value={s.onshoreCount} total={s.totalAssociates} color="var(--color-primary)" />
-              <SplitBar label="Offshore" value={s.offshoreCount} total={s.totalAssociates} color="#7c3aed" />
+              <SplitBar
+                label="Onshore"
+                value={s.onshoreCount}
+                total={s.totalAssociates}
+                color="var(--color-primary)"
+              />
+              <SplitBar
+                label="Offshore"
+                value={s.offshoreCount}
+                total={s.totalAssociates}
+                color="#7c3aed"
+              />
               <div className="legend">
                 <span>
                   <span className="legend-dot" style={{ background: 'var(--color-primary)' }} />
@@ -255,7 +339,11 @@ export default function Dashboard() {
               <div className="rank-row" key={c.clientName}>
                 <span className="rank-name">{c.clientName}</span>
                 <span className="rank-count">{c.headcount} associates</span>
-                <div className="rank-track" role="img" aria-label={`${c.clientName}: ${c.headcount} associates`}>
+                <div
+                  className="rank-track"
+                  role="img"
+                  aria-label={`${c.clientName}: ${c.headcount} associates`}
+                >
                   <div
                     className="rank-fill"
                     style={{

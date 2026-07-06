@@ -27,13 +27,25 @@ export function ExportMenu() {
 
   return (
     <div className="menu-wrap" ref={ref}>
-      <button className="btn btn-ghost" onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
+      <button
+        className="btn btn-ghost"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
         <Icon name="download" size={16} /> Export
       </button>
       {open && (
         <div className="menu" role="menu">
           {EXPORTS.map((e) => (
-            <a key={e.format} className="menu-item" role="menuitem" href={`/api/v1/data/export?format=${e.format}`} download onClick={() => setOpen(false)}>
+            <a
+              key={e.format}
+              className="menu-item"
+              role="menuitem"
+              href={`/api/v1/data/export?format=${e.format}`}
+              download
+              onClick={() => setOpen(false)}
+            >
               <Icon name={e.icon} size={16} /> {e.label}
             </a>
           ))}
@@ -55,7 +67,10 @@ export function ImportButton({ onImported, showToast }) {
   const post = async (theFile, dryRun) => {
     const form = new FormData();
     form.append('file', theFile);
-    const res = await fetch(`/api/v1/data/import?dryRun=${dryRun}&ignoreNovice=${ignoreNovice}`, { method: 'POST', body: form });
+    const res = await fetch(`/api/v1/data/import?dryRun=${dryRun}&ignoreNovice=${ignoreNovice}`, {
+      method: 'POST',
+      body: form,
+    });
     const body = await res.json();
     if (!res.ok) throw new Error(body.message || 'Import failed');
     return body;
@@ -86,7 +101,9 @@ export function ImportButton({ onImported, showToast }) {
       const result = await post(file, false);
       setSummary(result);
       setFile(null);
-      showToast(`Imported ${result.allocationsCreated} allocation${result.allocationsCreated === 1 ? '' : 's'}`);
+      showToast(
+        `Imported ${result.allocationsCreated} allocation${result.allocationsCreated === 1 ? '' : 's'}`
+      );
       onImported();
     } catch (err) {
       setError(err.message);
@@ -118,13 +135,17 @@ export function ImportButton({ onImported, showToast }) {
           footer={
             isPreview ? (
               <>
-                <button className="btn btn-ghost" onClick={close}>Cancel</button>
+                <button className="btn btn-ghost" onClick={close}>
+                  Cancel
+                </button>
                 <button className="btn btn-primary" onClick={confirm} disabled={busy}>
                   {busy ? 'Importing…' : 'Looks right — import now'}
                 </button>
               </>
             ) : (
-              <button className="btn btn-primary" onClick={close}>Done</button>
+              <button className="btn btn-primary" onClick={close}>
+                Done
+              </button>
             )
           }
         >
@@ -132,7 +153,9 @@ export function ImportButton({ onImported, showToast }) {
 
           {!summary && (
             <>
-              <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div
+                style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
                 <input
                   type="checkbox"
                   id="ignore-novice"
@@ -140,25 +163,45 @@ export function ImportButton({ onImported, showToast }) {
                   onChange={(e) => setIgnoreNovice(e.target.checked)}
                   disabled={busy}
                 />
-                <label htmlFor="ignore-novice" style={{ fontSize: '13.5px', color: 'var(--color-foreground)', cursor: 'pointer' }}>
+                <label
+                  htmlFor="ignore-novice"
+                  style={{
+                    fontSize: '13.5px',
+                    color: 'var(--color-foreground)',
+                    cursor: 'pointer',
+                  }}
+                >
                   Ignore novice level skills (EmployeeSkills sheet only)
                 </label>
               </div>
               <label
                 className={`dropzone ${drag ? 'drag' : ''}`}
-                onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDrag(true);
+                }}
                 onDragLeave={() => setDrag(false)}
-                onDrop={(e) => { e.preventDefault(); setDrag(false); preview(e.dataTransfer.files[0]); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDrag(false);
+                  preview(e.dataTransfer.files[0]);
+                }}
               >
                 <Icon name="upload" size={30} />
                 <div>
                   <strong>{busy ? 'Analyzing…' : 'Click to choose a file'}</strong> or drag it here
                 </div>
                 <div className="hint">
-                  .xlsx or .csv (Roster: ASSOCIATE NAME, COMPANY, etc. OR SkillCloud workbook: 'employees', 'employeeskills', and 'certifications' sheets)
-                  — you'll see a preview before anything is saved
+                  .xlsx or .csv (Roster: ASSOCIATE NAME, COMPANY, etc. OR SkillCloud workbook:
+                  'employees', 'employeeskills', and 'certifications' sheets) — you'll see a preview
+                  before anything is saved
                 </div>
-                <input type="file" accept=".xlsx,.csv" disabled={busy} onChange={(e) => preview(e.target.files[0])} />
+                <input
+                  type="file"
+                  accept=".xlsx,.csv"
+                  disabled={busy}
+                  onChange={(e) => preview(e.target.files[0])}
+                />
               </label>
             </>
           )}
@@ -171,22 +214,45 @@ export function ImportButton({ onImported, showToast }) {
                   : 'Import complete.'}
               </p>
               <div className="import-summary">
-                <div className="import-stat"><strong>{summary.rowsProcessed}</strong> rows processed</div>
-                <div className="import-stat"><strong>{summary.associatesCreated}</strong> associates {isPreview ? 'to add' : 'added'}</div>
-                <div className="import-stat"><strong>{summary.clientsCreated}</strong> clients {isPreview ? 'to add' : 'added'}</div>
-                <div className="import-stat"><strong>{summary.projectsCreated}</strong> projects {isPreview ? 'to add' : 'added'}</div>
-                <div className="import-stat"><strong>{summary.allocationsCreated}</strong> allocations {isPreview ? 'to create' : 'created'}</div>
+                <div className="import-stat">
+                  <strong>{summary.rowsProcessed}</strong> rows processed
+                </div>
+                <div className="import-stat">
+                  <strong>{summary.associatesCreated}</strong> associates{' '}
+                  {isPreview ? 'to add' : 'added'}
+                </div>
+                <div className="import-stat">
+                  <strong>{summary.clientsCreated}</strong> clients {isPreview ? 'to add' : 'added'}
+                </div>
+                <div className="import-stat">
+                  <strong>{summary.projectsCreated}</strong> projects{' '}
+                  {isPreview ? 'to add' : 'added'}
+                </div>
+                <div className="import-stat">
+                  <strong>{summary.allocationsCreated}</strong> allocations{' '}
+                  {isPreview ? 'to create' : 'created'}
+                </div>
                 {summary.skillsImported > 0 && (
-                  <div className="import-stat"><strong>{summary.skillsImported}</strong> skills {isPreview ? 'to import' : 'imported'}</div>
+                  <div className="import-stat">
+                    <strong>{summary.skillsImported}</strong> skills{' '}
+                    {isPreview ? 'to import' : 'imported'}
+                  </div>
                 )}
                 {summary.certificationsImported > 0 && (
-                  <div className="import-stat"><strong>{summary.certificationsImported}</strong> certifications {isPreview ? 'to import' : 'imported'}</div>
+                  <div className="import-stat">
+                    <strong>{summary.certificationsImported}</strong> certifications{' '}
+                    {isPreview ? 'to import' : 'imported'}
+                  </div>
                 )}
-                <div className="import-stat"><strong>{summary.skipped}</strong> skipped</div>
+                <div className="import-stat">
+                  <strong>{summary.skipped}</strong> skipped
+                </div>
               </div>
               {summary.errors.length > 0 && (
                 <ul className="import-errors">
-                  {summary.errors.map((e, i) => <li key={i}>{e}</li>)}
+                  {summary.errors.map((e, i) => (
+                    <li key={i}>{e}</li>
+                  ))}
                 </ul>
               )}
             </>

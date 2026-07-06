@@ -10,8 +10,15 @@ import { ExportMenu, ImportButton } from '../components/DataTransfer.jsx';
 import { PROFICIENCIES } from '../proficiency.js';
 
 const EMPTY = {
-  name: '', email: '', company: 'Softility', location: '',
-  workMode: 'ONSHORE', designation: '', primarySkill: '', secondarySkill: '', status: 'ACTIVE',
+  name: '',
+  email: '',
+  company: 'Softility',
+  location: '',
+  workMode: 'ONSHORE',
+  designation: '',
+  primarySkill: '',
+  secondarySkill: '',
+  status: 'ACTIVE',
 };
 
 function billability(row) {
@@ -54,7 +61,9 @@ export default function Associates({ showToast, canEdit }) {
     if (!taxonomy) return;
     const initialSkillId = getParam('skillId');
     if (initialSkillId && !categoryId) {
-      const cat = (taxonomy || []).find((c) => (c.skills || []).some((s) => String(s.id) === String(initialSkillId)));
+      const cat = (taxonomy || []).find((c) =>
+        (c.skills || []).some((s) => String(s.id) === String(initialSkillId))
+      );
       if (cat) {
         setCategoryId(String(cat.id));
       }
@@ -72,7 +81,9 @@ export default function Associates({ showToast, canEdit }) {
       setMinProficiency(minP);
 
       if (taxonomy && sk && !cat) {
-        const foundCat = (taxonomy || []).find((c) => (c.skills || []).some((s) => String(s.id) === String(sk)));
+        const foundCat = (taxonomy || []).find((c) =>
+          (c.skills || []).some((s) => String(s.id) === String(sk))
+        );
         if (foundCat) {
           setCategoryId(String(foundCat.id));
         }
@@ -86,7 +97,10 @@ export default function Associates({ showToast, canEdit }) {
   if (workMode) params.workMode = workMode;
   if (staffing === 'bench') params.bench = 'true';
   if (staffing === 'billable') params.billable = 'true';
-  if (staffing === 'nonbillable') { params.billable = 'false'; params.bench = 'false'; }
+  if (staffing === 'nonbillable') {
+    params.billable = 'false';
+    params.bench = 'false';
+  }
   if (categoryId) params.categoryId = categoryId;
   if (skillId) params.skillId = skillId;
   if (minProficiency) params.minProficiency = minProficiency;
@@ -102,9 +116,11 @@ export default function Associates({ showToast, canEdit }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const allSkills = (taxonomy || []).reduce((acc, cat) => {
-    return acc.concat((cat.skills || []).map(s => s.name));
-  }, []).sort();
+  const allSkills = (taxonomy || [])
+    .reduce((acc, cat) => {
+      return acc.concat((cat.skills || []).map((s) => s.name));
+    }, [])
+    .sort();
 
   // server returns a paged envelope; search + filtering happen server-side now
   const rows = data?.content || [];
@@ -116,15 +132,24 @@ export default function Associates({ showToast, canEdit }) {
     onPage: setPage,
   };
 
-  const openCreate = () => { setErrors({}); setEditing({ form: { ...EMPTY } }); };
+  const openCreate = () => {
+    setErrors({});
+    setEditing({ form: { ...EMPTY } });
+  };
   const openEdit = (row) => {
     setErrors({});
     setEditing({
       id: row.id,
       form: {
-        name: row.name, email: row.email, company: row.company, location: row.location || '',
-        workMode: row.workMode, designation: row.designation || '',
-        primarySkill: row.primarySkill || '', secondarySkill: row.secondarySkill || '', status: row.status,
+        name: row.name,
+        email: row.email,
+        company: row.company,
+        location: row.location || '',
+        workMode: row.workMode,
+        designation: row.designation || '',
+        primarySkill: row.primarySkill || '',
+        secondarySkill: row.secondarySkill || '',
+        status: row.status,
       },
     });
   };
@@ -140,7 +165,10 @@ export default function Associates({ showToast, canEdit }) {
       setEditing(null);
       reload();
     } catch (err) {
-      setErrors({ ...err.fieldErrors, _general: Object.keys(err.fieldErrors).length ? null : err.message });
+      setErrors({
+        ...err.fieldErrors,
+        _general: Object.keys(err.fieldErrors).length ? null : err.message,
+      });
     } finally {
       setSaving(false);
     }
@@ -168,13 +196,23 @@ export default function Associates({ showToast, canEdit }) {
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search associates"
           />
-          <select className="filter-select" value={staffing} onChange={(e) => setStaffing(e.target.value)} aria-label="Filter by staffing status">
+          <select
+            className="filter-select"
+            value={staffing}
+            onChange={(e) => setStaffing(e.target.value)}
+            aria-label="Filter by staffing status"
+          >
             <option value="">All staffing</option>
             <option value="billable">Billable</option>
             <option value="nonbillable">Non-billable</option>
             <option value="bench">Bench</option>
           </select>
-          <select className="filter-select" value={workMode} onChange={(e) => setWorkMode(e.target.value)} aria-label="Filter by work mode">
+          <select
+            className="filter-select"
+            value={workMode}
+            onChange={(e) => setWorkMode(e.target.value)}
+            aria-label="Filter by work mode"
+          >
             <option value="">Onshore + Offshore</option>
             <option value="ONSHORE">Onshore</option>
             <option value="OFFSHORE">Offshore</option>
@@ -190,7 +228,9 @@ export default function Associates({ showToast, canEdit }) {
           >
             <option value="">All Categories</option>
             {(taxonomy || []).map((cat) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
             ))}
           </select>
           <select
@@ -202,7 +242,9 @@ export default function Associates({ showToast, canEdit }) {
           >
             <option value="">All Skills</option>
             {((taxonomy || []).find((c) => String(c.id) === categoryId)?.skills || []).map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
             ))}
           </select>
           <select
@@ -214,7 +256,8 @@ export default function Associates({ showToast, canEdit }) {
             <option value="">Any Level</option>
             {PROFICIENCIES.map((p, i) => (
               <option key={p.value} value={p.value}>
-                {p.label}{i < PROFICIENCIES.length - 1 ? '+' : ''}
+                {p.label}
+                {i < PROFICIENCIES.length - 1 ? '+' : ''}
               </option>
             ))}
           </select>
@@ -239,7 +282,8 @@ export default function Associates({ showToast, canEdit }) {
         onDelete={canEdit ? remove : undefined}
         columns={[
           {
-            key: 'name', label: 'Associate',
+            key: 'name',
+            label: 'Associate',
             render: (r) => (
               <div>
                 <div className="cell-main">
@@ -257,7 +301,8 @@ export default function Associates({ showToast, canEdit }) {
           { key: 'currentClient', label: 'Customer', render: (r) => r.currentClient || '—' },
           { key: 'currentProject', label: 'Project', render: (r) => r.currentProject || '—' },
           {
-            key: 'billable', label: 'Billability',
+            key: 'billable',
+            label: 'Billability',
             render: (r) =>
               r.benchDays != null ? (
                 <Badge value="Bench" label={`Bench · ${r.benchDays}d`} />
@@ -274,7 +319,9 @@ export default function Associates({ showToast, canEdit }) {
           onClose={() => setEditing(null)}
           footer={
             <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+              <button className="btn btn-ghost" onClick={() => setEditing(null)}>
+                Cancel
+              </button>
               <button className="btn btn-primary" onClick={save} disabled={saving}>
                 {saving ? 'Saving…' : 'Save Associate'}
               </button>
@@ -284,38 +331,70 @@ export default function Associates({ showToast, canEdit }) {
           {errors._general && <div className="form-alert">{errors._general}</div>}
           <div className="form-grid">
             <Field label="Full name" required error={errors.name} full>
-              <input value={editing.form.name} onChange={(e) => set('name', e.target.value)} className={errors.name ? 'invalid' : ''} />
+              <input
+                value={editing.form.name}
+                onChange={(e) => set('name', e.target.value)}
+                className={errors.name ? 'invalid' : ''}
+              />
             </Field>
             <Field label="Email" required error={errors.email} full>
-              <input type="email" value={editing.form.email} onChange={(e) => set('email', e.target.value)} className={errors.email ? 'invalid' : ''} />
+              <input
+                type="email"
+                value={editing.form.email}
+                onChange={(e) => set('email', e.target.value)}
+                className={errors.email ? 'invalid' : ''}
+              />
             </Field>
             <Field label="Company" required error={errors.company}>
-              <input value={editing.form.company} onChange={(e) => set('company', e.target.value)} className={errors.company ? 'invalid' : ''} />
+              <input
+                value={editing.form.company}
+                onChange={(e) => set('company', e.target.value)}
+                className={errors.company ? 'invalid' : ''}
+              />
             </Field>
             <Field label="Designation" error={errors.designation}>
-              <input value={editing.form.designation} onChange={(e) => set('designation', e.target.value)} />
+              <input
+                value={editing.form.designation}
+                onChange={(e) => set('designation', e.target.value)}
+              />
             </Field>
             <Field label="Primary skill" error={errors.primarySkill}>
-              <select value={editing.form.primarySkill} onChange={(e) => set('primarySkill', e.target.value)}>
+              <select
+                value={editing.form.primarySkill}
+                onChange={(e) => set('primarySkill', e.target.value)}
+              >
                 <option value="">Select primary skill...</option>
-                {allSkills.map(name => (
-                  <option key={name} value={name}>{name}</option>
+                {allSkills.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
                 ))}
               </select>
             </Field>
             <Field label="Secondary skill" error={errors.secondarySkill}>
-              <select value={editing.form.secondarySkill} onChange={(e) => set('secondarySkill', e.target.value)}>
+              <select
+                value={editing.form.secondarySkill}
+                onChange={(e) => set('secondarySkill', e.target.value)}
+              >
                 <option value="">Select secondary skill...</option>
-                {allSkills.map(name => (
-                  <option key={name} value={name}>{name}</option>
+                {allSkills.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
                 ))}
               </select>
             </Field>
             <Field label="Location" error={errors.location}>
-              <input value={editing.form.location} onChange={(e) => set('location', e.target.value)} />
+              <input
+                value={editing.form.location}
+                onChange={(e) => set('location', e.target.value)}
+              />
             </Field>
             <Field label="Work mode" required error={errors.workMode}>
-              <select value={editing.form.workMode} onChange={(e) => set('workMode', e.target.value)}>
+              <select
+                value={editing.form.workMode}
+                onChange={(e) => set('workMode', e.target.value)}
+              >
                 <option value="ONSHORE">Onshore</option>
                 <option value="OFFSHORE">Offshore</option>
               </select>

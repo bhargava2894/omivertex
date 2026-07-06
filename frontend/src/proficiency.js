@@ -3,12 +3,12 @@
 // `color` → distinct chart hue for stacked skill-distribution bars.
 // Order matters: it is the display order and matches the backend enum ordinal.
 export const PROFICIENCIES = [
-  { value: 'NOVICE',          label: 'Novice',          tone: 'gray',  color: '#9ca3af' },
-  { value: 'FOUNDATIONAL',    label: 'Foundational',    tone: 'amber', color: 'var(--chart-3)' },
-  { value: 'INTERMEDIATE',    label: 'Intermediate',    tone: 'blue',  color: 'var(--chart-1)' },
-  { value: 'FUNCTIONAL_USER', label: 'Functional User', tone: 'blue',  color: 'var(--chart-2)' },
-  { value: 'ADVANCE',         label: 'Advance',         tone: 'green', color: 'var(--chart-5)' },
-  { value: 'MASTERY',         label: 'Mastery',         tone: 'green', color: 'var(--chart-4)' },
+  { value: 'NOVICE', label: 'Novice', tone: 'gray', color: '#9ca3af' },
+  { value: 'FOUNDATIONAL', label: 'Foundational', tone: 'amber', color: 'var(--chart-3)' },
+  { value: 'INTERMEDIATE', label: 'Intermediate', tone: 'blue', color: 'var(--chart-1)' },
+  { value: 'FUNCTIONAL_USER', label: 'Functional User', tone: 'blue', color: 'var(--chart-2)' },
+  { value: 'ADVANCE', label: 'Advance', tone: 'green', color: 'var(--chart-5)' },
+  { value: 'MASTERY', label: 'Mastery', tone: 'green', color: 'var(--chart-4)' },
 ];
 
 const BY_VALUE = Object.fromEntries(PROFICIENCIES.map((p) => [p.value, p]));

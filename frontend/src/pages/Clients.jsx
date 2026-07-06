@@ -16,14 +16,23 @@ export default function Clients({ showToast, canEdit }) {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
 
-  const rows = (data || []).filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const rows = (data || []).filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
-  const openCreate = () => { setErrors({}); setEditing({ form: { ...EMPTY } }); };
+  const openCreate = () => {
+    setErrors({});
+    setEditing({ form: { ...EMPTY } });
+  };
   const openEdit = (row) => {
     setErrors({});
-    setEditing({ id: row.id, form: { name: row.name, industry: row.industry || '', location: row.location || '', status: row.status } });
+    setEditing({
+      id: row.id,
+      form: {
+        name: row.name,
+        industry: row.industry || '',
+        location: row.location || '',
+        status: row.status,
+      },
+    });
   };
   const set = (k, v) => setEditing((e) => ({ ...e, form: { ...e.form, [k]: v } }));
 
@@ -37,7 +46,10 @@ export default function Clients({ showToast, canEdit }) {
       setEditing(null);
       reload();
     } catch (err) {
-      setErrors({ ...err.fieldErrors, _general: Object.keys(err.fieldErrors).length ? null : err.message });
+      setErrors({
+        ...err.fieldErrors,
+        _general: Object.keys(err.fieldErrors).length ? null : err.message,
+      });
     } finally {
       setSaving(false);
     }
@@ -80,7 +92,11 @@ export default function Clients({ showToast, canEdit }) {
         onEdit={canEdit ? openEdit : undefined}
         onDelete={canEdit ? remove : undefined}
         columns={[
-          { key: 'name', label: 'Client', render: (r) => <span className="cell-main">{r.name}</span> },
+          {
+            key: 'name',
+            label: 'Client',
+            render: (r) => <span className="cell-main">{r.name}</span>,
+          },
           { key: 'industry', label: 'Industry', render: (r) => r.industry || '—' },
           { key: 'location', label: 'Location', render: (r) => r.location || '—' },
           { key: 'status', label: 'Status', render: (r) => <Badge value={r.status} /> },
@@ -93,7 +109,9 @@ export default function Clients({ showToast, canEdit }) {
           onClose={() => setEditing(null)}
           footer={
             <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+              <button className="btn btn-ghost" onClick={() => setEditing(null)}>
+                Cancel
+              </button>
               <button className="btn btn-primary" onClick={save} disabled={saving}>
                 {saving ? 'Saving…' : 'Save Client'}
               </button>
@@ -103,13 +121,23 @@ export default function Clients({ showToast, canEdit }) {
           {errors._general && <div className="form-alert">{errors._general}</div>}
           <div className="form-grid">
             <Field label="Name" required error={errors.name} full>
-              <input value={editing.form.name} onChange={(e) => set('name', e.target.value)} className={errors.name ? 'invalid' : ''} />
+              <input
+                value={editing.form.name}
+                onChange={(e) => set('name', e.target.value)}
+                className={errors.name ? 'invalid' : ''}
+              />
             </Field>
             <Field label="Industry" error={errors.industry}>
-              <input value={editing.form.industry} onChange={(e) => set('industry', e.target.value)} />
+              <input
+                value={editing.form.industry}
+                onChange={(e) => set('industry', e.target.value)}
+              />
             </Field>
             <Field label="Location" error={errors.location}>
-              <input value={editing.form.location} onChange={(e) => set('location', e.target.value)} />
+              <input
+                value={editing.form.location}
+                onChange={(e) => set('location', e.target.value)}
+              />
             </Field>
             <Field label="Status">
               <select value={editing.form.status} onChange={(e) => set('status', e.target.value)}>

@@ -16,14 +16,48 @@ function SkillBar({ skillName, counts, people, onDrillDown }) {
   let cumulative = 0;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', alignItems: 'center', gap: '16px', marginBottom: '14px' }}>
-      <div style={{ fontWeight: '500', fontSize: '13.5px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={skillName}>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '160px 1fr',
+        alignItems: 'center',
+        gap: '16px',
+        marginBottom: '14px',
+      }}
+    >
+      <div
+        style={{
+          fontWeight: '500',
+          fontSize: '13.5px',
+          textOverflow: 'ellipsis',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+        }}
+        title={skillName}
+      >
         {skillName}
       </div>
       <div style={{ position: 'relative' }}>
-        <div style={{ display: 'flex', height: '22px', borderRadius: '4px', overflow: 'hidden', background: 'var(--color-muted)' }}>
+        <div
+          style={{
+            display: 'flex',
+            height: '22px',
+            borderRadius: '4px',
+            overflow: 'hidden',
+            background: 'var(--color-muted)',
+          }}
+        >
           {total === 0 ? (
-            <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: 'var(--color-muted-fg)' }}>
+            <div
+              style={{
+                flexGrow: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '11px',
+                color: 'var(--color-muted-fg)',
+              }}
+            >
               No rated associates
             </div>
           ) : (
@@ -77,12 +111,14 @@ function SkillBar({ skillName, counts, people, onDrillDown }) {
             <div className="tt-title">
               {skillName} · {PROF_LABELS[hover.prof]} ({byProf(hover.prof).length})
             </div>
-            {byProf(hover.prof).slice(0, MAX_TOOLTIP_NAMES).map((p) => (
-              <div className="tt-row" key={p.associateId}>
-                <span className="tt-key" style={{ background: PROF_COLORS[hover.prof] }} />
-                <span>{p.name}</span>
-              </div>
-            ))}
+            {byProf(hover.prof)
+              .slice(0, MAX_TOOLTIP_NAMES)
+              .map((p) => (
+                <div className="tt-row" key={p.associateId}>
+                  <span className="tt-key" style={{ background: PROF_COLORS[hover.prof] }} />
+                  <span>{p.name}</span>
+                </div>
+              ))}
             {byProf(hover.prof).length > MAX_TOOLTIP_NAMES && (
               <div className="tt-row">
                 <span className="tt-label">
@@ -103,20 +139,60 @@ function SkillBar({ skillName, counts, people, onDrillDown }) {
 function CategoryPanel({ category, skills, onDrillDown }) {
   return (
     <div className="card" style={{ padding: '24px', animation: 'fade-in 0.25s ease' }}>
-      <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      <h3
+        style={{
+          margin: '0 0 20px 0',
+          fontSize: '16px',
+          fontWeight: '700',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+        }}
+      >
         {category}
       </h3>
 
       <div style={{ display: 'grid', gap: '4px' }}>
         {skills.map((s) => (
-          <SkillBar key={s.skill} skillName={s.skill} counts={s.counts} people={s.people || []} onDrillDown={onDrillDown} />
+          <SkillBar
+            key={s.skill}
+            skillName={s.skill}
+            counts={s.counts}
+            people={s.people || []}
+            onDrillDown={onDrillDown}
+          />
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: '16px',
+          flexWrap: 'wrap',
+          marginTop: '20px',
+          paddingTop: '16px',
+          borderTop: '1px solid var(--color-border)',
+        }}
+      >
         {Object.entries(PROF_LABELS).map(([key, label]) => (
-          <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-foreground)' }}>
-            <span style={{ backgroundColor: PROF_COLORS[key], width: '12px', height: '12px', borderRadius: '2px', display: 'inline-block' }} />
+          <span
+            key={key}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12px',
+              color: 'var(--color-foreground)',
+            }}
+          >
+            <span
+              style={{
+                backgroundColor: PROF_COLORS[key],
+                width: '12px',
+                height: '12px',
+                borderRadius: '2px',
+                display: 'inline-block',
+              }}
+            />
             <span>{label}</span>
           </span>
         ))}
@@ -170,7 +246,7 @@ export default function SkillReports() {
 
   return (
     <div style={{ display: 'grid', gap: '24px' }}>
-      {(!reports || reports.length === 0) ? (
+      {!reports || reports.length === 0 ? (
         <div className="card">
           <div className="empty-state">
             <Icon name="inbox" size={40} />
@@ -179,7 +255,12 @@ export default function SkillReports() {
         </div>
       ) : (
         reports.map((r) => (
-          <CategoryPanel key={r.category} category={r.category} skills={r.skills} onDrillDown={onDrillDown} />
+          <CategoryPanel
+            key={r.category}
+            category={r.category}
+            skills={r.skills}
+            onDrillDown={onDrillDown}
+          />
         ))
       )}
 
@@ -192,13 +273,20 @@ export default function SkillReports() {
               <button className="btn btn-primary" onClick={handleShowInRoster}>
                 Show in Roster
               </button>
-              <button className="btn btn-ghost" onClick={() => setDrill(null)}>Close</button>
+              <button className="btn btn-ghost" onClick={() => setDrill(null)}>
+                Close
+              </button>
             </div>
           }
         >
           {drill.people.map((p) => (
             <div className="radar-row" key={p.associateId}>
-              <a href={`#/associates/${p.associateId}`} className="cell-main" style={{ color: 'var(--color-primary)', textDecoration: 'none' }} onClick={() => setDrill(null)}>
+              <a
+                href={`#/associates/${p.associateId}`}
+                className="cell-main"
+                style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
+                onClick={() => setDrill(null)}
+              >
                 {p.name}
               </a>
               <Badge tone={PROF_TONES[drill.prof]} label={PROF_LABELS[drill.prof]} />

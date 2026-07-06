@@ -97,7 +97,10 @@ export default function AccessRequests({ showToast }) {
                 <tr key={row.id}>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span className="user-avatar" style={{ width: '28px', height: '28px', fontSize: '12px' }}>
+                      <span
+                        className="user-avatar"
+                        style={{ width: '28px', height: '28px', fontSize: '12px' }}
+                      >
                         {row.name.charAt(0).toUpperCase()}
                       </span>
                       <div className="cell-main">{row.name}</div>
@@ -118,7 +121,7 @@ export default function AccessRequests({ showToast }) {
                           style={{
                             padding: '4px 10px',
                             background: 'var(--color-success, #10b981)',
-                            borderColor: 'var(--color-success, #10b981)'
+                            borderColor: 'var(--color-success, #10b981)',
                           }}
                         >
                           Approve

@@ -18,7 +18,11 @@ function useWidth() {
 
 function Tooltip({ tip }) {
   if (!tip) return null;
-  const style = { left: tip.x, top: tip.y, transform: `translate(${tip.align === 'right' ? '-100%' : '12px'}, -50%)` };
+  const style = {
+    left: tip.x,
+    top: tip.y,
+    transform: `translate(${tip.align === 'right' ? '-100%' : '12px'}, -50%)`,
+  };
   return (
     <div className="chart-tooltip" style={style} role="status">
       {tip.title && <div className="tt-title">{tip.title}</div>}
@@ -44,7 +48,7 @@ export function Legend({ items, lines }) {
               borderColor: it.color,
               borderWidth: lines ? '0' : '1.5px',
               borderStyle: lines ? 'none' : 'solid',
-              background: lines ? it.color : `color-mix(in srgb, ${it.color} 15%, transparent)`
+              background: lines ? it.color : `color-mix(in srgb, ${it.color} 15%, transparent)`,
             }}
           />
           {it.label}
@@ -88,38 +92,66 @@ export function TrendChart({ points, series }) {
     setHover(Math.max(0, Math.min(points.length - 1, idx)));
   };
 
-  const tip = hover == null ? null : {
-    x: x(hover),
-    y: m.top + 10,
-    align: hover > points.length / 2 ? 'right' : 'left',
-    title: points[hover].month,
-    rows: series.map((s) => ({ label: s.label, value: points[hover][s.key], color: s.color })),
-  };
+  const tip =
+    hover == null
+      ? null
+      : {
+          x: x(hover),
+          y: m.top + 10,
+          align: hover > points.length / 2 ? 'right' : 'left',
+          title: points[hover].month,
+          rows: series.map((s) => ({
+            label: s.label,
+            value: points[hover][s.key],
+            color: s.color,
+          })),
+        };
 
   return (
     <div className="chart-box" ref={ref}>
       {width > 0 && (
-        <svg width={width} height={height} role="img" aria-label={`Staffing trend: ${series.map((s) => s.label).join(' and ')} over ${points.length} months`}>
+        <svg
+          width={width}
+          height={height}
+          role="img"
+          aria-label={`Staffing trend: ${series.map((s) => s.label).join(' and ')} over ${points.length} months`}
+        >
           {ticks.map((t) => (
             <g key={t}>
               <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)} className="chart-grid" />
-              <text x={m.left - 8} y={y(t) + 4} textAnchor="end" className="chart-tick">{t}</text>
+              <text x={m.left - 8} y={y(t) + 4} textAnchor="end" className="chart-tick">
+                {t}
+              </text>
             </g>
           ))}
           {points.map((p, i) => (
-            <text key={p.month} x={x(i)} y={height - 6} textAnchor="middle" className="chart-tick">{p.month}</text>
+            <text key={p.month} x={x(i)} y={height - 6} textAnchor="middle" className="chart-tick">
+              {p.month}
+            </text>
           ))}
           {hover != null && (
-            <line x1={x(hover)} x2={x(hover)} y1={m.top} y2={m.top + ih} className="chart-crosshair" />
+            <line
+              x1={x(hover)}
+              x2={x(hover)}
+              y1={m.top}
+              y2={m.top + ih}
+              className="chart-crosshair"
+            />
           )}
           {series.map((s, si) => {
-            const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(p[s.key])}`).join(' ');
+            const d = points
+              .map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(p[s.key])}`)
+              .join(' ');
             const last = points.length - 1;
             return (
               <g key={s.key}>
                 <motion.path
-                  d={d} fill="none" stroke={s.color} strokeWidth="2"
-                  strokeLinejoin="round" strokeLinecap="round"
+                  d={d}
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
                   initial={reduceMotion ? false : { pathLength: 0 }}
                   animate={{ pathLength: 1 }}
                   transition={{ duration: 0.9, ease: 'easeOut', delay: si * 0.18 }}
@@ -135,7 +167,12 @@ export function TrendChart({ points, series }) {
                     strokeWidth="2"
                     initial={reduceMotion ? false : { opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.25 + si * 0.18 + i * 0.07 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 300,
+                      damping: 20,
+                      delay: 0.25 + si * 0.18 + i * 0.07,
+                    }}
                     style={{ transformBox: 'fill-box', transformOrigin: '50% 50%' }}
                   />
                 ))}
@@ -146,8 +183,13 @@ export function TrendChart({ points, series }) {
             );
           })}
           <rect
-            x={m.left} y={m.top} width={iw} height={ih} fill="transparent"
-            onPointerMove={onMove} onPointerLeave={() => setHover(null)}
+            x={m.left}
+            y={m.top}
+            width={iw}
+            height={ih}
+            fill="transparent"
+            onPointerMove={onMove}
+            onPointerLeave={() => setHover(null)}
           />
         </svg>
       )}
@@ -155,10 +197,22 @@ export function TrendChart({ points, series }) {
       <Legend lines items={series.map((s) => ({ label: s.label, color: s.color }))} />
       <table className="sr-only">
         <caption>Staffing trend by month</caption>
-        <thead><tr><th>Month</th>{series.map((s) => <th key={s.key}>{s.label}</th>)}</tr></thead>
+        <thead>
+          <tr>
+            <th>Month</th>
+            {series.map((s) => (
+              <th key={s.key}>{s.label}</th>
+            ))}
+          </tr>
+        </thead>
         <tbody>
           {points.map((p) => (
-            <tr key={p.month}><td>{p.month}</td>{series.map((s) => <td key={s.key}>{p[s.key]}</td>)}</tr>
+            <tr key={p.month}>
+              <td>{p.month}</td>
+              {series.map((s) => (
+                <td key={s.key}>{p[s.key]}</td>
+              ))}
+            </tr>
           ))}
         </tbody>
       </table>
@@ -186,8 +240,12 @@ export function StackedBar({ segments, total }) {
   return (
     <div className="chart-box" ref={ref}>
       {width > 0 && (
-        <svg width={width} height={height} role="img"
-             aria-label={segments.map((s) => `${s.label}: ${s.value}`).join(', ')}>
+        <svg
+          width={width}
+          height={height}
+          role="img"
+          aria-label={segments.map((s) => `${s.label}: ${s.value}`).join(', ')}
+        >
           <defs>
             <clipPath id="stack-clip">
               <rect x="0" y="0" width={width} height={height} rx="6" />
@@ -198,15 +256,26 @@ export function StackedBar({ segments, total }) {
             {rects.map((s) => (
               <rect
                 key={s.label}
-                x={s.x} y="0" width={s.w} height={height} fill={s.color}
+                x={s.x}
+                y="0"
+                width={s.w}
+                height={height}
+                fill={s.color}
                 opacity={tip && tip.title !== s.label ? 0.55 : 1}
                 onPointerMove={(e) => {
                   const box = e.currentTarget.closest('.chart-box').getBoundingClientRect();
                   setTip({
-                    x: e.clientX - box.left, y: e.clientY - box.top - 14,
+                    x: e.clientX - box.left,
+                    y: e.clientY - box.top - 14,
                     align: e.clientX - box.left > width * 0.6 ? 'right' : 'left',
                     title: s.label,
-                    rows: [{ label: sum ? `${Math.round((s.value / sum) * 100)}% of ${sum}` : '', value: s.value, color: s.color }],
+                    rows: [
+                      {
+                        label: sum ? `${Math.round((s.value / sum) * 100)}% of ${sum}` : '',
+                        value: s.value,
+                        color: s.color,
+                      },
+                    ],
                   });
                 }}
                 onPointerLeave={() => setTip(null)}
@@ -215,8 +284,13 @@ export function StackedBar({ segments, total }) {
           </g>
           {rects.map((s) =>
             s.w > 46 ? (
-              <text key={s.label} x={s.x + s.w / 2} y={height / 2 + 4} textAnchor="middle"
-                    className="chart-seglabel">
+              <text
+                key={s.label}
+                x={s.x + s.w / 2}
+                y={height / 2 + 4}
+                textAnchor="middle"
+                className="chart-seglabel"
+              >
                 {Math.round((s.value / sum) * 100)}%
               </text>
             ) : null
@@ -254,29 +328,57 @@ export function HBarChart({ rows, color, unit }) {
   return (
     <div className="chart-box" ref={ref}>
       {width > 0 && (
-        <svg width={width} height={height} role="img" aria-label={rows.map((r) => `${r.label}: ${r.value}`).join(', ')}>
+        <svg
+          width={width}
+          height={height}
+          role="img"
+          aria-label={rows.map((r) => `${r.label}: ${r.value}`).join(', ')}
+        >
           {ticks.map((t) => (
-            <line key={t} x1={m.left + w(t)} x2={m.left + w(t)} y1="0" y2={height - 4} className="chart-grid" />
+            <line
+              key={t}
+              x1={m.left + w(t)}
+              x2={m.left + w(t)}
+              y1="0"
+              y2={height - 4}
+              className="chart-grid"
+            />
           ))}
           {rows.map((r, i) => {
             const yTop = i * rowH + (rowH - barH) / 2;
             const hovered = tip && tip.title === r.label;
             return (
-              <g key={r.label}
-                 onPointerMove={(e) => {
-                   const box = e.currentTarget.closest('.chart-box').getBoundingClientRect();
-                   setTip({
-                     x: e.clientX - box.left, y: e.clientY - box.top - 12,
-                     align: e.clientX - box.left > width * 0.6 ? 'right' : 'left',
-                     title: r.label,
-                     rows: [{ label: unit, value: r.value, color }],
-                   });
-                 }}
-                 onPointerLeave={() => setTip(null)}>
+              <g
+                key={r.label}
+                onPointerMove={(e) => {
+                  const box = e.currentTarget.closest('.chart-box').getBoundingClientRect();
+                  setTip({
+                    x: e.clientX - box.left,
+                    y: e.clientY - box.top - 12,
+                    align: e.clientX - box.left > width * 0.6 ? 'right' : 'left',
+                    title: r.label,
+                    rows: [{ label: unit, value: r.value, color }],
+                  });
+                }}
+                onPointerLeave={() => setTip(null)}
+              >
                 <rect x="0" y={i * rowH} width={width} height={rowH} fill="transparent" />
-                <text x={m.left - 10} y={yTop + barH / 2 + 4} textAnchor="end" className="chart-cat">{r.label}</text>
+                <text
+                  x={m.left - 10}
+                  y={yTop + barH / 2 + 4}
+                  textAnchor="end"
+                  className="chart-cat"
+                >
+                  {r.label}
+                </text>
                 <path d={barPath(r.value, yTop)} fill={color} opacity={tip && !hovered ? 0.6 : 1} />
-                <text x={m.left + w(r.value) + 8} y={yTop + barH / 2 + 4} className="chart-endlabel">{r.value}</text>
+                <text
+                  x={m.left + w(r.value) + 8}
+                  y={yTop + barH / 2 + 4}
+                  className="chart-endlabel"
+                >
+                  {r.value}
+                </text>
               </g>
             );
           })}
@@ -293,19 +395,19 @@ function getDonutSlicePath(cx, cy, rOut, rIn, startAngle, endAngle) {
   const diff = endAngle - startAngle;
   if (diff <= 0) return '';
   const actualEndAngle = diff >= 2 * Math.PI ? startAngle + 2 * Math.PI - 0.001 : endAngle;
-  
+
   const x1Out = cx + rOut * Math.cos(startAngle);
   const y1Out = cy + rOut * Math.sin(startAngle);
   const x2Out = cx + rOut * Math.cos(actualEndAngle);
   const y2Out = cy + rOut * Math.sin(actualEndAngle);
-  
+
   const x1In = cx + rIn * Math.cos(startAngle);
   const y1In = cy + rIn * Math.sin(startAngle);
   const x2In = cx + rIn * Math.cos(actualEndAngle);
   const y2In = cy + rIn * Math.sin(actualEndAngle);
-  
-  const largeArc = (actualEndAngle - startAngle) > Math.PI ? 1 : 0;
-  
+
+  const largeArc = actualEndAngle - startAngle > Math.PI ? 1 : 0;
+
   return `M ${x1Out} ${y1Out} A ${rOut} ${rOut} 0 ${largeArc} 1 ${x2Out} ${y2Out} L ${x2In} ${y2In} A ${rIn} ${rIn} 0 ${largeArc} 0 ${x1In} ${y1In} Z`;
 }
 
@@ -315,13 +417,13 @@ export function DonutChart({ segments }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
   const reduceMotion = useReducedMotion();
   const height = 180;
-  
+
   const sum = segments.reduce((a, s) => a + s.value, 0);
   const cx = width / 2;
   const cy = height / 2;
   const rOut = 65;
   const rIn = 45;
-  
+
   let startAngle = -Math.PI / 2;
   const slices = segments.map((s, index) => {
     const angle = sum > 0 ? (s.value / sum) * 2 * Math.PI : 0;
@@ -331,16 +433,25 @@ export function DonutChart({ segments }) {
       startAngle,
       endAngle,
       path: getDonutSlicePath(cx, cy, rOut, rIn, startAngle, endAngle),
-      index
+      index,
     };
     startAngle = endAngle;
     return slice;
   });
 
   return (
-    <div className="chart-box" ref={ref} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div
+      className="chart-box"
+      ref={ref}
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+    >
       {width > 0 && (
-        <svg width={width} height={height} role="img" aria-label={segments.map((s) => `${s.label}: ${s.value}`).join(', ')}>
+        <svg
+          width={width}
+          height={height}
+          role="img"
+          aria-label={segments.map((s) => `${s.label}: ${s.value}`).join(', ')}
+        >
           {sum === 0 ? (
             <path
               d={getDonutSlicePath(cx, cy, rOut, rIn, 0, 2 * Math.PI)}
@@ -363,7 +474,12 @@ export function DonutChart({ segments }) {
                   strokeLinejoin="round"
                   initial={reduceMotion ? false : { scale: 0.4, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 18, delay: s.index * 0.09 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 280,
+                    damping: 18,
+                    delay: s.index * 0.09,
+                  }}
                   onPointerMove={(e) => {
                     const box = e.currentTarget.closest('.chart-box').getBoundingClientRect();
                     setHoveredIdx(s.index);
@@ -372,7 +488,13 @@ export function DonutChart({ segments }) {
                       y: e.clientY - box.top - 14,
                       align: e.clientX - box.left > width * 0.6 ? 'right' : 'left',
                       title: s.label,
-                      rows: [{ label: sum ? `${Math.round((s.value / sum) * 100)}% of ${sum}` : '', value: s.value, color: s.color }],
+                      rows: [
+                        {
+                          label: sum ? `${Math.round((s.value / sum) * 100)}% of ${sum}` : '',
+                          value: s.value,
+                          color: s.color,
+                        },
+                      ],
                     });
                   }}
                   onPointerLeave={() => {
@@ -383,7 +505,8 @@ export function DonutChart({ segments }) {
                     cursor: 'pointer',
                     transformBox: 'view-box',
                     transformOrigin: `${cx}px ${cy}px`,
-                    transition: 'fill-opacity 0.18s ease, stroke-width 0.18s ease, filter 0.18s ease',
+                    transition:
+                      'fill-opacity 0.18s ease, stroke-width 0.18s ease, filter 0.18s ease',
                     filter: hovered ? `drop-shadow(0 3px 12px ${s.color})` : 'none',
                   }}
                 />
@@ -407,19 +530,19 @@ export function VBarChart({ rows, unit }) {
   const reduceMotion = useReducedMotion();
   const height = 240;
   const m = { top: 20, right: 20, bottom: 54, left: 34 };
-  
+
   const max = Math.max(1, ...rows.map((r) => r.value));
   const ticks = niceTicks(max);
   const yMax = ticks[ticks.length - 1];
   const iw = Math.max(0, width - m.left - m.right);
   const ih = height - m.top - m.bottom;
-  
+
   const colW = rows.length > 0 ? iw / rows.length : 0;
   const barW = Math.min(36, colW * 0.6);
-  
+
   const getBarX = (i) => m.left + i * colW + (colW - barW) / 2;
   const getBarY = (v) => m.top + ih - (v / yMax) * ih;
-  
+
   const getBarPath = (x, y, w, h, r = 4) => {
     if (h <= 0) return '';
     const actualR = Math.min(r, w / 2, h);
@@ -429,14 +552,32 @@ export function VBarChart({ rows, unit }) {
   return (
     <div className="chart-box" ref={ref}>
       {width > 0 && (
-        <svg width={width} height={height} role="img" aria-label={rows.map((r) => `${r.label}: ${r.value}`).join(', ')}>
+        <svg
+          width={width}
+          height={height}
+          role="img"
+          aria-label={rows.map((r) => `${r.label}: ${r.value}`).join(', ')}
+        >
           {ticks.map((t) => (
             <g key={t}>
-              <line x1={m.left} x2={width - m.right} y1={m.top + ih - (t / yMax) * ih} y2={m.top + ih - (t / yMax) * ih} className="chart-grid" />
-              <text x={m.left - 8} y={m.top + ih - (t / yMax) * ih + 4} textAnchor="end" className="chart-tick">{t}</text>
+              <line
+                x1={m.left}
+                x2={width - m.right}
+                y1={m.top + ih - (t / yMax) * ih}
+                y2={m.top + ih - (t / yMax) * ih}
+                className="chart-grid"
+              />
+              <text
+                x={m.left - 8}
+                y={m.top + ih - (t / yMax) * ih + 4}
+                textAnchor="end"
+                className="chart-tick"
+              >
+                {t}
+              </text>
             </g>
           ))}
-          
+
           {rows.map((r, i) => {
             const x = getBarX(i);
             const y = getBarY(r.value);
@@ -445,7 +586,7 @@ export function VBarChart({ rows, unit }) {
             const hovered = hoveredIdx === i;
             const active = hoveredIdx !== null;
             const displayLabel = r.label.length > 16 ? r.label.substring(0, 14) + '..' : r.label;
-            
+
             return (
               <g
                 key={r.label}
@@ -468,7 +609,7 @@ export function VBarChart({ rows, unit }) {
               >
                 {/* Hotspot background rect to improve hover sensitivity */}
                 <rect x={m.left + i * colW} y={m.top} width={colW} height={ih} fill="transparent" />
-                
+
                 {r.value > 0 && (
                   <motion.path
                     d={getBarPath(x, y, barW, h, 4)}
@@ -478,16 +619,23 @@ export function VBarChart({ rows, unit }) {
                     strokeWidth={hovered ? 0 : 1.5}
                     initial={reduceMotion ? false : { scaleY: 0 }}
                     animate={{ scaleY: 1 }}
-                    transition={{ type: 'spring', stiffness: 320, damping: 17, mass: 0.9, delay: i * 0.055 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 320,
+                      damping: 17,
+                      mass: 0.9,
+                      delay: i * 0.055,
+                    }}
                     style={{
                       transformBox: 'fill-box',
                       transformOrigin: '50% 100%',
-                      transition: 'fill-opacity 0.18s ease, stroke-width 0.18s ease, filter 0.18s ease',
+                      transition:
+                        'fill-opacity 0.18s ease, stroke-width 0.18s ease, filter 0.18s ease',
                       filter: hovered ? `drop-shadow(0 4px 14px ${color})` : 'none',
                     }}
                   />
                 )}
-                
+
                 <text
                   transform={`translate(${x + barW / 2}, ${height - 38}) rotate(-25)`}
                   textAnchor="end"
@@ -504,4 +652,3 @@ export function VBarChart({ rows, unit }) {
     </div>
   );
 }
-

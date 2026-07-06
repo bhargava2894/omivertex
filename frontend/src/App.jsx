@@ -17,17 +17,86 @@ import { api } from './api.js';
 import { storedTheme, applyTheme, resolveTheme } from './theme.js';
 
 const ROUTES = [
-  { path: 'dashboard', label: 'Dashboard', icon: 'dashboard', component: Dashboard, sub: 'Resource overview across Softility' },
-  { path: 'associates', label: 'Associates', icon: 'users', component: Associates, sub: 'Consultant roster and staffing status' },
-  { path: 'clients', label: 'Clients', icon: 'building', component: Clients, sub: 'Master client list' },
-  { path: 'projects', label: 'Projects', icon: 'briefcase', component: Projects, sub: 'Master project list by client' },
-  { path: 'allocations', label: 'Allocations', icon: 'link', component: Allocations, sub: 'Assign associates to projects' },
-  { path: 'demand', label: 'Demand', icon: 'target', component: Positions, sub: 'Open positions and bench matching' },
-  { path: 'skill-reports', label: 'Skill Reports', icon: 'activity', component: SkillReports, sub: 'Proficiency distribution by category' },
-  { path: 'taxonomy', label: 'Skill Taxonomy', icon: 'sheet', component: Taxonomy, sub: 'Skill categories and tools', adminOnly: true },
-  { path: 'access-requests', label: 'Access Requests', icon: 'shield', component: AccessRequests, sub: 'Manage pending user access requests', adminOnly: true },
-  { path: 'audit', label: 'Audit Log', icon: 'list', component: AuditLog, sub: 'Who changed what, and when', adminOnly: true },
-  { path: 'settings', label: 'Settings', icon: 'settings', component: Settings, sub: 'Appearance and data management' },
+  {
+    path: 'dashboard',
+    label: 'Dashboard',
+    icon: 'dashboard',
+    component: Dashboard,
+    sub: 'Resource overview across Softility',
+  },
+  {
+    path: 'associates',
+    label: 'Associates',
+    icon: 'users',
+    component: Associates,
+    sub: 'Consultant roster and staffing status',
+  },
+  {
+    path: 'clients',
+    label: 'Clients',
+    icon: 'building',
+    component: Clients,
+    sub: 'Master client list',
+  },
+  {
+    path: 'projects',
+    label: 'Projects',
+    icon: 'briefcase',
+    component: Projects,
+    sub: 'Master project list by client',
+  },
+  {
+    path: 'allocations',
+    label: 'Allocations',
+    icon: 'link',
+    component: Allocations,
+    sub: 'Assign associates to projects',
+  },
+  {
+    path: 'demand',
+    label: 'Demand',
+    icon: 'target',
+    component: Positions,
+    sub: 'Open positions and bench matching',
+  },
+  {
+    path: 'skill-reports',
+    label: 'Skill Reports',
+    icon: 'activity',
+    component: SkillReports,
+    sub: 'Proficiency distribution by category',
+  },
+  {
+    path: 'taxonomy',
+    label: 'Skill Taxonomy',
+    icon: 'sheet',
+    component: Taxonomy,
+    sub: 'Skill categories and tools',
+    adminOnly: true,
+  },
+  {
+    path: 'access-requests',
+    label: 'Access Requests',
+    icon: 'shield',
+    component: AccessRequests,
+    sub: 'Manage pending user access requests',
+    adminOnly: true,
+  },
+  {
+    path: 'audit',
+    label: 'Audit Log',
+    icon: 'list',
+    component: AuditLog,
+    sub: 'Who changed what, and when',
+    adminOnly: true,
+  },
+  {
+    path: 'settings',
+    label: 'Settings',
+    icon: 'settings',
+    component: Settings,
+    sub: 'Appearance and data management',
+  },
 ];
 
 function useHashRoute() {
@@ -48,7 +117,10 @@ export default function App() {
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
 
   useEffect(() => {
-    api.me().then(setUser).catch(() => setUser(null));
+    api
+      .me()
+      .then(setUser)
+      .catch(() => setUser(null));
     const onUnauthorized = () => setUser(null);
     window.addEventListener('ov-unauthorized', onUnauthorized);
     return () => window.removeEventListener('ov-unauthorized', onUnauthorized);
@@ -133,7 +205,9 @@ export default function App() {
         <header className="topbar">
           <div>
             <h1>{isProfile ? 'Associate Profile' : active.label}</h1>
-            <div className="topbar-sub">{isProfile ? 'Skills, certifications, and history' : active.sub}</div>
+            <div className="topbar-sub">
+              {isProfile ? 'Skills, certifications, and history' : active.sub}
+            </div>
           </div>
           <div className="topbar-actions">
             <div className="user-chip" title={`Signed in as ${user.username}`}>

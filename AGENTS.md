@@ -75,8 +75,10 @@ The **workforce graph is the product**; keep its data true and its code consiste
 
 ## Automated enforcement (the build checks this for you)
 
-Two guardrails run on every `./mvnw test` — they fail the build regardless of which
-agent wrote the code, so you don't have to remember:
+Guardrails run on the build and fail it regardless of which agent wrote the code, so
+you don't have to remember the rules.
+
+**Backend** — two run on every `./mvnw test`:
 
 - **Spotless** (code hygiene): unused imports, trailing whitespace, missing final
   newline. If the build complains, run **`./mvnw spotless:apply`** to auto-fix, then commit.
@@ -84,6 +86,16 @@ agent wrote the code, so you don't have to remember:
   above — domain entities stay pure, nothing depends on controllers, `status`/`role`
   fields are enums not String, controllers return DTOs not entities, naming/placement.
   When you add a mechanically-checkable convention, add a rule there too.
+
+**Frontend** — `npm run build` runs `prebuild → check` first, so it fails on violations:
+
+- **Prettier** (formatting): run **`npm run format`** to auto-fix, `npm run format:check`
+  to verify. Config in `.prettierrc.json`.
+- **ESLint** (`eslint.config.js`): real bugs are errors and block the build (undefined
+  vars, unused vars/imports, rules-of-hooks, JSX correctness). The React-Compiler-era
+  advisory rules (`exhaustive-deps`, `set-state-in-effect`, `immutability`, `use-memo`)
+  are warnings — they surface but don't block, because they flag intentional patterns
+  (e.g. the generic `useLoad(loader, deps)` hook). Run **`npm run lint`**.
 
 ## Known deliberate exceptions (don't "fix" these blindly)
 
