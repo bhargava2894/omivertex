@@ -1,8 +1,8 @@
-## graphify
+# OmiVertex
 
-This project has a graphify knowledge graph at graphify-out/.
+**Read `AGENTS.md` and follow it exactly — it is the single source of truth for how we
+build here (conventions, TDD workflow, graphify usage, and known deliberate exceptions).**
 
-Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- After modifying code files in this session, run `python3 -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"` to keep the graph current
+Everything that used to live in this file now lives in `AGENTS.md` so that every agent
+(Claude, Gemini, ChatGPT/Codex) works from the same rules and the codebase stops
+drifting between authors. Do not duplicate rules here — edit `AGENTS.md` instead.
