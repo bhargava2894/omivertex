@@ -99,6 +99,18 @@ const ROUTES = [
   },
 ];
 
+const routeByPath = Object.fromEntries(ROUTES.map((r) => [r.path, r]));
+
+// Display grouping for the sidebar. A section with a null label renders no header
+// (standalone). The Admin section is entirely admin-only, so it disappears for viewers.
+const NAV_SECTIONS = [
+  { label: null, items: ['dashboard'] },
+  { label: 'Workforce', items: ['associates', 'taxonomy', 'skill-reports'] },
+  { label: 'Delivery', items: ['clients', 'projects', 'allocations', 'demand'] },
+  { label: 'Admin', items: ['access-requests', 'audit'] },
+  { label: null, items: ['settings'] },
+];
+
 function useHashRoute() {
   const read = () => window.location.hash.replace(/^#\/?/, '') || 'dashboard';
   const [route, setRoute] = useState(read);
@@ -186,19 +198,33 @@ export default function App() {
           </div>
         </div>
         <nav className="sidebar-nav" aria-label="Primary">
-          {visibleRoutes.map((r) => (
-            <button
-              key={r.path}
-              className={`nav-item ${r.path === active.path ? 'active' : ''}`}
-              aria-current={r.path === active.path ? 'page' : undefined}
-              onClick={() => (window.location.hash = `/${r.path}`)}
-            >
-              <Icon name={r.icon} size={18} />
-              {r.label}
-            </button>
-          ))}
+          {NAV_SECTIONS.map((section) => {
+            const items = section.items
+              .map((p) => routeByPath[p])
+              .filter((r) => r && (!r.adminOnly || canEdit));
+            if (items.length === 0) return null;
+            return (
+              <div className="nav-group" key={section.label || items[0].path}>
+                {section.label && <div className="nav-group-label">{section.label}</div>}
+                {items.map((r) => (
+                  <button
+                    key={r.path}
+                    className={`nav-item ${r.path === active.path ? 'active' : ''}`}
+                    aria-current={r.path === active.path ? 'page' : undefined}
+                    onClick={() => (window.location.hash = `/${r.path}`)}
+                  >
+                    <Icon name={r.icon} size={18} />
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </nav>
-        <div className="sidebar-footer">Softility · Internal</div>
+        <div className="sidebar-footer">
+          <div>Softility · Internal</div>
+          <div className="sidebar-credit">Built by Bhargava Sista</div>
+        </div>
       </aside>
 
       <div className="main">
