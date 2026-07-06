@@ -3,6 +3,7 @@ package com.softility.omivertex.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -12,10 +13,30 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    /**
+     * Content-hashed static assets (/assets/**) are safe to cache forever — a content
+     * change produces a new filename. This chain overrides Spring Security's default
+     * no-store so the browser can cache them; everything else stays no-store.
+     */
+    @Bean
+    @Order(1)
+    public SecurityFilterChain assetChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/assets/**")
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .csrf(csrf -> csrf.disable())
+                .headers(headers -> headers
+                        .cacheControl(cache -> cache.disable())
+                        .addHeaderWriter(new StaticHeadersWriter(
+                                "Cache-Control", "public, max-age=31536000, immutable")));
+        return http.build();
+    }
 
     /**
      * Two internal accounts: the super admin (full edit access) and a read-only
@@ -36,6 +57,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
