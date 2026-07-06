@@ -11,18 +11,11 @@ import com.softility.omivertex.repository.ClientRepository;
 import com.softility.omivertex.repository.ProjectRepository;
 import com.softility.omivertex.web.dto.ImportSummaryResponse;
 import com.softility.omivertex.web.error.BadRequestException;
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -45,12 +38,14 @@ public class ImportService {
     private final SkillRepository skills;
     private final AssociateSkillRepository associateSkills;
     private final CertificationRepository certifications;
+    private final SpreadsheetParser spreadsheetParser;
 
     public ImportService(ClientRepository clients, ProjectRepository projects,
                          AssociateRepository associates, AllocationRepository allocations,
                          AuditService auditService, PlatformTransactionManager transactionManager,
                          SkillCategoryRepository skillCategories, SkillRepository skills,
-                         AssociateSkillRepository associateSkills, CertificationRepository certifications) {
+                         AssociateSkillRepository associateSkills, CertificationRepository certifications,
+                         SpreadsheetParser spreadsheetParser) {
         this.clients = clients;
         this.projects = projects;
         this.associates = associates;
@@ -61,6 +56,7 @@ public class ImportService {
         this.skills = skills;
         this.associateSkills = associateSkills;
         this.certifications = certifications;
+        this.spreadsheetParser = spreadsheetParser;
     }
 
     /**
@@ -71,7 +67,7 @@ public class ImportService {
     public ImportSummaryResponse importRoster(MultipartFile file, boolean dryRun, boolean ignoreNovice) {
         String filename = Optional.ofNullable(file.getOriginalFilename()).orElse("").toLowerCase();
         if (filename.endsWith(".xlsx")) {
-            Map<String, List<Map<String, String>>> sheets = parseAllSheets(file);
+            Map<String, List<Map<String, String>>> sheets = spreadsheetParser.parseWorkbook(file);
             boolean v2 = sheets.containsKey("employees") || sheets.containsKey("employeeskills")
                     || sheets.containsKey("certifications");
             return transactionTemplate.execute(status -> {
@@ -85,7 +81,7 @@ public class ImportService {
             });
         }
         if (filename.endsWith(".csv")) {
-            List<Map<String, String>> rows = parseCsv(file);
+            List<Map<String, String>> rows = spreadsheetParser.parseCsv(file);
             return transactionTemplate.execute(status -> {
                 ImportSummaryResponse summary = processRows(rows, dryRun, true, 0, 0);
                 if (dryRun) {
@@ -316,85 +312,6 @@ public class ImportService {
         return new ImportSummaryResponse(rowsProcessed, clientsCreated, projectsCreated,
                 associatesCreated, allocationsCreated, skillsImported, certificationsImported,
                 skipped, errors, dryRun);
-    }
-
-    /** Parses every sheet: key = sheet name lower-cased, value = rows keyed by upper-cased header. */
-    private Map<String, List<Map<String, String>>> parseAllSheets(MultipartFile file) {
-        try (XSSFWorkbook wb = new XSSFWorkbook(file.getInputStream())) {
-            DataFormatter fmt = new DataFormatter();
-            Map<String, List<Map<String, String>>> sheets = new java.util.LinkedHashMap<>();
-            for (int i = 0; i < wb.getNumberOfSheets(); i++) {
-                Sheet sheet = wb.getSheetAt(i);
-                Iterator<Row> it = sheet.iterator();
-                if (!it.hasNext()) continue;
-                List<String> headers = new ArrayList<>();
-                for (var cell : it.next()) {
-                    headers.add(fmt.formatCellValue(cell).trim().toUpperCase());
-                }
-                List<Map<String, String>> rows = new ArrayList<>();
-                while (it.hasNext()) {
-                    Row row = it.next();
-                    Map<String, String> values = new HashMap<>();
-                    for (int c = 0; c < headers.size(); c++) {
-                        values.put(headers.get(c), fmt.formatCellValue(row.getCell(c)).trim());
-                    }
-                    rows.add(values);
-                }
-                sheets.put(sheet.getSheetName().trim().toLowerCase(), rows);
-            }
-            if (sheets.isEmpty()) {
-                sheets.put("sheet1", List.of());
-            }
-            return sheets;
-        } catch (BadRequestException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BadRequestException("Could not read Excel file: " + e.getMessage());
-        }
-    }
-
-    private List<Map<String, String>> parseCsv(MultipartFile file) {
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) return List.of();
-            String[] headers = splitCsv(headerLine);
-            for (int i = 0; i < headers.length; i++) headers[i] = headers[i].trim().toUpperCase();
-            List<Map<String, String>> rows = new ArrayList<>();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.isBlank()) continue;
-                String[] cells = splitCsv(line);
-                Map<String, String> values = new HashMap<>();
-                for (int c = 0; c < headers.length && c < cells.length; c++) {
-                    values.put(headers[c], cells[c].trim());
-                }
-                rows.add(values);
-            }
-            return rows;
-        } catch (Exception e) {
-            throw new BadRequestException("Could not read CSV file: " + e.getMessage());
-        }
-    }
-
-    /** Splits a CSV line honoring double-quoted fields. */
-    private String[] splitCsv(String line) {
-        List<String> out = new ArrayList<>();
-        StringBuilder cur = new StringBuilder();
-        boolean quoted = false;
-        for (int i = 0; i < line.length(); i++) {
-            char ch = line.charAt(i);
-            if (ch == '"') {
-                quoted = !quoted;
-            } else if (ch == ',' && !quoted) {
-                out.add(cur.toString());
-                cur.setLength(0);
-            } else {
-                cur.append(ch);
-            }
-        }
-        out.add(cur.toString());
-        return out.toArray(String[]::new);
     }
 
     private static String value(Map<String, String> row, String... keys) {
