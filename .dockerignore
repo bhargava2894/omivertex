@@ -1,0 +1,9 @@
+target/
+frontend/node_modules/
+frontend/dist/
+node_modules/
+graphify-out/
+.git/
+.idea/
+*.iml
+docs/superpowers/
