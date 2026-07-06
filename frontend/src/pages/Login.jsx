@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { api } from '../api.js';
+import { GOOGLE_CLIENT_ID, loadGoogleIdentity } from '../googleAuth.js';
 import Icon from '../components/Icon.jsx';
 
 const container = {
@@ -13,45 +14,81 @@ const item = {
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 24 } },
 };
 
-const MOCK_ACCOUNTS = [
-  { name: 'Priya Sharma', email: 'priya.sharma@softility.com' },
-  { name: 'Rahul Verma', email: 'rahul.verma@softility.com' },
-  { name: 'Alex Turner', email: 'alex.turner@softility.com' },
-];
-
-const GoogleLogo = () => (
-  <svg viewBox="0 0 24 24" width="18" height="18" className="google-logo-svg">
-    <path
-      fill="#4285F4"
-      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-    />
-    <path
-      fill="#34A853"
-      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-    />
-    <path
-      fill="#FBBC05"
-      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-    />
-    <path
-      fill="#EA4335"
-      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-    />
-  </svg>
-);
+// Pull the email out of a Google ID token (JWT) for a friendlier pending screen.
+// Purely cosmetic — the backend independently verifies the token's signature.
+function emailFromCredential(credential) {
+  try {
+    return JSON.parse(atob(credential.split('.')[1])).email || '';
+  } catch {
+    return '';
+  }
+}
 
 export default function Login({ onLogin }) {
   const reduceMotion = useReducedMotion();
-  const [loginMode, setLoginMode] = useState('form'); // form, google-chooser, google-custom, pending
+  const [loginMode, setLoginMode] = useState('form'); // form, pending
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [googleName, setGoogleName] = useState('');
-  const [googleEmail, setGoogleEmail] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [shake, setShake] = useState(0);
+
+  const googleBtnRef = useRef(null);
+  // Google's callback fires outside React; keep a ref pointed at the latest
+  // handler so it always reads fresh state (updated via the effect below).
+  const handleCredentialRef = useRef();
+  const handleCredential = async ({ credential }) => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const user = await api.googleLogin(credential);
+      onLogin(user);
+    } catch (err) {
+      const msg = err.message.toLowerCase();
+      if (msg.includes('pending') || msg.includes('requested') || msg.includes('rejected')) {
+        setPendingEmail(emailFromCredential(credential));
+        setLoginMode('pending');
+      } else {
+        setError(err.message);
+        setShake((s) => s + 1);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+  useEffect(() => {
+    handleCredentialRef.current = handleCredential;
+  });
+
+  // Render the official Google button once GIS is loaded (only when configured).
+  useEffect(() => {
+    if (loginMode !== 'form' || !GOOGLE_CLIENT_ID) return undefined;
+    let cancelled = false;
+    loadGoogleIdentity()
+      .then((google) => {
+        if (cancelled || !googleBtnRef.current) return;
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: (resp) => handleCredentialRef.current(resp),
+        });
+        googleBtnRef.current.innerHTML = '';
+        google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: 320,
+        });
+      })
+      .catch((err) => setError(err.message));
+    return () => {
+      cancelled = true;
+    };
+  }, [loginMode]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -67,40 +104,6 @@ export default function Login({ onLogin }) {
     } finally {
       setBusy(false);
     }
-  };
-
-  const handleGoogleSelect = async (account) => {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      // account.idToken is a real Google ID token when GIS is wired up (needs
-      // VITE_GOOGLE_CLIENT_ID); until then the backend safely rejects and we show why.
-      const user = await api.googleLogin(account.idToken || account.email);
-      onLogin(user);
-    } catch (err) {
-      const msg = err.message.toLowerCase();
-      if (msg.includes('pending') || msg.includes('requested')) {
-        setPendingEmail(account.email);
-        setLoginMode('pending');
-      } else {
-        setError(err.message);
-        setShake((s) => s + 1);
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleGoogleCustomSubmit = async (e) => {
-    e.preventDefault();
-    const email = googleEmail.trim().toLowerCase();
-    if (!email.endsWith('@softility.com')) {
-      setError('Only @softility.com Google accounts are allowed.');
-      setShake((s) => s + 1);
-      return;
-    }
-    await handleGoogleSelect({ name: googleName.trim(), email });
   };
 
   return (
@@ -220,125 +223,18 @@ export default function Login({ onLogin }) {
               </motion.div>
             </form>
 
-            <motion.div variants={item} className="google-login-divider">
-              or
-            </motion.div>
-
-            <motion.div variants={item}>
-              <button
-                type="button"
-                className="btn-google"
-                onClick={() => {
-                  setError(null);
-                  setLoginMode('google-chooser');
-                }}
-              >
-                <GoogleLogo /> Sign in with Google
-              </button>
-            </motion.div>
+            {GOOGLE_CLIENT_ID && (
+              <>
+                <motion.div variants={item} className="google-login-divider">
+                  or
+                </motion.div>
+                <motion.div variants={item} style={{ display: 'flex', justifyContent: 'center' }}>
+                  {/* Google Identity Services renders its official button here */}
+                  <div ref={googleBtnRef} />
+                </motion.div>
+              </>
+            )}
           </>
-        )}
-
-        {loginMode === 'google-chooser' && (
-          <div style={{ animation: 'fade-in 0.25s ease' }}>
-            <motion.div variants={item} className="google-chooser-title">
-              Sign in with Google
-            </motion.div>
-            <div className="google-account-list">
-              {MOCK_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.email}
-                  type="button"
-                  className="google-account-item"
-                  onClick={() => handleGoogleSelect(acc)}
-                  disabled={busy}
-                >
-                  <span className="google-account-avatar">{acc.name.charAt(0).toUpperCase()}</span>
-                  <span className="google-account-info">
-                    <span className="google-account-name">{acc.name}</span>
-                    <span className="google-account-email">{acc.email}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-            <motion.div variants={item} style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <button
-                type="button"
-                className="btn-google"
-                onClick={() => {
-                  setError(null);
-                  setLoginMode('google-custom');
-                }}
-              >
-                Use another account
-              </button>
-            </motion.div>
-            <motion.div variants={item} style={{ textAlign: 'left' }}>
-              <button
-                type="button"
-                className="btn-back-link"
-                onClick={() => {
-                  setError(null);
-                  setLoginMode('form');
-                }}
-              >
-                ← Back to standard login
-              </button>
-            </motion.div>
-          </div>
-        )}
-
-        {loginMode === 'google-custom' && (
-          <form onSubmit={handleGoogleCustomSubmit} style={{ animation: 'fade-in 0.25s ease' }}>
-            <motion.div variants={item} className="google-chooser-title">
-              Sign in with Google
-            </motion.div>
-            <motion.div variants={item} className="field login-field">
-              <label htmlFor="google-custom-name">Full Name</label>
-              <input
-                id="google-custom-name"
-                value={googleName}
-                onChange={(e) => setGoogleName(e.target.value)}
-                placeholder="e.g. John Doe"
-                required
-                autoFocus
-              />
-            </motion.div>
-            <motion.div variants={item} className="field login-field">
-              <label htmlFor="google-custom-email">Google Email Address</label>
-              <input
-                id="google-custom-email"
-                type="email"
-                value={googleEmail}
-                onChange={(e) => setGoogleEmail(e.target.value)}
-                placeholder="username@softility.com"
-                required
-              />
-            </motion.div>
-            <motion.div variants={item}>
-              <motion.button
-                type="submit"
-                className="btn btn-primary login-submit"
-                disabled={busy}
-                whileHover={reduceMotion ? {} : { scale: 1.015 }}
-                whileTap={reduceMotion ? {} : { scale: 0.98 }}
-              >
-                {busy ? 'Connecting…' : 'Proceed to Sign In'}
-              </motion.button>
-            </motion.div>
-            <motion.div variants={item} style={{ textAlign: 'left', marginTop: '14px' }}>
-              <button
-                type="button"
-                className="btn-back-link"
-                onClick={() => {
-                  setError(null);
-                  setLoginMode('google-chooser');
-                }}
-              >
-                ← Back to accounts
-              </button>
-            </motion.div>
-          </form>
         )}
 
         {loginMode === 'pending' && (
@@ -348,8 +244,14 @@ export default function Login({ onLogin }) {
             </div>
             <h2>Access Requested</h2>
             <p>
-              Your request to access OmiVertex as a Viewer using email{' '}
-              <strong>{pendingEmail}</strong> has been registered.
+              Your request to access OmiVertex
+              {pendingEmail ? (
+                <>
+                  {' '}
+                  using <strong>{pendingEmail}</strong>
+                </>
+              ) : null}{' '}
+              has been registered.
               <br />
               <br />
               As this system is for internal HR purposes only, the Admin must approve your request
