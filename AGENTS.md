@@ -73,6 +73,18 @@ The **workforce graph is the product**; keep its data true and its code consiste
   choice, record it under "Resolved decisions" in `docs/TODO.md` (see the legacy
   `primarySkill` note there for the format).
 
+## Automated enforcement (the build checks this for you)
+
+Two guardrails run on every `./mvnw test` — they fail the build regardless of which
+agent wrote the code, so you don't have to remember:
+
+- **Spotless** (code hygiene): unused imports, trailing whitespace, missing final
+  newline. If the build complains, run **`./mvnw spotless:apply`** to auto-fix, then commit.
+- **ArchUnit** (`src/test/java/.../ArchitectureTest.java`): encodes the structural rules
+  above — domain entities stay pure, nothing depends on controllers, `status`/`role`
+  fields are enums not String, controllers return DTOs not entities, naming/placement.
+  When you add a mechanically-checkable convention, add a rule there too.
+
 ## Known deliberate exceptions (don't "fix" these blindly)
 
 - `primarySkill`/`secondarySkill` on `Associate` are informal free-text headline fields,

@@ -3,8 +3,10 @@ package com.softility.omivertex.web;
 import com.softility.omivertex.domain.AccessStatus;
 import com.softility.omivertex.domain.AppUser;
 import com.softility.omivertex.repository.AppUserRepository;
+import com.softility.omivertex.web.dto.AccessRequestResponse;
 import com.softility.omivertex.web.error.NotFoundException;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -18,23 +20,25 @@ public class AdminUserController {
     }
 
     @GetMapping
-    public List<AppUser> listRequests() {
-        return userRepository.findAllByOrderByCreatedAtDesc();
+    public List<AccessRequestResponse> listRequests() {
+        return userRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(AccessRequestResponse::from).toList();
     }
 
     @PostMapping("/{id}/approve")
-    public AppUser approveRequest(@PathVariable Long id) {
-        AppUser user = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("AccessRequest", id));
-        user.setStatus(AccessStatus.APPROVED);
-        return userRepository.save(user);
+    public AccessRequestResponse approveRequest(@PathVariable Long id) {
+        return AccessRequestResponse.from(setStatus(id, AccessStatus.APPROVED));
     }
 
     @PostMapping("/{id}/reject")
-    public AppUser rejectRequest(@PathVariable Long id) {
+    public AccessRequestResponse rejectRequest(@PathVariable Long id) {
+        return AccessRequestResponse.from(setStatus(id, AccessStatus.REJECTED));
+    }
+
+    private AppUser setStatus(Long id, AccessStatus status) {
         AppUser user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("AccessRequest", id));
-        user.setStatus(AccessStatus.REJECTED);
+        user.setStatus(status);
         return userRepository.save(user);
     }
 }
