@@ -28,7 +28,16 @@ export default function Allocations({ showToast, canEdit }) {
     [projectFilter, activeOnly]
   );
   const { data: projects } = useLoad(() => api.list('projects'));
-  const { data: associates } = useLoad(() => api.list('associates'));
+
+  // Associates are searched server-side (the roster can be 500+), so we don't
+  // eagerly load them all — the picker queries as you type.
+  const searchAssociates = (q) =>
+    api.list('associates', { q, size: 20 }).then((r) =>
+      (r.content || []).map((a) => ({
+        value: a.id,
+        label: a.currentProject ? `${a.name} — on ${a.currentProject}` : `${a.name} — bench`,
+      }))
+    );
 
   const [editing, setEditing] = useState(null);
   const [errors, setErrors] = useState({});
@@ -195,18 +204,13 @@ export default function Allocations({ showToast, canEdit }) {
             {!editing.id && (
               <>
                 <Field label="Associate" required error={errors.associateId} full>
-                  <select
+                  <SearchSelect
+                    onSearch={searchAssociates}
                     value={editing.form.associateId}
-                    onChange={(e) => set('associateId', e.target.value)}
-                    className={errors.associateId ? 'invalid' : ''}
-                  >
-                    <option value="">Select associate…</option>
-                    {(associates || []).map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} {a.currentProject ? `(on ${a.currentProject})` : '(bench)'}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => set('associateId', v)}
+                    placeholder="Search associates by name or email…"
+                    invalid={!!errors.associateId}
+                  />
                 </Field>
                 <Field label="Project" required error={errors.projectId} full>
                   <SearchSelect
