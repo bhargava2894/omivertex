@@ -30,24 +30,29 @@ export const api = {
   // Downloads a generated file (xlsx/csv/pdf/docx). Fetching as a blob and saving
   // via a temporary object URL is reliable across browsers for every MIME type —
   // a plain <a download> lets some browsers try to *preview* Office files instead.
-  exportFile: async (format) => {
-    const res = await fetch(`${BASE}/data/export?format=${encodeURIComponent(format)}`);
+  downloadTemplate: (type) =>
+    api.downloadUrl(`${BASE}/data/template?type=${encodeURIComponent(type)}`),
+  exportFile: (format) =>
+    api.downloadUrl(`${BASE}/data/export?format=${encodeURIComponent(format)}`),
+  // Fetches a file as a blob and saves it — reliable across browsers/MIME types.
+  downloadUrl: async (url) => {
+    const res = await fetch(url);
     if (!res.ok) {
       if (res.status === 401) window.dispatchEvent(new Event('ov-unauthorized'));
-      throw new Error(`Export failed (${res.status})`);
+      throw new Error(`Download failed (${res.status})`);
     }
     const disposition = res.headers.get('Content-Disposition') || '';
     const match = /filename="?([^"]+)"?/.exec(disposition);
-    const filename = match ? match[1] : `export.${format}`;
+    const filename = match ? match[1] : 'download';
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+    const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
+    a.href = objectUrl;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(objectUrl);
   },
   create: (resource, data) =>
     request(`/${resource}`, { method: 'POST', body: JSON.stringify(data) }),

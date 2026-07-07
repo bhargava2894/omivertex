@@ -6,6 +6,7 @@ import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
+import SearchSelect from '../components/SearchSelect.jsx';
 
 const EMPTY = { code: '', name: '', clientId: '', status: 'ACTIVE', startDate: '', endDate: '' };
 
@@ -15,7 +16,15 @@ export default function Projects({ showToast, canEdit }) {
     () => api.list('projects', { clientId: clientFilter }),
     [clientFilter]
   );
-  const { data: clients } = useLoad(() => api.list('clients'));
+  const { data: clients, reload: reloadClients } = useLoad(() => api.list('clients'));
+
+  const clientOptions = (clients || []).map((c) => ({ value: c.id, label: c.name }));
+  // Inline "add client": create it, refresh the list, and return the new option.
+  const createClient = async (name) => {
+    const created = await api.create('clients', { name });
+    await reloadClients();
+    return { value: created.id, label: created.name };
+  };
   const [editing, setEditing] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -151,18 +160,14 @@ export default function Projects({ showToast, canEdit }) {
               />
             </Field>
             <Field label="Client" required error={errors.clientId}>
-              <select
+              <SearchSelect
+                options={clientOptions}
                 value={editing.form.clientId}
-                onChange={(e) => set('clientId', e.target.value)}
-                className={errors.clientId ? 'invalid' : ''}
-              >
-                <option value="">Select client…</option>
-                {(clients || []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => set('clientId', v)}
+                onCreate={createClient}
+                placeholder="Search or add a client…"
+                invalid={!!errors.clientId}
+              />
             </Field>
             <Field label="Name" required error={errors.name} full>
               <input

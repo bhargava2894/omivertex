@@ -225,6 +225,25 @@ class DataTransferApiTest extends ApiTestBase {
     }
 
     @Test
+    void template_roster_returnsCsvWithHeaders() throws Exception {
+        mockMvc.perform(get("/api/v1/data/template").param("type", "roster"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", containsString("roster-template.csv")))
+                .andExpect(content().string(containsString("ASSOCIATE NAME")))
+                .andExpect(content().string(containsString("PROJECT")));
+    }
+
+    @Test
+    void template_skillcloud_returnsXlsx() throws Exception {
+        byte[] body = mockMvc.perform(get("/api/v1/data/template").param("type", "skillcloud"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", containsString("skillcloud-template.xlsx")))
+                .andReturn().getResponse().getContentAsByteArray();
+        // .xlsx is a zip archive — must start with the "PK" signature
+        org.junit.jupiter.api.Assertions.assertTrue(body.length > 2 && body[0] == 'P' && body[1] == 'K');
+    }
+
+    @Test
     void exportXlsx_returnsWorkbook() throws Exception {
         seedOne();
         mockMvc.perform(get("/api/v1/data/export").param("format", "xlsx"))

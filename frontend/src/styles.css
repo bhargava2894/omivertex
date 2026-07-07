@@ -530,6 +530,25 @@ td.actions { text-align: right; white-space: nowrap; }
 .search-select-option.active,
 .search-select-option[aria-selected='true'] { background: var(--color-muted); }
 .search-select-empty { padding: 8px 10px; font-size: 13px; color: var(--color-muted-fg); }
+.search-select-create {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+.search-select-create:hover { background: var(--color-muted); }
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
 
 /* ---------- File dropzone ---------- */
 .dropzone {

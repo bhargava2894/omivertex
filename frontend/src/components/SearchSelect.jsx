@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 export default function SearchSelect({
   options,
   onSearch,
+  onCreate,
   value,
   onChange,
   placeholder = 'Select…',
@@ -27,6 +28,7 @@ export default function SearchSelect({
   const [highlight, setHighlight] = useState(0);
   const [results, setResults] = useState([]); // async results
   const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [chosen, setChosen] = useState(null); // remembered {value,label} for async display
   const ref = useRef(null);
   const onSearchRef = useRef(onSearch);
@@ -89,6 +91,24 @@ export default function SearchSelect({
     setOpen(false);
   };
 
+  const term = query.trim();
+  const exactMatch = shown.some((o) => o.label.toLowerCase() === term.toLowerCase());
+  const canCreate = typeof onCreate === 'function' && term && !exactMatch;
+
+  const create = async () => {
+    if (!canCreate || creating) return;
+    setCreating(true);
+    try {
+      const created = await onCreate(term); // parent creates it and returns { value, label }
+      if (created) {
+        if (isAsync) setChosen(created);
+        choose(created);
+      }
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="search-select" ref={ref}>
       <input
@@ -128,24 +148,38 @@ export default function SearchSelect({
         <ul className="search-select-menu" role="listbox">
           {isAsync && loading ? (
             <li className="search-select-empty">Searching…</li>
-          ) : shown.length === 0 ? (
-            <li className="search-select-empty">No matches</li>
           ) : (
-            shown.map((o, i) => (
-              <li
-                key={o.value}
-                role="option"
-                aria-selected={String(o.value) === String(value)}
-                className={`search-select-option${i === highlight ? ' active' : ''}`}
-                onMouseEnter={() => setHighlight(i)}
-                onMouseDown={(e) => {
-                  e.preventDefault(); // keep focus; select before the input blurs
-                  choose(o);
-                }}
-              >
-                {o.label}
-              </li>
-            ))
+            <>
+              {shown.length === 0 && !canCreate && (
+                <li className="search-select-empty">No matches</li>
+              )}
+              {shown.map((o, i) => (
+                <li
+                  key={o.value}
+                  role="option"
+                  aria-selected={String(o.value) === String(value)}
+                  className={`search-select-option${i === highlight ? ' active' : ''}`}
+                  onMouseEnter={() => setHighlight(i)}
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // keep focus; select before the input blurs
+                    choose(o);
+                  }}
+                >
+                  {o.label}
+                </li>
+              ))}
+              {canCreate && (
+                <li
+                  className="search-select-create"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    create();
+                  }}
+                >
+                  {creating ? 'Creating…' : `+ Add “${term}”`}
+                </li>
+              )}
+            </>
           )}
         </ul>
       )}

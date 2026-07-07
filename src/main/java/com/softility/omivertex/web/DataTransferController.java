@@ -31,6 +31,15 @@ public class DataTransferController {
     @GetMapping("/export")
     public ResponseEntity<byte[]> export(@RequestParam String format) {
         ExportService.ExportFile file = exportService.export(format);
+        return fileResponse(file);
+    }
+
+    @GetMapping("/template")
+    public ResponseEntity<byte[]> template(@RequestParam String type) {
+        return fileResponse(exportService.template(type));
+    }
+
+    private ResponseEntity<byte[]> fileResponse(ExportService.ExportFile file) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.filename() + "\"")
                 .contentType(MediaType.parseMediaType(file.contentType()))

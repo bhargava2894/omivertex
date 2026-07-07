@@ -6,6 +6,7 @@ import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
+import SearchSelect from '../components/SearchSelect.jsx';
 import { PROFICIENCIES } from '../proficiency.js';
 
 const EMPTY = {
@@ -235,35 +236,27 @@ export default function Positions({ showToast, canEdit }) {
               />
             </Field>
             <Field label="Project" required error={errors.projectId} full>
-              <select
+              <SearchSelect
+                options={(projects || []).map((p) => ({
+                  value: p.id,
+                  label: `${p.clientName} · ${p.name}`,
+                }))}
                 value={editing.form.projectId}
-                onChange={(e) => set('projectId', e.target.value)}
-                className={errors.projectId ? 'invalid' : ''}
-              >
-                <option value="">Select project…</option>
-                {(projects || []).map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} · {p.clientName}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => set('projectId', v)}
+                placeholder="Search company or project…"
+                invalid={!!errors.projectId}
+              />
             </Field>
             <Field label="Required Skill (Structured)" error={errors.requiredSkillId}>
-              <select
+              <SearchSelect
+                options={(taxonomy || []).flatMap((cat) =>
+                  (cat.skills || []).map((s) => ({ value: s.id, label: `${cat.name} · ${s.name}` }))
+                )}
                 value={editing.form.requiredSkillId}
-                onChange={(e) => set('requiredSkillId', e.target.value)}
-              >
-                <option value="">Select skill from taxonomy…</option>
-                {(taxonomy || []).map((cat) => (
-                  <optgroup key={cat.id} label={cat.name}>
-                    {(cat.skills || []).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+                onChange={(v) => set('requiredSkillId', v)}
+                placeholder="Search skill from taxonomy…"
+                invalid={!!errors.requiredSkillId}
+              />
             </Field>
             <Field label="Minimum Proficiency" error={errors.minProficiency}>
               <select

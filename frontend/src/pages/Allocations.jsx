@@ -125,19 +125,20 @@ export default function Allocations({ showToast, canEdit }) {
     <>
       <div className="toolbar">
         <div className="toolbar-filters">
-          <select
-            className="filter-select"
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            aria-label="Filter by project"
-          >
-            <option value="">All projects</option>
-            {(projects || []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <div style={{ minWidth: '220px' }}>
+            <SearchSelect
+              options={[
+                { value: '', label: 'All projects' },
+                ...(projects || []).map((p) => ({
+                  value: p.id,
+                  label: `${p.clientName} · ${p.name}`,
+                })),
+              ]}
+              value={projectFilter}
+              onChange={setProjectFilter}
+              placeholder="All projects"
+            />
+          </div>
           <select
             className="filter-select"
             value={activeOnly ? 'active' : ''}

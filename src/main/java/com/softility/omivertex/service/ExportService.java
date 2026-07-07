@@ -52,6 +52,55 @@ public class ExportService {
         };
     }
 
+    /** Blank import templates with the expected headers and one example row. */
+    public ExportFile template(String type) {
+        return switch (type == null ? "" : type.toLowerCase()) {
+            case "roster" -> new ExportFile("omivertex-roster-template.csv", "text/csv", rosterTemplateCsv());
+            case "skillcloud" -> new ExportFile("omivertex-skillcloud-template.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", skillcloudTemplateXlsx());
+            default -> throw new BadRequestException("Unknown template; use 'roster' or 'skillcloud'");
+        };
+    }
+
+    private byte[] rosterTemplateCsv() {
+        // Example rows: a bench joiner (no customer/project) and a staffed associate.
+        String csv = "ASSOCIATE NAME,COMPANY,LOCATION,ONSHORE/OFFSHORE,CUSTOMER,PROJECT,BILLABLE,SKILL\n"
+                + "Jane Doe,Softility,Hyderabad,Offshore,,,,Java\n"
+                + "John Smith,Softility,New York,Onshore,Acme Corp,Acme Portal,Yes,AWS\n";
+        return csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private byte[] skillcloudTemplateXlsx() {
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet emp = wb.createSheet("employees");
+            templateRow(emp, 0, "ASSOCIATE NAME", "COMPANY", "LOCATION", "ONSHORE/OFFSHORE",
+                    "CUSTOMER", "PROJECT", "BILLABLE");
+            templateRow(emp, 1, "Jane Doe", "Softility", "Hyderabad", "Offshore", "", "", "");
+
+            Sheet skills = wb.createSheet("employeeskills");
+            templateRow(skills, 0, "EMPLOYEE NAME", "CATEGORY", "SKILL", "PROFICIENCY");
+            templateRow(skills, 1, "Jane Doe", "Programming & Scripting", "Java", "ADVANCE");
+
+            Sheet certs = wb.createSheet("certifications");
+            templateRow(certs, 0, "EMPLOYEE NAME", "CERTIFICATE NAME", "AUTHORITY", "CREDENTIAL ID",
+                    "ISSUED", "EXPIRES");
+            templateRow(certs, 1, "Jane Doe", "AWS Solutions Architect", "Amazon Web Services",
+                    "AWS-1234", "2024-03-15", "2027-03-15");
+
+            wb.write(out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to build SkillCloud template", e);
+        }
+    }
+
+    private static void templateRow(Sheet sheet, int rowIdx, String... cells) {
+        Row row = sheet.createRow(rowIdx);
+        for (int i = 0; i < cells.length; i++) {
+            row.createCell(i).setCellValue(cells[i]);
+        }
+    }
+
     private static String[] rowOf(AssociateResponse a) {
         return new String[]{
                 a.name(), a.email(), a.company(), orDash(a.location()),

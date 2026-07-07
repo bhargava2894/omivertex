@@ -78,6 +78,14 @@ export function ImportButton({ onImported, showToast }) {
   const [error, setError] = useState(null);
   const [ignoreNovice, setIgnoreNovice] = useState(false);
 
+  const getTemplate = async (type) => {
+    try {
+      await api.downloadTemplate(type);
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  };
+
   const post = async (theFile, dryRun) => {
     const form = new FormData();
     form.append('file', theFile);
@@ -218,6 +226,20 @@ export function ImportButton({ onImported, showToast }) {
                   onChange={(e) => preview(e.target.files[0])}
                 />
               </label>
+              <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--color-muted-fg)' }}>
+                Not sure about the columns? Download a template:{' '}
+                <button type="button" className="link-btn" onClick={() => getTemplate('roster')}>
+                  Roster (CSV)
+                </button>{' '}
+                ·{' '}
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => getTemplate('skillcloud')}
+                >
+                  SkillCloud (Excel)
+                </button>
+              </div>
             </>
           )}
 
