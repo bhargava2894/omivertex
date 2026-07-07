@@ -12,6 +12,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 const EMPTY = {
   associateId: '',
+  companyId: '', // client filter for the project picker; not submitted
   projectId: '',
   billable: true,
   allocationPercent: 100,
@@ -61,6 +62,18 @@ export default function Allocations({ showToast, canEdit }) {
     });
   };
   const set = (k, v) => setEditing((e) => ({ ...e, form: { ...e.form, [k]: v } }));
+
+  // Company picker options: distinct clients that actually have projects.
+  const companies = Array.from(
+    new Map((projects || []).map((p) => [p.clientId, p.clientName])).entries()
+  )
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  // Project picker options: only the chosen company's projects.
+  const companyProjects = (projects || [])
+    .filter((p) => editing && String(p.clientId) === String(editing.form.companyId))
+    .map((p) => ({ value: p.id, label: p.name }));
 
   const save = async () => {
     setSaving(true);
@@ -212,15 +225,27 @@ export default function Allocations({ showToast, canEdit }) {
                     invalid={!!errors.associateId}
                   />
                 </Field>
+                <Field label="Company" required full>
+                  <SearchSelect
+                    options={companies}
+                    value={editing.form.companyId}
+                    onChange={(v) =>
+                      setEditing((e) => ({
+                        ...e,
+                        form: { ...e.form, companyId: v, projectId: '' },
+                      }))
+                    }
+                    placeholder="Search company…"
+                  />
+                </Field>
                 <Field label="Project" required error={errors.projectId} full>
                   <SearchSelect
-                    options={(projects || []).map((p) => ({
-                      value: p.id,
-                      label: `${p.clientName} · ${p.name}`,
-                    }))}
+                    options={companyProjects}
                     value={editing.form.projectId}
                     onChange={(v) => set('projectId', v)}
-                    placeholder="Search company or project…"
+                    placeholder={
+                      editing.form.companyId ? 'Search project…' : 'Select a company first'
+                    }
                     invalid={!!errors.projectId}
                   />
                 </Field>
