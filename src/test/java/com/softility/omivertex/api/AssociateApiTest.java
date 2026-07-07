@@ -1,5 +1,6 @@
 package com.softility.omivertex.api;
 
+import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.domain.WorkMode;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -77,27 +78,37 @@ class AssociateApiTest extends ApiTestBase {
     }
 
     @Test
-    void createAssociate_withSkills_returnsSkills() throws Exception {
-        skill("Programming & Scripting", "Java");
-        skill("Cloud Platforms", "AWS");
+    void createAssociate_withSkills_derivesHeadlineFromStar() throws Exception {
+        Skill java = skill("Programming & Scripting", "Java");
+        Skill aws = skill("Cloud Platforms", "AWS");
 
         mockMvc.perform(post("/api/v1/associates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
-                                 "workMode":"OFFSHORE","primarySkill":"Java","secondarySkill":"AWS"}"""))
+                                 "workMode":"OFFSHORE","skills":[
+                                   {"skillId":%d,"proficiency":"INTERMEDIATE","primary":true},
+                                   {"skillId":%d,"proficiency":"ADVANCE","primary":false}]}"""
+                                .formatted(java.getId(), aws.getId())))
                 .andExpect(status().isCreated())
+                // starred Java wins over AWS despite AWS's higher proficiency
                 .andExpect(jsonPath("$.primarySkill").value("Java"))
                 .andExpect(jsonPath("$.secondarySkill").value("AWS"));
     }
 
     @Test
-    void createAssociate_withInvalidSkills_returnsBadRequest() throws Exception {
+    void createAssociate_withTwoPrimarySkills_returnsBadRequest() throws Exception {
+        Skill java = skill("Programming & Scripting", "Java");
+        Skill aws = skill("Cloud Platforms", "AWS");
+
         mockMvc.perform(post("/api/v1/associates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
-                                 "workMode":"OFFSHORE","primarySkill":"NonExistentSkillXYZ","secondarySkill":"AWS"}"""))
+                                 "workMode":"OFFSHORE","skills":[
+                                   {"skillId":%d,"proficiency":"ADVANCE","primary":true},
+                                   {"skillId":%d,"proficiency":"ADVANCE","primary":true}]}"""
+                                .formatted(java.getId(), aws.getId())))
                 .andExpect(status().isBadRequest());
     }
 

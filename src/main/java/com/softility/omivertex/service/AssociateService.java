@@ -130,12 +130,14 @@ public class AssociateService {
         if (associateRepository.existsByEmailIgnoreCase(request.email())) {
             throw new ConflictException("An associate with email '" + request.email() + "' already exists");
         }
-        validateSkills(request);
         Associate associate = new Associate();
         apply(associate, request);
         associate = associateRepository.save(associate);
         auditService.record("CREATED", "Associate", associate.getId(), "Created associate " + associate.getName());
-        return AssociateResponse.from(associate, List.of(), List.of());
+        if (request.skills() != null) {
+            replaceSkills(associate.getId(), new SkillAssignmentRequest(request.skills()));
+        }
+        return get(associate.getId());
     }
 
     public AssociateResponse update(Long id, AssociateRequest request) {
@@ -144,10 +146,12 @@ public class AssociateService {
                 && associateRepository.existsByEmailIgnoreCase(request.email())) {
             throw new ConflictException("An associate with email '" + request.email() + "' already exists");
         }
-        validateSkills(request);
         apply(associate, request);
         associateRepository.save(associate);
         auditService.record("UPDATED", "Associate", id, "Updated associate " + associate.getName());
+        if (request.skills() != null) {
+            replaceSkills(id, new SkillAssignmentRequest(request.skills()));
+        }
         return get(id);
     }
 
@@ -171,21 +175,8 @@ public class AssociateService {
         associate.setLocation(request.location());
         associate.setWorkMode(request.workMode());
         associate.setDesignation(request.designation());
-        associate.setPrimarySkill(request.primarySkill());
-        associate.setSecondarySkill(request.secondarySkill());
+        // primarySkill/secondarySkill are no longer set here — they are derived from
+        // the rated skills in deriveHeadline() whenever the skill set changes.
         associate.setStatus(request.status() == null ? EntityStatus.ACTIVE : request.status());
-    }
-
-    private void validateSkills(AssociateRequest request) {
-        if (request.primarySkill() != null && !request.primarySkill().isBlank()) {
-            if (skillRepository.findFirstByNameIgnoreCase(request.primarySkill().trim()).isEmpty()) {
-                throw new BadRequestException("Primary skill '" + request.primarySkill() + "' is not a recognized skill in the taxonomy.");
-            }
-        }
-        if (request.secondarySkill() != null && !request.secondarySkill().isBlank()) {
-            if (skillRepository.findFirstByNameIgnoreCase(request.secondarySkill().trim()).isEmpty()) {
-                throw new BadRequestException("Secondary skill '" + request.secondarySkill() + "' is not a recognized skill in the taxonomy.");
-            }
-        }
     }
 }
