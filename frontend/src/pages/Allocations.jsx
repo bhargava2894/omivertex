@@ -32,7 +32,7 @@ export default function Allocations({ showToast, canEdit }) {
   // Associates are searched server-side (the roster can be 500+), so we don't
   // eagerly load them all — the picker queries as you type.
   const searchAssociates = (q) =>
-    api.list('associates', { q, size: 20 }).then((r) =>
+    api.list('associates', { q, page: 0, size: 20 }).then((r) =>
       (r.content || []).map((a) => ({
         value: a.id,
         label: a.currentProject ? `${a.name} — on ${a.currentProject}` : `${a.name} — bench`,
