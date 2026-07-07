@@ -33,7 +33,7 @@ public record AssociateResponse(
         Long benchDays,
         List<SkillGroup> skillGroups) {
 
-    public record RatedSkill(Long skillId, String name, Proficiency proficiency) {
+    public record RatedSkill(Long skillId, String name, Proficiency proficiency, boolean primary) {
     }
 
     public record SkillGroup(String category, List<RatedSkill> skills) {
@@ -66,7 +66,8 @@ public record AssociateResponse(
                         .thenComparing(s -> s.getSkill().getName()))
                 .forEach(s -> byCategory
                         .computeIfAbsent(s.getSkill().getCategory().getName(), k -> new java.util.ArrayList<>())
-                        .add(new RatedSkill(s.getSkill().getId(), s.getSkill().getName(), s.getProficiency())));
+                        .add(new RatedSkill(s.getSkill().getId(), s.getSkill().getName(),
+                                s.getProficiency(), s.isPrimary())));
         return byCategory.entrySet().stream()
                 .map(e -> new SkillGroup(e.getKey(), List.copyOf(e.getValue())))
                 .toList();

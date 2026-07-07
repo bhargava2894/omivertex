@@ -93,7 +93,12 @@ class AssociateApiTest extends ApiTestBase {
                 .andExpect(status().isCreated())
                 // starred Java wins over AWS despite AWS's higher proficiency
                 .andExpect(jsonPath("$.primarySkill").value("Java"))
-                .andExpect(jsonPath("$.secondarySkill").value("AWS"));
+                .andExpect(jsonPath("$.secondarySkill").value("AWS"))
+                // groups are alphabetical by category: Cloud Platforms, then Programming...
+                .andExpect(jsonPath("$.skillGroups[0].skills[0].name").value("AWS"))
+                .andExpect(jsonPath("$.skillGroups[0].skills[0].primary").value(false))
+                .andExpect(jsonPath("$.skillGroups[1].skills[0].name").value("Java"))
+                .andExpect(jsonPath("$.skillGroups[1].skills[0].primary").value(true));
     }
 
     @Test
