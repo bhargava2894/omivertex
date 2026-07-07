@@ -6,6 +6,7 @@ import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
+import SearchSelect from '../components/SearchSelect.jsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -208,18 +209,16 @@ export default function Allocations({ showToast, canEdit }) {
                   </select>
                 </Field>
                 <Field label="Project" required error={errors.projectId} full>
-                  <select
+                  <SearchSelect
+                    options={(projects || []).map((p) => ({
+                      value: p.id,
+                      label: `${p.clientName} · ${p.name}`,
+                    }))}
                     value={editing.form.projectId}
-                    onChange={(e) => set('projectId', e.target.value)}
-                    className={errors.projectId ? 'invalid' : ''}
-                  >
-                    <option value="">Select project…</option>
-                    {(projects || []).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} · {p.clientName}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => set('projectId', v)}
+                    placeholder="Search company or project…"
+                    invalid={!!errors.projectId}
+                  />
                 </Field>
               </>
             )}
