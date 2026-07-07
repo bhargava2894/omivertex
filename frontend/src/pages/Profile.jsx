@@ -5,7 +5,8 @@ import Modal from '../components/Modal.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
 import Badge from '../components/Badge.jsx';
-import { PROFICIENCIES, proficiencyInfo } from '../proficiency.js';
+import SkillEditor from '../components/SkillEditor.jsx';
+import { proficiencyInfo } from '../proficiency.js';
 
 export default function Profile({ id, showToast, canEdit }) {
   const {
@@ -25,7 +26,7 @@ export default function Profile({ id, showToast, canEdit }) {
   const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
 
   const [managingSkills, setManagingSkills] = useState(false);
-  const [selectedSkills, setSelectedSkills] = useState({}); // skillId -> proficiency
+  const [selectedSkills, setSelectedSkills] = useState({}); // skillId -> { proficiency, primary }
   const [savingSkills, setSavingSkills] = useState(false);
 
   const [addingCert, setAddingCert] = useState(false);
@@ -45,7 +46,7 @@ export default function Profile({ id, showToast, canEdit }) {
       const skillsMap = {};
       (associate.skillGroups || []).forEach((group) => {
         (group.skills || []).forEach((skill) => {
-          skillsMap[skill.skillId] = skill.proficiency;
+          skillsMap[skill.skillId] = { proficiency: skill.proficiency, primary: !!skill.primary };
         });
       });
       setSelectedSkills(skillsMap);
@@ -76,10 +77,11 @@ export default function Profile({ id, showToast, canEdit }) {
   const handleSaveSkills = async () => {
     setSavingSkills(true);
     const payload = Object.entries(selectedSkills)
-      .filter(([, prof]) => prof && prof !== '')
-      .map(([skillId, prof]) => ({
+      .filter(([, entry]) => entry && entry.proficiency)
+      .map(([skillId, entry]) => ({
         skillId: Number(skillId),
-        proficiency: prof,
+        proficiency: entry.proficiency,
+        primary: !!entry.primary,
       }));
 
     try {
@@ -401,60 +403,7 @@ export default function Profile({ id, showToast, canEdit }) {
           }
         >
           <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '8px' }}>
-            {!taxonomy || taxonomy.length === 0 ? (
-              <p>No taxonomy categories available. Set up the taxonomy admin page first.</p>
-            ) : (
-              <div style={{ display: 'grid', gap: '20px' }}>
-                {taxonomy.map((cat) => (
-                  <div
-                    key={cat.id}
-                    className="card"
-                    style={{ padding: '16px', background: 'var(--color-muted)' }}
-                  >
-                    <h4
-                      style={{
-                        margin: '0 0 12px 0',
-                        textTransform: 'uppercase',
-                        fontSize: '12px',
-                        letterSpacing: '0.05em',
-                      }}
-                    >
-                      {cat.name}
-                    </h4>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr auto',
-                        gap: '12px',
-                        alignItems: 'center',
-                      }}
-                    >
-                      {(cat.skills || []).map((skill) => (
-                        <div key={skill.id} style={{ display: 'contents' }}>
-                          <span style={{ fontSize: '13.5px', fontWeight: '500' }}>
-                            {skill.name}
-                          </span>
-                          <select
-                            value={selectedSkills[skill.id] || ''}
-                            onChange={(e) =>
-                              setSelectedSkills((prev) => ({ ...prev, [skill.id]: e.target.value }))
-                            }
-                            style={{ width: '150px', padding: '4px 8px', fontSize: '13px' }}
-                          >
-                            <option value="">(Not Held)</option>
-                            {PROFICIENCIES.map((p) => (
-                              <option key={p.value} value={p.value}>
-                                {p.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <SkillEditor taxonomy={taxonomy} value={selectedSkills} onChange={setSelectedSkills} />
           </div>
         </Modal>
       )}
