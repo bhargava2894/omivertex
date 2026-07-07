@@ -73,6 +73,13 @@ dashboard through caches/proxies).
   graph is authoritative for search, reports, and matching. Not removed because that
   would drop the fallback + import convenience (a functionality loss). Do not build
   new features on the free-text fields. See `Associate.java`.
+- **Skills entry unified** (2026-07-07): the Add/Edit form's Primary/Secondary skill
+  dropdowns were replaced by the shared `SkillEditor` (skill + proficiency + a
+  "primary" star), used on both the form and the Profile page. `primarySkill`/
+  `secondarySkill` are now **derived** server-side (`AssociateService.deriveHeadline`)
+  from the starred skill — no longer hand-entered. New `AssociateSkill.is_primary`
+  flag (Flyway `V2`). CSV import still populates the text fields in bulk (unchanged).
+  See `docs/superpowers/specs/2026-07-07-unify-associate-skills-entry-design.md`.
 
 ## Done (for reference)
 
