@@ -234,16 +234,13 @@ public class ImportService {
             rowNumber++;
             try {
                 String name = clean(value(row, "ASSOCIATE NAME", "NAME", "ASSOCIATE"));
-                String customer = clean(value(row, "CUSTOMER", "CLIENT"));
-                String projectName = clean(value(row, "PROJECT"));
                 if (name.isEmpty()) {
                     continue; // blank row
                 }
                 rowsProcessed++;
-                if (customer.isEmpty() || projectName.isEmpty()) {
-                    errors.add("Row " + rowNumber + ": CUSTOMER and PROJECT are required");
-                    continue;
-                }
+
+                String customer = clean(value(row, "CUSTOMER", "CLIENT"));
+                String projectName = clean(value(row, "PROJECT"));
                 String company = clean(value(row, "COMPANY"));
                 String locationRaw = clean(value(row, "LOCATION"));
                 String shoreRaw = clean(value(row, "ONSHORE/OFFSHORE", "WORK MODE", "SHORE"));
@@ -252,6 +249,32 @@ public class ImportService {
                 WorkMode workMode = parseWorkMode(shoreRaw.isEmpty() ? locationRaw : shoreRaw);
                 String location = isShoreValue(locationRaw) ? null : emptyToNull(locationRaw);
                 boolean billable = parseBillable(billableRaw);
+
+                // Always create/find the associate — new joiners may not be staffed yet.
+                String email = emailFor(name);
+                Associate associate = associates.findByEmailIgnoreCase(email).orElse(null);
+                if (associate == null) {
+                    associate = new Associate();
+                    associate.setName(name);
+                    associate.setEmail(email);
+                    associate.setCompany(company.isEmpty() ? "Softility" : company);
+                    associate.setLocation(location);
+                    associate.setWorkMode(workMode);
+                    associate.setPrimarySkill(emptyToNull(clean(value(row, "SKILL", "PRIMARY SKILL", "TECHNOLOGY"))));
+                    associate = associates.save(associate);
+                    associatesCreated++;
+                }
+
+                // The project allocation is optional. Both blank -> bench associate, done.
+                if (customer.isEmpty() && projectName.isEmpty()) {
+                    continue;
+                }
+                // One without the other is ambiguous — the associate is still imported.
+                if (customer.isEmpty() || projectName.isEmpty()) {
+                    errors.add("Row " + rowNumber
+                            + ": provide both CUSTOMER and PROJECT, or leave both blank");
+                    continue;
+                }
 
                 Client client = clients.findByNameIgnoreCase(customer).orElse(null);
                 if (client == null) {
@@ -270,20 +293,6 @@ public class ImportService {
                     project.setStartDate(LocalDate.now());
                     project = projects.save(project);
                     projectsCreated++;
-                }
-
-                String email = emailFor(name);
-                Associate associate = associates.findByEmailIgnoreCase(email).orElse(null);
-                if (associate == null) {
-                    associate = new Associate();
-                    associate.setName(name);
-                    associate.setEmail(email);
-                    associate.setCompany(company.isEmpty() ? "Softility" : company);
-                    associate.setLocation(location);
-                    associate.setWorkMode(workMode);
-                    associate.setPrimarySkill(emptyToNull(clean(value(row, "SKILL", "PRIMARY SKILL", "TECHNOLOGY"))));
-                    associate = associates.save(associate);
-                    associatesCreated++;
                 }
 
                 if (allocations.existsByAssociateIdAndProjectIdAndEndDateIsNull(associate.getId(), project.getId())) {

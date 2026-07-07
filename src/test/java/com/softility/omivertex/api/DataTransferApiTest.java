@@ -92,6 +92,27 @@ class DataTransferApiTest extends ApiTestBase {
     }
 
     @Test
+    void importCsv_associateWithoutProject_createsBenchAssociate() throws Exception {
+        // New joiners not yet staffed: only a name (no CUSTOMER/PROJECT).
+        String csv = """
+                ASSOCIATE NAME,COMPANY,LOCATION,ONSHORE/OFFSHORE
+                Ravi Kumar,Softility,Hyderabad,OFFSHORE
+                """;
+        var file = new MockMultipartFile("file", "roster.csv", "text/csv", csv.getBytes());
+
+        mockMvc.perform(multipart("/api/v1/data/import").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rowsProcessed").value(1))
+                .andExpect(jsonPath("$.associatesCreated").value(1))
+                .andExpect(jsonPath("$.allocationsCreated").value(0))
+                .andExpect(jsonPath("$.errors", hasSize(0)));
+
+        mockMvc.perform(get("/api/v1/associates"))
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Ravi Kumar"));
+    }
+
+    @Test
     void importDryRun_previewsWithoutPersisting() throws Exception {
         var file = new MockMultipartFile("file", "roster.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", workbookBytes());

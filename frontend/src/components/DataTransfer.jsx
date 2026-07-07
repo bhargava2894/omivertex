@@ -206,9 +206,10 @@ export function ImportButton({ onImported, showToast }) {
                   <strong>{busy ? 'Analyzing…' : 'Click to choose a file'}</strong> or drag it here
                 </div>
                 <div className="hint">
-                  .xlsx or .csv (Roster: ASSOCIATE NAME, COMPANY, etc. OR SkillCloud workbook:
-                  'employees', 'employeeskills', and 'certifications' sheets) — you'll see a preview
-                  before anything is saved
+                  .xlsx or .csv. Only ASSOCIATE NAME is required — add CUSTOMER + PROJECT to also
+                  place someone on a project, or leave them blank for new/bench joiners. (Or a
+                  SkillCloud workbook: 'employees', 'employeeskills', 'certifications' sheets.)
+                  You'll see a preview before anything is saved.
                 </div>
                 <input
                   type="file"
