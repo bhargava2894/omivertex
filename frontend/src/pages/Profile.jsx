@@ -23,7 +23,7 @@ export default function Profile({ id, showToast, canEdit }) {
     () => api.list('allocations', { associateId: id }),
     [id]
   );
-  const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
+  const { data: taxonomy, reload: reloadTaxonomy } = useLoad(() => api.list('taxonomy'), []);
 
   const [managingSkills, setManagingSkills] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState({}); // skillId -> { proficiency, primary }
@@ -403,7 +403,13 @@ export default function Profile({ id, showToast, canEdit }) {
           }
         >
           <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '8px' }}>
-            <SkillEditor taxonomy={taxonomy} value={selectedSkills} onChange={setSelectedSkills} />
+            <SkillEditor
+              taxonomy={taxonomy}
+              value={selectedSkills}
+              onChange={setSelectedSkills}
+              onTaxonomyChange={reloadTaxonomy}
+              showToast={showToast}
+            />
           </div>
         </Modal>
       )}

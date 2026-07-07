@@ -55,7 +55,7 @@ export default function Associates({ showToast, canEdit }) {
     setPage(0);
   }, [staffing, workMode, categoryId, skillId, minProficiency, debouncedSearch]);
 
-  const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
+  const { data: taxonomy, reload: reloadTaxonomy } = useLoad(() => api.list('taxonomy'), []);
 
   useEffect(() => {
     if (!taxonomy) return;
@@ -403,6 +403,8 @@ export default function Associates({ showToast, canEdit }) {
                   taxonomy={taxonomy}
                   value={editing.form.skills}
                   onChange={(v) => set('skills', v)}
+                  onTaxonomyChange={reloadTaxonomy}
+                  showToast={showToast}
                 />
               </div>
             </Field>
