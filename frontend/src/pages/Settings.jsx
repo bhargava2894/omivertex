@@ -57,7 +57,7 @@ export default function Settings({ theme, setTheme, showToast, canEdit }) {
         </p>
         <div className="toolbar-actions">
           {canEdit && <ImportButton onImported={() => {}} showToast={showToast} />}
-          <ExportMenu />
+          <ExportMenu showToast={showToast} />
         </div>
       </div>
 

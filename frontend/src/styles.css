@@ -279,9 +279,11 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   font-weight: 500;
   color: var(--color-foreground);
   text-decoration: none;
+  cursor: pointer;
   transition: background 0.15s var(--ease);
 }
 .menu-item:hover { background: var(--color-muted); }
+.menu-item:disabled { opacity: 0.6; cursor: default; }
 .menu-item svg { width: 16px; height: 16px; color: var(--color-muted-fg); }
 
 /* ---------- Cards & stat tiles ---------- */

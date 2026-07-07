@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { api } from '../api.js';
 import Icon from './Icon.jsx';
 import Modal from './Modal.jsx';
 
@@ -9,9 +10,22 @@ const EXPORTS = [
   { format: 'docx', label: 'Word (.docx)', icon: 'file' },
 ];
 
-export function ExportMenu() {
+export function ExportMenu({ showToast }) {
   const [open, setOpen] = useState(false);
+  const [downloading, setDownloading] = useState(null);
   const ref = useRef(null);
+
+  const download = async (format) => {
+    setDownloading(format);
+    try {
+      await api.exportFile(format);
+      setOpen(false);
+    } catch (err) {
+      if (showToast) showToast(err.message, true);
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -38,16 +52,16 @@ export function ExportMenu() {
       {open && (
         <div className="menu" role="menu">
           {EXPORTS.map((e) => (
-            <a
+            <button
               key={e.format}
+              type="button"
               className="menu-item"
               role="menuitem"
-              href={`/api/v1/data/export?format=${e.format}`}
-              download
-              onClick={() => setOpen(false)}
+              disabled={downloading !== null}
+              onClick={() => download(e.format)}
             >
-              <Icon name={e.icon} size={16} /> {e.label}
-            </a>
+              <Icon name={e.icon} size={16} /> {downloading === e.format ? 'Preparing…' : e.label}
+            </button>
           ))}
         </div>
       )}

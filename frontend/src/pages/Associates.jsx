@@ -273,7 +273,7 @@ export default function Associates({ showToast, canEdit }) {
         </div>
         <div className="toolbar-actions">
           {canEdit && <ImportButton onImported={reload} showToast={showToast} />}
-          <ExportMenu />
+          <ExportMenu showToast={showToast} />
           {canEdit && (
             <button className="btn btn-primary" onClick={openCreate}>
               <Icon name="plus" size={16} /> New Associate

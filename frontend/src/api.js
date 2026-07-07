@@ -27,6 +27,28 @@ export const api = {
     return request(`/${resource}${qs ? `?${qs}` : ''}`);
   },
   get: (resource, id) => request(`/${resource}/${id}`),
+  // Downloads a generated file (xlsx/csv/pdf/docx). Fetching as a blob and saving
+  // via a temporary object URL is reliable across browsers for every MIME type —
+  // a plain <a download> lets some browsers try to *preview* Office files instead.
+  exportFile: async (format) => {
+    const res = await fetch(`${BASE}/data/export?format=${encodeURIComponent(format)}`);
+    if (!res.ok) {
+      if (res.status === 401) window.dispatchEvent(new Event('ov-unauthorized'));
+      throw new Error(`Export failed (${res.status})`);
+    }
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const match = /filename="?([^"]+)"?/.exec(disposition);
+    const filename = match ? match[1] : `export.${format}`;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
   create: (resource, data) =>
     request(`/${resource}`, { method: 'POST', body: JSON.stringify(data) }),
   update: (resource, id, data) =>
