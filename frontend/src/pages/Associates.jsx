@@ -6,6 +6,7 @@ import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
+import SkillEditor from '../components/SkillEditor.jsx';
 import { ExportMenu, ImportButton } from '../components/DataTransfer.jsx';
 import { PROFICIENCIES } from '../proficiency.js';
 
@@ -16,8 +17,7 @@ const EMPTY = {
   location: '',
   workMode: 'ONSHORE',
   designation: '',
-  primarySkill: '',
-  secondarySkill: '',
+  skills: {}, // skillId -> { proficiency, primary }
   status: 'ACTIVE',
 };
 
@@ -116,12 +116,6 @@ export default function Associates({ showToast, canEdit }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const allSkills = (taxonomy || [])
-    .reduce((acc, cat) => {
-      return acc.concat((cat.skills || []).map((s) => s.name));
-    }, [])
-    .sort();
-
   // server returns a paged envelope; search + filtering happen server-side now
   const rows = data?.content || [];
   const serverPagination = {
@@ -147,8 +141,12 @@ export default function Associates({ showToast, canEdit }) {
         location: row.location || '',
         workMode: row.workMode,
         designation: row.designation || '',
-        primarySkill: row.primarySkill || '',
-        secondarySkill: row.secondarySkill || '',
+        skills: (row.skillGroups || []).reduce((acc, group) => {
+          (group.skills || []).forEach((s) => {
+            acc[s.skillId] = { proficiency: s.proficiency, primary: !!s.primary };
+          });
+          return acc;
+        }, {}),
         status: row.status,
       },
     });
@@ -158,9 +156,20 @@ export default function Associates({ showToast, canEdit }) {
   const save = async () => {
     setSaving(true);
     setErrors({});
+    const { skills, ...rest } = editing.form;
+    const payload = {
+      ...rest,
+      skills: Object.entries(skills || {})
+        .filter(([, v]) => v && v.proficiency)
+        .map(([skillId, v]) => ({
+          skillId: Number(skillId),
+          proficiency: v.proficiency,
+          primary: !!v.primary,
+        })),
+    };
     try {
-      if (editing.id) await api.update('associates', editing.id, editing.form);
-      else await api.create('associates', editing.form);
+      if (editing.id) await api.update('associates', editing.id, payload);
+      else await api.create('associates', payload);
       showToast(editing.id ? 'Associate updated' : 'Associate created');
       setEditing(null);
       reload();
@@ -358,32 +367,6 @@ export default function Associates({ showToast, canEdit }) {
                 onChange={(e) => set('designation', e.target.value)}
               />
             </Field>
-            <Field label="Primary skill" error={errors.primarySkill}>
-              <select
-                value={editing.form.primarySkill}
-                onChange={(e) => set('primarySkill', e.target.value)}
-              >
-                <option value="">Select primary skill...</option>
-                {allSkills.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Secondary skill" error={errors.secondarySkill}>
-              <select
-                value={editing.form.secondarySkill}
-                onChange={(e) => set('secondarySkill', e.target.value)}
-              >
-                <option value="">Select secondary skill...</option>
-                {allSkills.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </Field>
             <Field label="Location" error={errors.location}>
               <input
                 value={editing.form.location}
@@ -404,6 +387,24 @@ export default function Associates({ showToast, canEdit }) {
                 <option value="ACTIVE">Active</option>
                 <option value="INACTIVE">Inactive</option>
               </select>
+            </Field>
+            <Field label="Skills (★ marks the primary skill)" full>
+              <div
+                style={{
+                  maxHeight: '40vh',
+                  overflowY: 'auto',
+                  paddingRight: '8px',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '8px',
+                  padding: '12px',
+                }}
+              >
+                <SkillEditor
+                  taxonomy={taxonomy}
+                  value={editing.form.skills}
+                  onChange={(v) => set('skills', v)}
+                />
+              </div>
             </Field>
           </div>
         </Modal>
