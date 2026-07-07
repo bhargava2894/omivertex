@@ -11,6 +11,7 @@ public record SkillAssignmentRequest(@NotNull @Valid List<Entry> skills) {
 
     public record Entry(
             @NotNull(message = "Skill is required") Long skillId,
-            @NotNull(message = "Proficiency is required") Proficiency proficiency) {
+            @NotNull(message = "Proficiency is required") Proficiency proficiency,
+            boolean primary) {
     }
 }

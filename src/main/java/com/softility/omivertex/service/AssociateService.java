@@ -20,6 +20,8 @@ import com.softility.omivertex.web.error.BadRequestException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -84,8 +86,13 @@ public class AssociateService {
     /** Replaces the associate's entire rated-skill set with the given entries. */
     public AssociateResponse replaceSkills(Long id, SkillAssignmentRequest request) {
         Associate associate = find(id);
+        long primaries = request.skills().stream().filter(SkillAssignmentRequest.Entry::primary).count();
+        if (primaries > 1) {
+            throw new BadRequestException("Only one skill can be marked primary.");
+        }
         associateSkillRepository.deleteByAssociateId(id);
         associateSkillRepository.flush(); // deletes must hit the DB before re-inserts touch the unique constraint
+        List<AssociateSkill> saved = new ArrayList<>();
         for (SkillAssignmentRequest.Entry entry : request.skills()) {
             Skill skill = skillRepository.findById(entry.skillId())
                     .orElseThrow(() -> new NotFoundException("Skill", entry.skillId()));
@@ -93,11 +100,30 @@ public class AssociateService {
             rated.setAssociate(associate);
             rated.setSkill(skill);
             rated.setProficiency(entry.proficiency());
-            associateSkillRepository.save(rated);
+            rated.setPrimary(entry.primary());
+            saved.add(associateSkillRepository.save(rated));
         }
+        deriveHeadline(associate, saved);
         auditService.record("UPDATED", "Associate", id,
                 "Updated skills of " + associate.getName() + " (" + request.skills().size() + " rated skills)");
         return get(id);
+    }
+
+    /**
+     * Recomputes the associate's free-text headline (primarySkill/secondarySkill) from
+     * their rated skills: the starred skill is primary (falling back to the highest
+     * proficiency when none is starred); the next-highest proficiency is secondary.
+     */
+    private void deriveHeadline(Associate associate, List<AssociateSkill> skills) {
+        AssociateSkill primary = skills.stream().filter(AssociateSkill::isPrimary).findFirst()
+                .orElseGet(() -> skills.stream()
+                        .max(Comparator.comparingInt(s -> s.getProficiency().ordinal())).orElse(null));
+        AssociateSkill secondary = skills.stream()
+                .filter(s -> primary == null || s != primary)
+                .max(Comparator.comparingInt(s -> s.getProficiency().ordinal())).orElse(null);
+        associate.setPrimarySkill(primary == null ? null : primary.getSkill().getName());
+        associate.setSecondarySkill(secondary == null ? null : secondary.getSkill().getName());
+        associateRepository.save(associate);
     }
 
     public AssociateResponse create(AssociateRequest request) {
