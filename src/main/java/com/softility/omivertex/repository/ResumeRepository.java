@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 public interface ResumeRepository extends JpaRepository<Resume, Long> {
@@ -26,10 +27,18 @@ public interface ResumeRepository extends JpaRepository<Resume, Long> {
             + "from Resume r where r.associateId = :associateId")
     Optional<ResumeMeta> findMetaByAssociateId(Long associateId);
 
+    @Query("select r.associateId as associateId, r.filename as filename from Resume r")
+    List<AssociateResumeMeta> findAllMeta();
+
     interface ResumeMeta {
         String getFilename();
         String getContentType();
         long getByteSize();
         Instant getUploadedAt();
+    }
+
+    interface AssociateResumeMeta {
+        Long getAssociateId();
+        String getFilename();
     }
 }

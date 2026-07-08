@@ -34,25 +34,11 @@ export const api = {
     api.downloadUrl(`${BASE}/data/template?type=${encodeURIComponent(type)}`),
   exportFile: (format) =>
     api.downloadUrl(`${BASE}/data/export?format=${encodeURIComponent(format)}`),
-  // Fetches a file as a blob and saves it — reliable across browsers/MIME types.
-  downloadUrl: async (url) => {
-    const res = await fetch(url);
-    if (!res.ok) {
-      if (res.status === 401) window.dispatchEvent(new Event('ov-unauthorized'));
-      throw new Error(`Download failed (${res.status})`);
-    }
-    const disposition = res.headers.get('Content-Disposition') || '';
-    const match = /filename="?([^"]+)"?/.exec(disposition);
-    const filename = match ? match[1] : 'download';
-    const blob = await res.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
+  // Triggers a native browser download by assigning the window location.
+  // This lets the browser's native download manager read the Content-Disposition
+  // header, ensuring the original filename is preserved in all webviews/browsers.
+  downloadUrl: (url) => {
+    window.location.assign(url);
   },
   create: (resource, data) =>
     request(`/${resource}`, { method: 'POST', body: JSON.stringify(data) }),
@@ -85,4 +71,40 @@ export const api = {
       body: JSON.stringify(data),
     }),
   deleteCertification: (id) => request(`/certifications/${id}`, { method: 'DELETE' }),
+  parseResume: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/resumes/parse`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const error = new Error(body.message || 'Parsing failed');
+      error.status = res.status;
+      throw error;
+    }
+    return res.json();
+  },
+  uploadResume: async (associateId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/associates/${associateId}/resume`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const error = new Error(body.message || 'Upload failed');
+      error.status = res.status;
+      throw error;
+    }
+    return res.json();
+  },
+  downloadResume: (associateId) => {
+    return api.downloadUrl(`${BASE}/associates/${associateId}/resume`);
+  },
+  deleteResume: (associateId) => {
+    return request(`/associates/${associateId}/resume`, { method: 'DELETE' });
+  },
 };

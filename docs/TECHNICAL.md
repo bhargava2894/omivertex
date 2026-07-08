@@ -136,6 +136,8 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/taxonomy/skills` | POST, DELETE/{id} (ADMIN) | — |
 | `/associates/{id}/skills` | PUT (idempotent rated-skills replace; ADMIN) | — |
 | `/associates/{id}/certifications` | GET, POST (ADMIN) | — |
+| `/associates/{id}/resume` | GET (download), POST (upload/replace; ADMIN), DELETE (remove; ADMIN) | — |
+| `/resumes/parse` | POST multipart `file` (stateless suggestion; ADMIN) | — |
 | `/certifications` | GET (org-wide, alphabetical soonest expiry first) | `?q=` (search by name, authority, associate name) |
 | `/certifications/{id}` | DELETE (ADMIN) | — |
 | `/reports/skills` | GET (proficiency distribution tree) | — |

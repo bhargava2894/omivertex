@@ -40,7 +40,7 @@ public class Resume {
     @Lob
     @JdbcTypeCode(SqlTypes.VARBINARY)
     @Basic(fetch = FetchType.LAZY)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "bytea")
     private byte[] content;
 
     @Column(name = "uploaded_at", nullable = false)

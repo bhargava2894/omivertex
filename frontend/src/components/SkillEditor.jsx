@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../api.js';
 import { PROFICIENCIES } from '../proficiency.js';
 
@@ -22,6 +22,16 @@ export default function SkillEditor({ taxonomy, value, onChange, onTaxonomyChang
   const [search, setSearch] = useState('');
   const [addCategoryId, setAddCategoryId] = useState('');
   const [adding, setAdding] = useState(false);
+  const [showOnlySelected, setShowOnlySelected] = useState(Object.keys(held).length > 0);
+  const prevHeldCount = useRef(Object.keys(held).length);
+
+  useEffect(() => {
+    const heldCount = Object.keys(held).length;
+    if (heldCount > prevHeldCount.current) {
+      setShowOnlySelected(true);
+    }
+    prevHeldCount.current = heldCount;
+  }, [held]);
 
   const term = search.trim();
   const q = term.toLowerCase();
@@ -45,14 +55,16 @@ export default function SkillEditor({ taxonomy, value, onChange, onTaxonomyChang
     onChange(next);
   };
 
-  const filtered = q
-    ? cats
-        .map((cat) => ({
-          ...cat,
-          skills: (cat.skills || []).filter((s) => s.name.toLowerCase().includes(q)),
-        }))
-        .filter((cat) => cat.skills.length > 0)
-    : cats;
+  const filtered = cats
+    .map((cat) => ({
+      ...cat,
+      skills: (cat.skills || []).filter((s) => {
+        const matchesQuery = !q || s.name.toLowerCase().includes(q);
+        const isSelected = !!held[s.id];
+        return matchesQuery && (!showOnlySelected || isSelected);
+      }),
+    }))
+    .filter((cat) => cat.skills.length > 0);
 
   const anyMatch = cats.some((cat) =>
     (cat.skills || []).some((s) => s.name.toLowerCase().includes(q))
@@ -78,60 +90,92 @@ export default function SkillEditor({ taxonomy, value, onChange, onTaxonomyChang
   }
 
   return (
-    <div>
-      <input
-        type="search"
-        placeholder="Search skills…"
-        aria-label="Search skills"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{
-          width: '100%',
-          marginBottom: '12px',
-          padding: '8px 10px',
-          border: '1px solid var(--color-border)',
-          borderRadius: '8px',
-        }}
-      />
-
-      {term && !anyMatch && (
-        <div
-          className="card"
-          style={{ padding: '12px', marginBottom: '12px', background: 'var(--color-muted)' }}
-        >
-          <div style={{ fontSize: '13.5px', marginBottom: '8px' }}>No skill matches “{term}”.</div>
-          {onTaxonomyChange ? (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '13px' }}>Add “{term}” to</span>
-              <select
-                value={addCategoryId}
-                aria-label="Category for the new skill"
-                onChange={(e) => setAddCategoryId(e.target.value)}
-                style={{ padding: '4px 8px', fontSize: '13px' }}
-              >
-                <option value="">Select category…</option>
-                {cats.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                disabled={adding || !addCategoryId}
-                onClick={handleAdd}
-              >
-                {adding ? 'Adding…' : 'Add skill'}
-              </button>
-            </div>
-          ) : (
-            <div style={{ fontSize: '13px' }}>
-              Add it on the Taxonomy page, then it will appear here.
-            </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      <div style={{ marginBottom: '12px' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <input
+            type="search"
+            placeholder="Search skills…"
+            aria-label="Search skills"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '8px 10px',
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px',
+              margin: 0,
+            }}
+          />
+          {Object.keys(held).length > 0 && (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '13px',
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showOnlySelected}
+                onChange={(e) => setShowOnlySelected(e.target.checked)}
+                style={{ cursor: 'pointer', margin: 0 }}
+              />
+              Show only selected
+            </label>
           )}
         </div>
-      )}
+
+        {term && !anyMatch && (
+          <div
+            className="card"
+            style={{
+              padding: '12px',
+              marginTop: '12px',
+              background: 'var(--color-muted)',
+              marginBottom: 0,
+            }}
+          >
+            <div style={{ fontSize: '13.5px', marginBottom: '8px' }}>
+              No skill matches “{term}”.
+            </div>
+            {onTaxonomyChange ? (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '13px' }}>Add “{term}” to</span>
+                <select
+                  value={addCategoryId}
+                  aria-label="Category for the new skill"
+                  onChange={(e) => setAddCategoryId(e.target.value)}
+                  style={{ padding: '4px 8px', fontSize: '13px' }}
+                >
+                  <option value="">Select category…</option>
+                  {cats.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={adding || !addCategoryId}
+                  onClick={handleAdd}
+                >
+                  {adding ? 'Adding…' : 'Add skill'}
+                </button>
+              </div>
+            ) : (
+              <div style={{ fontSize: '13px' }}>
+                Add it on the Taxonomy page, then it will appear here.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div style={{ display: 'grid', gap: '20px' }}>
         {filtered.map((cat) => (

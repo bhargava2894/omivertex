@@ -292,4 +292,29 @@ class AssociateApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$", hasSize(1))) // only Anita matches, Rahul is excluded
                 .andExpect(jsonPath("$[0].name").value("Anita Rao"));
     }
+
+    @Test
+    void getAssociate_includesResumeFilename() throws Exception {
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+
+        // When no resume, should be null
+        mockMvc.perform(get("/api/v1/associates/" + priya.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resumeFilename").isEmpty());
+
+        // Save a dummy resume directly to repository
+        var resume = new com.softility.omivertex.domain.Resume();
+        resume.setAssociateId(priya.getId());
+        resume.setFilename("priya_resume.pdf");
+        resume.setContentType("application/pdf");
+        resume.setByteSize(1234);
+        resume.setContent(new byte[]{1, 2, 3});
+        resume.setUploadedAt(java.time.Instant.now());
+        resumeRepository.save(resume);
+
+        // When resume exists, should return filename
+        mockMvc.perform(get("/api/v1/associates/" + priya.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resumeFilename").value("priya_resume.pdf"));
+    }
 }

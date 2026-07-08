@@ -115,6 +115,10 @@ export default function Associates({ showToast, canEdit }) {
   const [editing, setEditing] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [parsingResume, setParsingResume] = useState(false);
+  const [resumeNotice, setResumeNotice] = useState('');
+  const [drag, setDrag] = useState(false);
 
   // server returns a paged envelope; search + filtering happen server-side now
   const rows = data?.content || [];
@@ -129,6 +133,68 @@ export default function Associates({ showToast, canEdit }) {
   const openCreate = () => {
     setErrors({});
     setEditing({ form: { ...EMPTY } });
+    setResumeFile(null);
+    setParsingResume(false);
+    setResumeNotice('');
+  };
+
+  const handleResumeSelect = async (file) => {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'pdf' && ext !== 'docx') {
+      showToast(
+        'Unsupported file type. Only PDF (.pdf) and Word (.docx) documents are allowed.',
+        true
+      );
+      return;
+    }
+
+    setResumeFile(file);
+    setParsingResume(true);
+    setResumeNotice('');
+
+    try {
+      const data = await api.parseResume(file);
+      if (data.textExtracted && data.suggestedSkills?.length > 0) {
+        const mergedSkills = { ...editing.form.skills };
+        let addedCount = 0;
+        data.suggestedSkills.forEach((s) => {
+          if (!mergedSkills[s.skillId]) {
+            mergedSkills[s.skillId] = { proficiency: 'INTERMEDIATE', primary: false };
+            addedCount++;
+          }
+        });
+
+        if (addedCount > 0) {
+          setEditing((prev) => ({
+            ...prev,
+            form: {
+              ...prev.form,
+              skills: mergedSkills,
+            },
+          }));
+          setResumeNotice(
+            `${addedCount} skills detected from the résumé and added at Intermediate — please review and adjust each before saving.`
+          );
+          showToast(`Extracted ${addedCount} skills from résumé`);
+        } else {
+          setResumeNotice(
+            'Résumé parsed successfully, but all detected skills were already selected.'
+          );
+        }
+      } else if (!data.textExtracted) {
+        setResumeNotice('Could not read text from this résumé file. Please add skills manually.');
+        showToast('Text extraction returned empty', true);
+      } else {
+        setResumeNotice('No matching taxonomy skills were found in this résumé.');
+        showToast('No matching skills found');
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to parse résumé', true);
+      setResumeNotice(`Failed to parse résumé: ${err.message}`);
+    } finally {
+      setParsingResume(false);
+    }
   };
   const openEdit = (row) => {
     setErrors({});
@@ -168,8 +234,18 @@ export default function Associates({ showToast, canEdit }) {
         })),
     };
     try {
-      if (editing.id) await api.update('associates', editing.id, payload);
-      else await api.create('associates', payload);
+      if (editing.id) {
+        await api.update('associates', editing.id, payload);
+      } else {
+        const created = await api.create('associates', payload);
+        if (resumeFile) {
+          try {
+            await api.uploadResume(created.id, resumeFile);
+          } catch (uploadErr) {
+            showToast(`Associate created, but résumé upload failed: ${uploadErr.message}`, true);
+          }
+        }
+      }
       showToast(editing.id ? 'Associate updated' : 'Associate created');
       setEditing(null);
       reload();
@@ -325,6 +401,7 @@ export default function Associates({ showToast, canEdit }) {
       {editing && (
         <Modal
           title={editing.id ? 'Edit Associate' : 'New Associate'}
+          size="lg"
           onClose={() => setEditing(null)}
           footer={
             <>
@@ -388,6 +465,76 @@ export default function Associates({ showToast, canEdit }) {
                 <option value="INACTIVE">Inactive</option>
               </select>
             </Field>
+            {!editing.id && (
+              <Field label="Résumé (PDF/Word)" error={errors.resume} full>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label
+                    className={`dropzone ${drag ? 'drag' : ''}`}
+                    style={{
+                      padding: '24px 16px',
+                      border: '2px dashed var(--color-border)',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      backgroundColor: 'var(--color-bg-card)',
+                      transition: 'all 0.2s ease',
+                      display: 'block',
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDrag(true);
+                    }}
+                    onDragLeave={() => setDrag(false)}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      setDrag(false);
+                      handleResumeSelect(e.dataTransfer.files[0]);
+                    }}
+                  >
+                    <Icon
+                      name="upload"
+                      size={24}
+                      style={{ marginBottom: '8px', color: 'var(--color-primary)' }}
+                    />
+                    <div style={{ fontSize: '14px', color: 'var(--color-foreground)' }}>
+                      {parsingResume ? (
+                        <strong>Parsing résumé...</strong>
+                      ) : resumeFile ? (
+                        <strong>Selected: {resumeFile.name}</strong>
+                      ) : (
+                        <strong>Click to select a résumé</strong>
+                      )}
+                      {!parsingResume && !resumeFile && ' or drag a PDF/Word file here'}
+                    </div>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        if (e.target.files[0]) {
+                          handleResumeSelect(e.target.files[0]);
+                        }
+                      }}
+                    />
+                  </label>
+                  {resumeNotice && (
+                    <div
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--color-info-fg, #0284c7)',
+                        backgroundColor: 'var(--color-info-bg, #f0f9ff)',
+                        padding: '10px 14px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--color-info-border, #e0f2fe)',
+                        lineHeight: '1.4',
+                      }}
+                    >
+                      {resumeNotice}
+                    </div>
+                  )}
+                </div>
+              </Field>
+            )}
             <Field label="Skills (★ marks the primary skill)" full>
               <div
                 style={{

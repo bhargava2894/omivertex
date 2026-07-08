@@ -41,6 +41,20 @@ dashboard through caches/proxies).
       (paged envelope + `q` search, backward compatible). Remaining lists tracked
       in P3.
 
+## P1.5 — Résumé Parsing & Matching (Current Epic)
+
+- [x] **Résumé Parsing & Extraction Suite**
+  - [x] Task 1: resumes table, entity, repository (V3, PDFBox) — DONE
+  - [x] Task 2: ResumeTextExtractor (PDFBox + POI) — DONE
+  - [x] Task 3: ResumeSkillMatcher (keyword match) — DONE
+  - [x] Task 4: POST /resumes/parse endpoint — DONE
+  - [x] Task 5: upload/download/delete résumé (replace) — DONE
+  - [x] Task 6: resumeFilename on profile response — DONE
+  - [x] Task 7: frontend API methods — DONE
+  - [x] Task 8: New Associate form résumé field — DONE
+  - [x] Task 9: Profile résumé card — DONE
+  - [x] Task 10: docs + graph refresh + final verification — DONE
+
 ## P2 — Product roadmap (in rough impact order)
 
 - [ ] **Export skills and certifications** — include skill and certification columns in spreadsheet/document exports.
