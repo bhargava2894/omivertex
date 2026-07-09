@@ -39,13 +39,14 @@ public class ImportService {
     private final AssociateSkillRepository associateSkills;
     private final CertificationRepository certifications;
     private final SpreadsheetParser spreadsheetParser;
+    private final AllocationService allocationService;
 
     public ImportService(ClientRepository clients, ProjectRepository projects,
                          AssociateRepository associates, AllocationRepository allocations,
                          AuditService auditService, PlatformTransactionManager transactionManager,
                          SkillCategoryRepository skillCategories, SkillRepository skills,
                          AssociateSkillRepository associateSkills, CertificationRepository certifications,
-                         SpreadsheetParser spreadsheetParser) {
+                         SpreadsheetParser spreadsheetParser, AllocationService allocationService) {
         this.clients = clients;
         this.projects = projects;
         this.associates = associates;
@@ -57,6 +58,7 @@ public class ImportService {
         this.associateSkills = associateSkills;
         this.certifications = certifications;
         this.spreadsheetParser = spreadsheetParser;
+        this.allocationService = allocationService;
     }
 
     /**
@@ -298,6 +300,10 @@ public class ImportService {
                 if (allocations.existsByAssociateIdAndProjectIdAndEndDateIsNull(associate.getId(), project.getId())) {
                     skipped++;
                 } else {
+                    // Same capacity rule as the assign flow: imported allocations are
+                    // 100%, starting today, open-ended. Throws ConflictException on
+                    // over-allocation, which the row catch below turns into a row error.
+                    allocationService.assertCapacity(associate, null, 100, LocalDate.now(), null);
                     Allocation allocation = new Allocation();
                     allocation.setAssociate(associate);
                     allocation.setProject(project);

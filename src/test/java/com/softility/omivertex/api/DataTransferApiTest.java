@@ -286,6 +286,58 @@ class DataTransferApiTest extends ApiTestBase {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void import_overCapacityRow_isRejectedWithError_associateStillImported() throws Exception {
+        // Priya is already 100% allocated on an open-ended project.
+        var acme = client("Acme Corp");
+        var proj = project("ACM-1", "Data Platform", acme);
+        var priya = associate("Priya Sharma", "priya.sharma@softility.com",
+                com.softility.omivertex.domain.WorkMode.OFFSHORE);
+        allocation(priya, proj, true);
+
+        String csv = """
+                ASSOCIATE NAME,COMPANY,LOCATION,CUSTOMER,BILLABLE,Project
+                Priya Sharma,Softility,OFFSHORE,Meridian Health,B,Patient Portal
+                Arjun Rao,Softility,OFFSHORE,Meridian Health,B,Patient Portal
+                """;
+        var file = new MockMultipartFile("file", "roster.csv", "text/csv", csv.getBytes());
+
+        mockMvc.perform(multipart("/api/v1/data/import").file(file))
+                .andExpect(status().isOk())
+                // Arjun's allocation is created; Priya's is rejected with a row error
+                .andExpect(jsonPath("$.allocationsCreated").value(1))
+                .andExpect(jsonPath("$.errors", hasSize(1)))
+                .andExpect(jsonPath("$.errors[0]", containsString("maximum is 100%")));
+
+        // Priya still has exactly her original single allocation
+        org.junit.jupiter.api.Assertions.assertEquals(1,
+                allocationRepository.findByAssociateId(priya.getId()).size());
+    }
+
+    @Test
+    void importDryRun_overCapacityRow_reportsErrorAndWritesNothing() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-1", "Data Platform", acme);
+        var priya = associate("Priya Sharma", "priya.sharma@softility.com",
+                com.softility.omivertex.domain.WorkMode.OFFSHORE);
+        allocation(priya, proj, true);
+
+        String csv = """
+                ASSOCIATE NAME,COMPANY,LOCATION,CUSTOMER,BILLABLE,Project
+                Priya Sharma,Softility,OFFSHORE,Meridian Health,B,Patient Portal
+                """;
+        var file = new MockMultipartFile("file", "roster.csv", "text/csv", csv.getBytes());
+
+        mockMvc.perform(multipart("/api/v1/data/import").file(file).param("dryRun", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.errors", hasSize(1)))
+                .andExpect(jsonPath("$.errors[0]", containsString("maximum is 100%")));
+
+        // dry run wrote nothing: still 1 allocation, no Meridian client
+        org.junit.jupiter.api.Assertions.assertEquals(1, allocationRepository.count());
+        org.junit.jupiter.api.Assertions.assertEquals(1, clientRepository.count());
+    }
+
     private void seedOne() {
         var acme = client("Acme Corp");
         var proj = project("ACM-100", "Storefront Revamp", acme);
