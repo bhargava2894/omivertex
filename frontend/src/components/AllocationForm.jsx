@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import Field from './Field.jsx';
 import SearchSelect from './SearchSelect.jsx';
 
@@ -6,22 +7,25 @@ import SearchSelect from './SearchSelect.jsx';
  * picker) and the Profile "Assign to Project" dialog (associate fixed by the page).
  *
  * form:       { associateId, companyId, projectId, billable, allocationPercent, startDate, endDate }
+ *             — associateId is only read when searchAssociates is provided.
  * setField:   (key, value) => void
  * setFields:  (partial) => void   — for updates that touch two keys at once
  * errors:     { field: message } from the API
  * projects:   full project list [{ id, name, clientId, clientName }]
  * searchAssociates: optional async (q) => [{value,label}] — omit to hide the picker
- * showProjectPicker: hide company/project fields when editing an existing allocation
+ * showProjectPicker: set false to hide the company/project pickers (e.g. when editing
+ *                    an existing allocation)
  */
 export default function AllocationForm({
   form,
   setField,
   setFields,
-  errors,
+  errors = {},
   projects,
   searchAssociates,
   showProjectPicker = true,
 }) {
+  const billableId = useId();
   // Company picker options: distinct clients that actually have projects.
   const companies = Array.from(
     new Map((projects || []).map((p) => [p.clientId, p.clientName])).entries()
@@ -80,12 +84,12 @@ export default function AllocationForm({
       </Field>
       <div className="checkbox-field">
         <input
-          id="billable"
+          id={billableId}
           type="checkbox"
           checked={form.billable}
           onChange={(e) => setField('billable', e.target.checked)}
         />
-        <label htmlFor="billable">Billable engagement</label>
+        <label htmlFor={billableId}>Billable engagement</label>
       </div>
       <Field label="Start date" required error={errors.startDate}>
         <input

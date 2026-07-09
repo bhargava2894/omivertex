@@ -6,6 +6,7 @@ import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
 import Badge from '../components/Badge.jsx';
 import SkillEditor from '../components/SkillEditor.jsx';
+import AllocationForm from '../components/AllocationForm.jsx';
 import { proficiencyInfo } from '../proficiency.js';
 
 export default function Profile({ id, showToast, canEdit }) {
@@ -19,10 +20,13 @@ export default function Profile({ id, showToast, canEdit }) {
     loading: loadCerts,
     reload: reloadCerts,
   } = useLoad(() => api.getCertifications(id), [id]);
-  const { data: allocations, loading: loadAllocs } = useLoad(
-    () => api.list('allocations', { associateId: id }),
-    [id]
-  );
+  const {
+    data: allocations,
+    loading: loadAllocs,
+    reload: reloadAllocs,
+  } = useLoad(() => api.list('allocations', { associateId: id }), [id]);
+  // Loaded for the Assign dialog's company→project pickers.
+  const { data: projects } = useLoad(() => api.list('projects'), []);
   const { data: taxonomy, reload: reloadTaxonomy } = useLoad(() => api.list('taxonomy'), []);
 
   const [managingSkills, setManagingSkills] = useState(false);
@@ -32,6 +36,12 @@ export default function Profile({ id, showToast, canEdit }) {
   const [uploadingResume, setUploadingResume] = useState(false);
   const [suggestedSkills, setSuggestedSkills] = useState([]);
   const [resumeNotice, setResumeNotice] = useState('');
+
+  const [ending, setEnding] = useState(null); // allocation row being ended, + endDate
+  const [assigning, setAssigning] = useState(false);
+  const [assignForm, setAssignForm] = useState(null);
+  const [allocErrors, setAllocErrors] = useState({});
+  const [savingAlloc, setSavingAlloc] = useState(false);
 
   const handleResumeUpload = async (file) => {
     if (!file) return;
@@ -117,6 +127,82 @@ export default function Profile({ id, showToast, canEdit }) {
     setManagingSkills(true);
     setResumeNotice('');
     setSuggestedSkills([]);
+  };
+
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+
+  const openEnd = (row) => {
+    setAllocErrors({});
+    setEnding({ row, endDate: todayStr() });
+  };
+
+  // Ends a current allocation: existing values + the chosen end date, through the
+  // normal update endpoint. The row flips to "Ended" and stays in history.
+  const handleEndAllocation = async () => {
+    const { row, endDate } = ending;
+    if (!endDate || endDate < row.startDate) {
+      setAllocErrors({ endDate: 'End date must be on or after the start date' });
+      return;
+    }
+    setSavingAlloc(true);
+    setAllocErrors({});
+    try {
+      await api.update('allocations', row.id, {
+        billable: row.billable,
+        allocationPercent: row.allocationPercent,
+        startDate: row.startDate,
+        endDate,
+      });
+      showToast(`Ended allocation on ${row.projectName}`);
+      setEnding(null);
+      reloadAllocs();
+      reloadAssoc(); // bench/billable badges may change
+    } catch (err) {
+      setAllocErrors({ _general: err.message });
+    } finally {
+      setSavingAlloc(false);
+    }
+  };
+
+  const openAssign = () => {
+    setAllocErrors({});
+    setAssignForm({
+      companyId: '',
+      projectId: '',
+      billable: true,
+      allocationPercent: 100,
+      startDate: todayStr(),
+      endDate: '',
+    });
+    setAssigning(true);
+  };
+
+  // Assigns THIS associate to a project. The server's capacity guard applies —
+  // someone still at 100% gets the clear "maximum is 100%" error in the form.
+  const handleAssign = async () => {
+    setSavingAlloc(true);
+    setAllocErrors({});
+    try {
+      await api.create('allocations', {
+        associateId: Number(id),
+        projectId: assignForm.projectId === '' ? null : Number(assignForm.projectId),
+        billable: assignForm.billable,
+        allocationPercent: Number(assignForm.allocationPercent),
+        startDate: assignForm.startDate,
+        endDate: assignForm.endDate || null,
+      });
+      showToast(`Assigned ${associate.name} to a new project`);
+      setAssigning(false);
+      reloadAllocs();
+      reloadAssoc();
+    } catch (err) {
+      setAllocErrors({
+        ...err.fieldErrors,
+        _general: Object.keys(err.fieldErrors || {}).length ? null : err.message,
+      });
+    } finally {
+      setSavingAlloc(false);
+    }
   };
 
   const [addingCert, setAddingCert] = useState(false);
@@ -562,7 +648,21 @@ export default function Profile({ id, showToast, canEdit }) {
 
       {/* Engagement History */}
       <div className="card" style={{ padding: '24px' }}>
-        <h3 style={{ margin: '0 0 16px 0' }}>Allocation &amp; Engagement History</h3>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+          }}
+        >
+          <h3 style={{ margin: 0 }}>Allocation &amp; Engagement History</h3>
+          {canEdit && (
+            <button className="btn btn-primary btn-sm" onClick={openAssign}>
+              <Icon name="plus" size={14} /> Assign to Project
+            </button>
+          )}
+        </div>
         {!allocations || allocations.length === 0 ? (
           <div className="empty-state" style={{ padding: '20px 0' }}>
             <Icon name="inbox" size={30} />
@@ -583,6 +683,7 @@ export default function Profile({ id, showToast, canEdit }) {
                   <th>Start Date</th>
                   <th>End Date</th>
                   <th>Status</th>
+                  {canEdit && <th style={{ width: '70px' }} />}
                 </tr>
               </thead>
               <tbody>
@@ -607,6 +708,19 @@ export default function Profile({ id, showToast, canEdit }) {
                       <td>
                         <Badge value={isCurrent ? 'Current' : 'Ended'} />
                       </td>
+                      {canEdit && (
+                        <td className="actions">
+                          {isCurrent && (
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => openEnd(a)}
+                              aria-label={`End allocation on ${a.projectName}`}
+                            >
+                              End
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -703,6 +817,72 @@ export default function Profile({ id, showToast, canEdit }) {
               />
             </Field>
           </div>
+        </Modal>
+      )}
+
+      {/* End Allocation Modal */}
+      {ending && (
+        <Modal
+          title={`End allocation · ${ending.row.projectName}`}
+          onClose={() => setEnding(null)}
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => setEnding(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleEndAllocation}
+                disabled={savingAlloc}
+              >
+                {savingAlloc ? 'Ending…' : 'End allocation'}
+              </button>
+            </>
+          }
+        >
+          {allocErrors._general && <div className="form-alert">{allocErrors._general}</div>}
+          <p className="cell-sub" style={{ marginTop: 0 }}>
+            The allocation stays in the history as “Ended” — nothing is deleted. Ending frees up
+            capacity so the associate can be assigned to a new project.
+          </p>
+          <div className="form-grid">
+            <Field label="End date" required error={allocErrors.endDate}>
+              <input
+                type="date"
+                min={ending.row.startDate}
+                value={ending.endDate}
+                onChange={(e) => setEnding((s) => ({ ...s, endDate: e.target.value }))}
+                className={allocErrors.endDate ? 'invalid' : ''}
+              />
+            </Field>
+          </div>
+        </Modal>
+      )}
+
+      {/* Assign to Project Modal */}
+      {assigning && assignForm && (
+        <Modal
+          title={`Assign ${associate.name} to a project`}
+          onClose={() => setAssigning(false)}
+          footer={
+            <>
+              <button className="btn btn-ghost" onClick={() => setAssigning(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" onClick={handleAssign} disabled={savingAlloc}>
+                {savingAlloc ? 'Assigning…' : 'Assign'}
+              </button>
+            </>
+          }
+        >
+          {allocErrors._general && <div className="form-alert">{allocErrors._general}</div>}
+          <AllocationForm
+            form={assignForm}
+            setField={(k, v) => setAssignForm((f) => ({ ...f, [k]: v }))}
+            setFields={(partial) => setAssignForm((f) => ({ ...f, ...partial }))}
+            errors={allocErrors}
+            projects={projects}
+          />
         </Modal>
       )}
     </div>
