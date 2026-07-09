@@ -4,9 +4,9 @@ import { useLoad } from '../hooks.js';
 import DataTable from '../components/DataTable.jsx';
 import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
-import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
 import SearchSelect from '../components/SearchSelect.jsx';
+import AllocationForm from '../components/AllocationForm.jsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -62,18 +62,6 @@ export default function Allocations({ showToast, canEdit }) {
     });
   };
   const set = (k, v) => setEditing((e) => ({ ...e, form: { ...e.form, [k]: v } }));
-
-  // Company picker options: distinct clients that actually have projects.
-  const companies = Array.from(
-    new Map((projects || []).map((p) => [p.clientId, p.clientName])).entries()
-  )
-    .map(([value, label]) => ({ value, label }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-
-  // Project picker options: only the chosen company's projects.
-  const companyProjects = (projects || [])
-    .filter((p) => editing && String(p.clientId) === String(editing.form.companyId))
-    .map((p) => ({ value: p.id, label: p.name }));
 
   const save = async () => {
     setSaving(true);
@@ -214,79 +202,15 @@ export default function Allocations({ showToast, canEdit }) {
           }
         >
           {errors._general && <div className="form-alert">{errors._general}</div>}
-          <div className="form-grid">
-            {!editing.id && (
-              <>
-                <Field label="Associate" required error={errors.associateId} full>
-                  <SearchSelect
-                    onSearch={searchAssociates}
-                    value={editing.form.associateId}
-                    onChange={(v) => set('associateId', v)}
-                    placeholder="Search associates by name or email…"
-                    invalid={!!errors.associateId}
-                  />
-                </Field>
-                <Field label="Company" required full>
-                  <SearchSelect
-                    options={companies}
-                    value={editing.form.companyId}
-                    onChange={(v) =>
-                      setEditing((e) => ({
-                        ...e,
-                        form: { ...e.form, companyId: v, projectId: '' },
-                      }))
-                    }
-                    placeholder="Search company…"
-                  />
-                </Field>
-                <Field label="Project" required error={errors.projectId} full>
-                  <SearchSelect
-                    options={companyProjects}
-                    value={editing.form.projectId}
-                    onChange={(v) => set('projectId', v)}
-                    placeholder={
-                      editing.form.companyId ? 'Search project…' : 'Select a company first'
-                    }
-                    invalid={!!errors.projectId}
-                  />
-                </Field>
-              </>
-            )}
-            <Field label="Allocation %" required error={errors.allocationPercent}>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={editing.form.allocationPercent}
-                onChange={(e) => set('allocationPercent', e.target.value)}
-                className={errors.allocationPercent ? 'invalid' : ''}
-              />
-            </Field>
-            <div className="checkbox-field">
-              <input
-                id="billable"
-                type="checkbox"
-                checked={editing.form.billable}
-                onChange={(e) => set('billable', e.target.checked)}
-              />
-              <label htmlFor="billable">Billable engagement</label>
-            </div>
-            <Field label="Start date" required error={errors.startDate}>
-              <input
-                type="date"
-                value={editing.form.startDate}
-                onChange={(e) => set('startDate', e.target.value)}
-                className={errors.startDate ? 'invalid' : ''}
-              />
-            </Field>
-            <Field label="End date (roll-off)" error={errors.endDate}>
-              <input
-                type="date"
-                value={editing.form.endDate}
-                onChange={(e) => set('endDate', e.target.value)}
-              />
-            </Field>
-          </div>
+          <AllocationForm
+            form={editing.form}
+            setField={set}
+            setFields={(partial) => setEditing((e) => ({ ...e, form: { ...e.form, ...partial } }))}
+            errors={errors}
+            projects={projects}
+            searchAssociates={editing.id ? undefined : searchAssociates}
+            showProjectPicker={!editing.id}
+          />
         </Modal>
       )}
     </>
