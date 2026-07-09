@@ -31,7 +31,8 @@ public record AssociateResponse(
         String currentProject,
         String currentClient,
         Long benchDays,
-        List<SkillGroup> skillGroups) {
+        List<SkillGroup> skillGroups,
+        String resumeFilename) {
 
     public record RatedSkill(Long skillId, String name, Proficiency proficiency, boolean primary) {
     }
@@ -42,6 +43,12 @@ public record AssociateResponse(
     /** Builds the response from the associate plus their full allocation history and rated skills. */
     public static AssociateResponse from(Associate associate, List<Allocation> allocations,
                                          List<AssociateSkill> ratedSkills) {
+        return from(associate, allocations, ratedSkills, null);
+    }
+
+    /** Builds the response from the associate plus allocations, rated skills, and résumé filename. */
+    public static AssociateResponse from(Associate associate, List<Allocation> allocations,
+                                         List<AssociateSkill> ratedSkills, String resumeFilename) {
         List<Allocation> current = allocations.stream().filter(Allocation::isCurrent).toList();
         boolean billable = current.stream().anyMatch(Allocation::isBillable);
         Allocation primary = current.stream()
@@ -55,7 +62,8 @@ public record AssociateResponse(
                 primary == null ? null : primary.getProject().getName(),
                 primary == null ? null : primary.getProject().getClient().getName(),
                 benchDays(associate, allocations),
-                groupSkills(ratedSkills));
+                groupSkills(ratedSkills),
+                resumeFilename);
     }
 
     /** Groups rated skills by category name, categories and skills alphabetical. */

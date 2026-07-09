@@ -11,6 +11,7 @@ import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.AssociateSkillRepository;
 import com.softility.omivertex.repository.SkillRepository;
+import com.softility.omivertex.repository.ResumeRepository;
 import com.softility.omivertex.web.dto.AssociateRequest;
 import com.softility.omivertex.web.dto.AssociateResponse;
 import com.softility.omivertex.web.dto.SkillAssignmentRequest;
@@ -36,15 +37,17 @@ public class AssociateService {
     private final AuditService auditService;
     private final AssociateSkillRepository associateSkillRepository;
     private final SkillRepository skillRepository;
+    private final ResumeRepository resumeRepository;
 
     public AssociateService(AssociateRepository associateRepository, AllocationRepository allocationRepository,
                             AuditService auditService, AssociateSkillRepository associateSkillRepository,
-                            SkillRepository skillRepository) {
+                            SkillRepository skillRepository, ResumeRepository resumeRepository) {
         this.associateRepository = associateRepository;
         this.allocationRepository = allocationRepository;
         this.auditService = auditService;
         this.associateSkillRepository = associateSkillRepository;
         this.skillRepository = skillRepository;
+        this.resumeRepository = resumeRepository;
     }
 
     @Transactional(readOnly = true)
@@ -54,10 +57,17 @@ public class AssociateService {
                 .collect(Collectors.groupingBy(a -> a.getAssociate().getId()));
         Map<Long, List<AssociateSkill>> skillsByAssociate = associateSkillRepository.findAllWithDetails().stream()
                 .collect(Collectors.groupingBy(s -> s.getAssociate().getId()));
+        Map<Long, String> resumeFilenames = resumeRepository.findAllMeta().stream()
+                .collect(Collectors.toMap(
+                        ResumeRepository.AssociateResumeMeta::getAssociateId,
+                        ResumeRepository.AssociateResumeMeta::getFilename,
+                        (a, b) -> a
+                ));
         return associateRepository.findAll().stream()
                 .map(associate -> AssociateResponse.from(associate,
                         allocationsByAssociate.getOrDefault(associate.getId(), List.of()),
-                        skillsByAssociate.getOrDefault(associate.getId(), List.of())))
+                        skillsByAssociate.getOrDefault(associate.getId(), List.of()),
+                        resumeFilenames.get(associate.getId())))
                 .filter(r -> workMode == null || r.workMode() == workMode)
                 .filter(r -> billable == null || r.billable() == billable)
                 .filter(r -> bench == null || (r.currentProjectId() == null) == bench)
@@ -79,8 +89,11 @@ public class AssociateService {
     @Transactional(readOnly = true)
     public AssociateResponse get(Long id) {
         Associate associate = find(id);
+        String resumeFilename = resumeRepository.findMetaByAssociateId(id)
+                .map(ResumeRepository.ResumeMeta::getFilename)
+                .orElse(null);
         return AssociateResponse.from(associate, allocationRepository.findByAssociateId(id),
-                associateSkillRepository.findByAssociateId(id));
+                associateSkillRepository.findByAssociateId(id), resumeFilename);
     }
 
     /** Replaces the associate's entire rated-skill set with the given entries. */

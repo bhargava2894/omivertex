@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Modal from '../components/Modal.jsx';
@@ -29,6 +29,96 @@ export default function Profile({ id, showToast, canEdit }) {
   const [selectedSkills, setSelectedSkills] = useState({}); // skillId -> { proficiency, primary }
   const [savingSkills, setSavingSkills] = useState(false);
 
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const [suggestedSkills, setSuggestedSkills] = useState([]);
+  const [resumeNotice, setResumeNotice] = useState('');
+
+  const handleResumeUpload = async (file) => {
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'pdf' && ext !== 'docx') {
+      showToast(
+        'Unsupported file type. Only PDF (.pdf) and Word (.docx) documents are allowed.',
+        true
+      );
+      return;
+    }
+
+    setUploadingResume(true);
+    setResumeNotice('');
+    setSuggestedSkills([]);
+
+    try {
+      await api.uploadResume(id, file);
+      showToast('Résumé uploaded successfully');
+      reloadAssoc();
+
+      const parseData = await api.parseResume(file);
+      if (parseData.textExtracted && parseData.suggestedSkills?.length > 0) {
+        setSuggestedSkills(parseData.suggestedSkills);
+        setResumeNotice(
+          `${parseData.suggestedSkills.length} skills detected from the résumé (added at Intermediate) — click "Review & Add Skills" to review and adjust before saving.`
+        );
+      } else if (!parseData.textExtracted) {
+        setResumeNotice(
+          'Could not read text from this résumé file. Skills were not auto-detected.'
+        );
+      } else {
+        setResumeNotice('No new matching skills were found in this résumé.');
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to upload résumé', true);
+    } finally {
+      setUploadingResume(false);
+    }
+  };
+
+  const handleResumeDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this résumé?')) return;
+    try {
+      await api.deleteResume(id);
+      showToast('Résumé deleted successfully');
+      setResumeNotice('');
+      setSuggestedSkills([]);
+      reloadAssoc();
+    } catch (err) {
+      showToast(err.message, true);
+    }
+  };
+
+  // Builds the skill map from the associate's currently-saved skills.
+  const existingSkillsMap = () => {
+    const skillsMap = {};
+    (associate.skillGroups || []).forEach((group) => {
+      (group.skills || []).forEach((skill) => {
+        skillsMap[skill.skillId] = { proficiency: skill.proficiency, primary: !!skill.primary };
+      });
+    });
+    return skillsMap;
+  };
+
+  // Opens the skills modal seeded with the currently-saved skills.
+  const openManageSkills = () => {
+    setSelectedSkills(existingSkillsMap());
+    setManagingSkills(true);
+  };
+
+  // Opens the skills modal seeded with saved skills PLUS résumé-detected ones
+  // (added at Intermediate for review). Both entry points seed selectedSkills
+  // explicitly, so nothing clobbers the suggestions after the modal opens.
+  const handleReviewSkills = () => {
+    const skillsMap = existingSkillsMap();
+    suggestedSkills.forEach((s) => {
+      if (!skillsMap[s.skillId]) {
+        skillsMap[s.skillId] = { proficiency: 'INTERMEDIATE', primary: false };
+      }
+    });
+    setSelectedSkills(skillsMap);
+    setManagingSkills(true);
+    setResumeNotice('');
+    setSuggestedSkills([]);
+  };
+
   const [addingCert, setAddingCert] = useState(false);
   const [certForm, setCertForm] = useState({
     name: '',
@@ -39,19 +129,6 @@ export default function Profile({ id, showToast, canEdit }) {
   });
   const [savingCert, setSavingCert] = useState(false);
   const [certErrors, setCertErrors] = useState({});
-
-  // Initialize selected skills when modal opens
-  useEffect(() => {
-    if (managingSkills && associate) {
-      const skillsMap = {};
-      (associate.skillGroups || []).forEach((group) => {
-        (group.skills || []).forEach((skill) => {
-          skillsMap[skill.skillId] = { proficiency: skill.proficiency, primary: !!skill.primary };
-        });
-      });
-      setSelectedSkills(skillsMap);
-    }
-  }, [managingSkills, associate]);
 
   if (loadAssoc || loadCerts || loadAllocs) {
     return (
@@ -187,7 +264,7 @@ export default function Profile({ id, showToast, canEdit }) {
       </div>
 
       <div
-        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}
+        style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px' }}
         className="form-grid"
       >
         {/* Skills by Category */}
@@ -202,7 +279,7 @@ export default function Profile({ id, showToast, canEdit }) {
           >
             <h3 style={{ margin: 0 }}>Skills Taxonomy</h3>
             {canEdit && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setManagingSkills(true)}>
+              <button className="btn btn-ghost btn-sm" onClick={openManageSkills}>
                 <Icon name="edit" size={14} /> Manage Skills
               </button>
             )}
@@ -247,82 +324,239 @@ export default function Profile({ id, showToast, canEdit }) {
           )}
         </div>
 
-        {/* Certifications Card */}
-        <div className="card" style={{ padding: '24px' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '16px',
-            }}
-          >
-            <h3 style={{ margin: 0 }}>Certifications</h3>
-            {canEdit && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setAddingCert(true)}>
-                <Icon name="plus" size={14} /> Add Cert
-              </button>
+        {/* Right column: Certifications + Résumé */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Certifications Card */}
+          <div className="card" style={{ padding: '24px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px',
+              }}
+            >
+              <h3 style={{ margin: 0 }}>Certifications</h3>
+              {canEdit && (
+                <button className="btn btn-ghost btn-sm" onClick={() => setAddingCert(true)}>
+                  <Icon name="plus" size={14} /> Add Cert
+                </button>
+              )}
+            </div>
+            {!certs || certs.length === 0 ? (
+              <div className="empty-state" style={{ padding: '20px 0' }}>
+                <Icon name="inbox" size={30} />
+                <p style={{ fontSize: '13.5px' }}>No certifications recorded.</p>
+              </div>
+            ) : (
+              <div
+                className="table-wrap"
+                style={{ margin: 0, boxShadow: 'none', border: '1px solid var(--color-border)' }}
+              >
+                <table style={{ fontSize: '13px' }}>
+                  <thead>
+                    <tr>
+                      <th>Certification</th>
+                      <th>Authority</th>
+                      <th>Expires</th>
+                      {canEdit && <th style={{ width: '40px' }} />}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {certs.map((c) => (
+                      <tr key={c.id}>
+                        <td>
+                          <div className="cell-main">{c.name}</div>
+                          {c.credentialId && (
+                            <div className="cell-sub" style={{ fontSize: '11px' }}>
+                              ID: {c.credentialId}
+                            </div>
+                          )}
+                        </td>
+                        <td>{c.authority || '—'}</td>
+                        <td>
+                          {c.expiryDate ? (
+                            isExpiringSoon(c.expiryDate) ? (
+                              <Badge
+                                value="Expiring"
+                                label={`Expires ${c.expiryDate}`}
+                                tone="red"
+                              />
+                            ) : (
+                              c.expiryDate
+                            )
+                          ) : (
+                            'No Expiry'
+                          )}
+                        </td>
+                        {canEdit && (
+                          <td className="actions">
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() => handleDeleteCert(c.id, c.name)}
+                              aria-label="Delete cert"
+                            >
+                              <Icon name="trash" size={12} />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
-          {!certs || certs.length === 0 ? (
-            <div className="empty-state" style={{ padding: '20px 0' }}>
-              <Icon name="inbox" size={30} />
-              <p style={{ fontSize: '13.5px' }}>No certifications recorded.</p>
-            </div>
-          ) : (
+
+          {/* Résumé Card */}
+          <div className="card" style={{ padding: '24px' }}>
             <div
-              className="table-wrap"
-              style={{ margin: 0, boxShadow: 'none', border: '1px solid var(--color-border)' }}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '16px',
+              }}
             >
-              <table style={{ fontSize: '13px' }}>
-                <thead>
-                  <tr>
-                    <th>Certification</th>
-                    <th>Authority</th>
-                    <th>Expires</th>
-                    {canEdit && <th style={{ width: '40px' }} />}
-                  </tr>
-                </thead>
-                <tbody>
-                  {certs.map((c) => (
-                    <tr key={c.id}>
-                      <td>
-                        <div className="cell-main">{c.name}</div>
-                        {c.credentialId && (
-                          <div className="cell-sub" style={{ fontSize: '11px' }}>
-                            ID: {c.credentialId}
-                          </div>
-                        )}
-                      </td>
-                      <td>{c.authority || '—'}</td>
-                      <td>
-                        {c.expiryDate ? (
-                          isExpiringSoon(c.expiryDate) ? (
-                            <Badge value="Expiring" label={`Expires ${c.expiryDate}`} tone="red" />
-                          ) : (
-                            c.expiryDate
-                          )
-                        ) : (
-                          'No Expiry'
-                        )}
-                      </td>
-                      {canEdit && (
-                        <td className="actions">
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleDeleteCert(c.id, c.name)}
-                            aria-label="Delete cert"
-                          >
-                            <Icon name="trash" size={12} />
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <h3 style={{ margin: 0 }}>Résumé</h3>
+              {associate.resumeFilename && canEdit && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
+                    <Icon name="upload" size={14} /> Replace
+                    <input
+                      type="file"
+                      accept=".pdf,.docx"
+                      style={{ display: 'none' }}
+                      disabled={uploadingResume}
+                      onChange={(e) => {
+                        if (e.target.files[0]) handleResumeUpload(e.target.files[0]);
+                      }}
+                    />
+                  </label>
+                  <button
+                    className="btn btn-ghost btn-sm btn-danger-hover"
+                    onClick={handleResumeDelete}
+                  >
+                    <Icon name="trash" size={14} /> Delete
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+
+            {associate.resumeFilename ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--color-bg-card)',
+                  }}
+                >
+                  <Icon name="file" size={24} style={{ color: 'var(--color-primary)' }} />
+                  <div style={{ flexGrow: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {associate.resumeFilename}
+                    </div>
+                    <div className="cell-sub" style={{ fontSize: '11px' }}>
+                      Attached résumé
+                    </div>
+                  </div>
+                  <a
+                    href={`/api/v1/associates/${id}/resume`}
+                    download={associate.resumeFilename}
+                    className="btn btn-primary btn-sm"
+                    style={{
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <Icon name="download" size={14} /> Download
+                  </a>
+                </div>
+
+                {resumeNotice && (
+                  <div
+                    style={{
+                      fontSize: '13px',
+                      color: 'var(--color-info-fg, #0284c7)',
+                      backgroundColor: 'var(--color-info-bg, #f0f9ff)',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--color-info-border, #e0f2fe)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                  >
+                    <div>{resumeNotice}</div>
+                    {suggestedSkills.length > 0 && (
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ alignSelf: 'flex-start' }}
+                        onClick={handleReviewSkills}
+                      >
+                        Review &amp; Add Skills
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label
+                  className="dropzone"
+                  style={{
+                    padding: '24px 16px',
+                    border: '2px dashed var(--color-border)',
+                    borderRadius: '8px',
+                    cursor: canEdit ? 'pointer' : 'default',
+                    textAlign: 'center',
+                    backgroundColor: 'var(--color-bg-card)',
+                    display: 'block',
+                  }}
+                >
+                  <Icon
+                    name="upload"
+                    size={24}
+                    style={{ marginBottom: '8px', color: 'var(--color-primary)' }}
+                  />
+                  <div style={{ fontSize: '14px' }}>
+                    {uploadingResume ? (
+                      <strong>Uploading résumé...</strong>
+                    ) : (
+                      <strong>Click to upload résumé</strong>
+                    )}
+                    {canEdit && !uploadingResume && ' or drag a PDF/Word file here'}
+                  </div>
+                  {canEdit && (
+                    <input
+                      type="file"
+                      accept=".pdf,.docx"
+                      style={{ display: 'none' }}
+                      disabled={uploadingResume}
+                      onChange={(e) => {
+                        if (e.target.files[0]) handleResumeUpload(e.target.files[0]);
+                      }}
+                    />
+                  )}
+                </label>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

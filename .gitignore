@@ -39,3 +39,4 @@ frontend/dist/
 graphify-out/
 *.log
 .DS_Store
+.env

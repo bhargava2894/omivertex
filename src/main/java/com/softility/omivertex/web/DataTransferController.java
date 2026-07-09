@@ -42,6 +42,7 @@ public class DataTransferController {
     private ResponseEntity<byte[]> fileResponse(ExportService.ExportFile file) {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.filename() + "\"")
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, HttpHeaders.CONTENT_DISPOSITION)
                 .contentType(MediaType.parseMediaType(file.contentType()))
                 .body(file.bytes());
     }

@@ -35,6 +35,7 @@ export const api = {
   exportFile: (format) =>
     api.downloadUrl(`${BASE}/data/export?format=${encodeURIComponent(format)}`),
   // Fetches a file as a blob and saves it — reliable across browsers/MIME types.
+  // A plain navigation/<a download> lets some browsers *preview* Office files instead.
   downloadUrl: async (url) => {
     const res = await fetch(url);
     if (!res.ok) {
@@ -85,4 +86,40 @@ export const api = {
       body: JSON.stringify(data),
     }),
   deleteCertification: (id) => request(`/certifications/${id}`, { method: 'DELETE' }),
+  parseResume: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/resumes/parse`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const error = new Error(body.message || 'Parsing failed');
+      error.status = res.status;
+      throw error;
+    }
+    return res.json();
+  },
+  uploadResume: async (associateId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/associates/${associateId}/resume`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const error = new Error(body.message || 'Upload failed');
+      error.status = res.status;
+      throw error;
+    }
+    return res.json();
+  },
+  downloadResume: (associateId) => {
+    return api.downloadUrl(`${BASE}/associates/${associateId}/resume`);
+  },
+  deleteResume: (associateId) => {
+    return request(`/associates/${associateId}/resume`, { method: 'DELETE' });
+  },
 };

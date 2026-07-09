@@ -27,9 +27,11 @@ public abstract class ApiTestBase {
     @Autowired protected SkillRepository skillRepository;
     @Autowired protected SkillCategoryRepository skillCategoryRepository;
     @Autowired protected AppUserRepository appUserRepository;
+    @Autowired protected com.softility.omivertex.repository.ResumeRepository resumeRepository;
 
     @BeforeEach
     void cleanDatabase() {
+        resumeRepository.deleteAll();
         appUserRepository.deleteAll();
         auditEntryRepository.deleteAll();
         associateSkillRepository.deleteAll();
