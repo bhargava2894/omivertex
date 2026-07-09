@@ -127,11 +127,16 @@ In `AllocationService.java`, change the `assertCapacity` signature from `private
      * date-overlapping allocations may never exceed it. Package-private so
      * ImportService applies the SAME rule (one implementation, no copies).
      */
+    @org.springframework.transaction.annotation.Transactional(noRollbackFor = ConflictException.class)
     void assertCapacity(Associate associate, Long excludeAllocationId, int newPercent,
                         java.time.LocalDate newStart, java.time.LocalDate newEnd) {
 ```
 
-(Method body unchanged.)
+(Method body unchanged. The `noRollbackFor` is required: on Spring 6 CGLIB proxies,
+package-private methods of a class-level-`@Transactional` bean ARE advised, so the
+cross-bean call from ImportService joins the import batch transaction — without this,
+the first ConflictException marks the whole batch rollback-only and the import dies
+with UnexpectedRollbackException. In-class callers self-invoke and bypass the proxy.)
 
 - [ ] **Step 4: Call the guard from ImportService**
 
