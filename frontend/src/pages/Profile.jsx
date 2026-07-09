@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Modal from '../components/Modal.jsx';
@@ -57,7 +57,7 @@ export default function Profile({ id, showToast, canEdit }) {
       if (parseData.textExtracted && parseData.suggestedSkills?.length > 0) {
         setSuggestedSkills(parseData.suggestedSkills);
         setResumeNotice(
-          `${parseData.suggestedSkills.length} skills detected from the résumé — click "Review & Add" to review and add them.`
+          `${parseData.suggestedSkills.length} skills detected from the résumé (added at Intermediate) — click "Review & Add Skills" to review and adjust before saving.`
         );
       } else if (!parseData.textExtracted) {
         setResumeNotice(
@@ -86,20 +86,33 @@ export default function Profile({ id, showToast, canEdit }) {
     }
   };
 
-  const handleReviewSkills = () => {
+  // Builds the skill map from the associate's currently-saved skills.
+  const existingSkillsMap = () => {
     const skillsMap = {};
     (associate.skillGroups || []).forEach((group) => {
       (group.skills || []).forEach((skill) => {
         skillsMap[skill.skillId] = { proficiency: skill.proficiency, primary: !!skill.primary };
       });
     });
+    return skillsMap;
+  };
 
+  // Opens the skills modal seeded with the currently-saved skills.
+  const openManageSkills = () => {
+    setSelectedSkills(existingSkillsMap());
+    setManagingSkills(true);
+  };
+
+  // Opens the skills modal seeded with saved skills PLUS résumé-detected ones
+  // (added at Intermediate for review). Both entry points seed selectedSkills
+  // explicitly, so nothing clobbers the suggestions after the modal opens.
+  const handleReviewSkills = () => {
+    const skillsMap = existingSkillsMap();
     suggestedSkills.forEach((s) => {
       if (!skillsMap[s.skillId]) {
         skillsMap[s.skillId] = { proficiency: 'INTERMEDIATE', primary: false };
       }
     });
-
     setSelectedSkills(skillsMap);
     setManagingSkills(true);
     setResumeNotice('');
@@ -116,19 +129,6 @@ export default function Profile({ id, showToast, canEdit }) {
   });
   const [savingCert, setSavingCert] = useState(false);
   const [certErrors, setCertErrors] = useState({});
-
-  // Initialize selected skills when modal opens
-  useEffect(() => {
-    if (managingSkills && associate) {
-      const skillsMap = {};
-      (associate.skillGroups || []).forEach((group) => {
-        (group.skills || []).forEach((skill) => {
-          skillsMap[skill.skillId] = { proficiency: skill.proficiency, primary: !!skill.primary };
-        });
-      });
-      setSelectedSkills(skillsMap);
-    }
-  }, [managingSkills, associate]);
 
   if (loadAssoc || loadCerts || loadAllocs) {
     return (
@@ -279,7 +279,7 @@ export default function Profile({ id, showToast, canEdit }) {
           >
             <h3 style={{ margin: 0 }}>Skills Taxonomy</h3>
             {canEdit && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setManagingSkills(true)}>
+              <button className="btn btn-ghost btn-sm" onClick={openManageSkills}>
                 <Icon name="edit" size={14} /> Manage Skills
               </button>
             )}

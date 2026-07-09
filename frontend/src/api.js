@@ -34,11 +34,26 @@ export const api = {
     api.downloadUrl(`${BASE}/data/template?type=${encodeURIComponent(type)}`),
   exportFile: (format) =>
     api.downloadUrl(`${BASE}/data/export?format=${encodeURIComponent(format)}`),
-  // Triggers a native browser download by assigning the window location.
-  // This lets the browser's native download manager read the Content-Disposition
-  // header, ensuring the original filename is preserved in all webviews/browsers.
-  downloadUrl: (url) => {
-    window.location.assign(url);
+  // Fetches a file as a blob and saves it — reliable across browsers/MIME types.
+  // A plain navigation/<a download> lets some browsers *preview* Office files instead.
+  downloadUrl: async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) {
+      if (res.status === 401) window.dispatchEvent(new Event('ov-unauthorized'));
+      throw new Error(`Download failed (${res.status})`);
+    }
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const match = /filename="?([^"]+)"?/.exec(disposition);
+    const filename = match ? match[1] : 'download';
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
   },
   create: (resource, data) =>
     request(`/${resource}`, { method: 'POST', body: JSON.stringify(data) }),
