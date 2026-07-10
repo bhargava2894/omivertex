@@ -228,7 +228,9 @@ export default function App() {
     <div className="shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <img src="/logo-mark.png" alt="" className="brand-logo" />
+          <div className="brand-logo-wrap">
+            <img src="/logo-mark.png" alt="" className="brand-logo" />
+          </div>
           <div>
             <div className="brand-name">OmiVertex</div>
             <div className="brand-sub">Softility Resource Hub</div>

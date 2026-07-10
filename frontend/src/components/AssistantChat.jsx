@@ -86,7 +86,7 @@ export default function AssistantChat({ showToast }) {
   };
 
   return (
-    <div className="card panel" style={{ gridColumn: '1 / -1' }}>
+    <div className="card panel assistant-card">
       <h2>
         <Icon name="sparkles" size={15} /> Ask OmiVertex AI
       </h2>
@@ -137,21 +137,25 @@ export default function AssistantChat({ showToast }) {
         </div>
       )}
       <form
-        style={{ display: 'flex', gap: '8px' }}
+        className="assistant-form"
         onSubmit={(e) => {
           e.preventDefault();
           ask(input);
         }}
       >
         <input
-          style={{ flex: 1 }}
+          className="assistant-input"
           value={input}
           maxLength={2000}
           placeholder="e.g. How many people are on the bench, and what projects are running?"
           onChange={(e) => setInput(e.target.value)}
           disabled={busy}
         />
-        <button className="btn btn-primary" type="submit" disabled={busy || !input.trim()}>
+        <button
+          className="btn btn-primary assistant-btn"
+          type="submit"
+          disabled={busy || !input.trim()}
+        >
           {busy ? '…' : 'Ask'}
         </button>
       </form>

@@ -120,6 +120,8 @@ export default function Dashboard({ showToast }) {
         </div>
       </div>
 
+      <AssistantChat showToast={showToast} />
+
       <div className="stat-grid">
         <StatCard
           icon="users"
@@ -159,8 +161,6 @@ export default function Dashboard({ showToast }) {
           hint="Left in the trailing year"
         />
       </div>
-
-      <AssistantChat showToast={showToast} />
 
       <div className="panel-grid">
         <div className="card panel">
