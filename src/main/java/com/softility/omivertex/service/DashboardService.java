@@ -79,11 +79,24 @@ public class DashboardService {
         long onshore = associates.stream().filter(a -> a.getWorkMode() == WorkMode.ONSHORE).count();
         long offshore = associates.stream().filter(a -> a.getWorkMode() == WorkMode.OFFSHORE).count();
 
-        Map<String, Set<Long>> byClient = current.stream().collect(Collectors.groupingBy(
-                a -> a.getProject().getClient().getName(),
-                Collectors.mapping(a -> a.getAssociate().getId(), Collectors.toSet())));
+        // Distinct associates per client, split billable/non-billable. Billable wins:
+        // one billable allocation under the client makes the person billable there.
+        record ClientKey(Long id, String name) {}
+        Map<ClientKey, List<Allocation>> byClient = current.stream().collect(Collectors.groupingBy(
+                a -> new ClientKey(a.getProject().getClient().getId(), a.getProject().getClient().getName())));
         List<ClientHeadcount> headcounts = byClient.entrySet().stream()
-                .map(e -> new ClientHeadcount(e.getKey(), e.getValue().size()))
+                .map(e -> {
+                    Set<Long> billableHere = e.getValue().stream()
+                            .filter(Allocation::isBillable)
+                            .map(a -> a.getAssociate().getId())
+                            .collect(Collectors.toSet());
+                    Set<Long> everyone = e.getValue().stream()
+                            .map(a -> a.getAssociate().getId())
+                            .collect(Collectors.toSet());
+                    long nonBillable = everyone.stream().filter(id -> !billableHere.contains(id)).count();
+                    return new ClientHeadcount(e.getKey().id(), e.getKey().name(),
+                            everyone.size(), billableHere.size(), nonBillable);
+                })
                 .sorted(Comparator.comparingLong(ClientHeadcount::headcount).reversed()
                         .thenComparing(ClientHeadcount::clientName))
                 .toList();

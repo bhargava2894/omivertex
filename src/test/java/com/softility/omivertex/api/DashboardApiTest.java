@@ -69,6 +69,25 @@ class DashboardApiTest extends ApiTestBase {
     }
 
     @Test
+    void clientHeadcounts_splitBillableAndNonBillable() throws Exception {
+        var acme = client("Acme Corp");
+        var p1 = project("ACM-1", "Data Platform", acme);
+        var p2 = project("ACM-2", "Support Desk", acme);
+        var dev = associate("Asha Iyer", "asha@softility.com", WorkMode.OFFSHORE);
+        var qa = associate("Vikram Das", "vikram@softility.com", WorkMode.OFFSHORE);
+        allocation(dev, p1, true);   // billable on Acme
+        allocation(qa, p2, false);   // non-billable on Acme
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.clientHeadcounts[0].clientName").value("Acme Corp"))
+                .andExpect(jsonPath("$.clientHeadcounts[0].clientId").value(acme.getId()))
+                .andExpect(jsonPath("$.clientHeadcounts[0].headcount").value(2))
+                .andExpect(jsonPath("$.clientHeadcounts[0].billable").value(1))
+                .andExpect(jsonPath("$.clientHeadcounts[0].nonBillable").value(1));
+    }
+
+    @Test
     void summary_withNoData_returnsZeros() throws Exception {
         mockMvc.perform(get("/api/v1/dashboard/summary"))
                 .andExpect(status().isOk())

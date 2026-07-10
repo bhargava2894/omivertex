@@ -336,13 +336,21 @@ export default function Dashboard() {
             />
           ) : (
             s.clientHeadcounts.map((c, i) => (
-              <div className="rank-row" key={c.clientName}>
+              <div
+                className="rank-row"
+                key={c.clientName}
+                style={{ cursor: 'pointer' }}
+                onClick={() => (window.location.hash = `/staffing?clientId=${c.clientId}`)}
+                title={`Open staffing for ${c.clientName}`}
+              >
                 <span className="rank-name">{c.clientName}</span>
-                <span className="rank-count">{c.headcount} associates</span>
+                <span className="rank-count">
+                  {c.headcount} — {c.billable} billable / {c.nonBillable} non-billable
+                </span>
                 <div
                   className="rank-track"
                   role="img"
-                  aria-label={`${c.clientName}: ${c.headcount} associates`}
+                  aria-label={`${c.clientName}: ${c.headcount} associates, ${c.billable} billable, ${c.nonBillable} non-billable`}
                 >
                   <div
                     className="rank-fill"

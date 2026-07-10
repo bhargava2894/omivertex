@@ -20,7 +20,13 @@ public record DashboardSummaryResponse(
         List<TrendPoint> staffingTrend,
         List<ExpiringCert> expiringCertifications) {
 
-    public record ClientHeadcount(String clientName, long headcount) {
+    /**
+     * Distinct current associates per client, split by billing. An associate counts
+     * as billable for a client when ANY of their current allocations there is
+     * billable; headcount == billable + nonBillable.
+     */
+    public record ClientHeadcount(Long clientId, String clientName, long headcount,
+                                  long billable, long nonBillable) {
     }
 
     /** Distinct allocated / billable associates during one calendar month. */
