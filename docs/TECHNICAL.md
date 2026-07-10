@@ -141,6 +141,15 @@ introduce Flyway before making breaking changes.
    PENDING (live data untouched) until an admin approves (applied through the existing
    services, so validation + audit fire) or rejects with a note. One pending change per
    (associate, type) → 409. Approving as ASSOCIATE requires a roster email match → 400.
+10. **AI assistant** (2026-07-10) — `AssistantService` compiles a FULL-detail workforce
+    context per request (`AssistantContextBuilder`: names, emails, skills, allocations,
+    exits, open demand; resume file contents never included — user decision, see
+    docs/TODO.md) and calls the vendor-neutral `GeminiClient` boundary; the HTTP
+    implementation (`GeminiHttpClient`) is config-gated by
+    `omivertex.assistant.gemini.api-key` / `.model` (default `gemini-2.5-flash`) and
+    fails closed with 400 "not configured" when the key is unset. Message ≤ 2,000
+    chars → else 400; history capped at the last 20 turns; upstream failures → 400
+    with a readable message. Tests mock `GeminiClient` — the suite never calls Google.
 
 ## 6. REST API
 
@@ -171,6 +180,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/data/export` | GET | `?format=xlsx|csv|pdf|docx` |
 | `/auth` | POST `/login`, POST `/google`, POST `/logout`, GET `/me` | — |
 | `/admin/access-requests` | GET, POST `/{id}/approve`, POST `/{id}/reject` (ADMIN) | — |
+| `/assistant/chat` | POST (natural-language Q&A over live workforce context via Gemini; ADMIN+VIEWER) | — |
 | `/me/profile` | GET (own profile; ASSOCIATE) | — |
 | `/me/profile-changes` | GET (own change requests list; ASSOCIATE) | — |
 | `/me/profile-changes/skills` | POST (submit proposed skills; ASSOCIATE) | — |

@@ -91,6 +91,13 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **AI assistant sends FULL workforce detail to the Gemini API** (2026-07-10, user
+  decision): each `/assistant/chat` question carries the complete active roster —
+  names, emails, skills, allocations, exits, open demand — as model context. Resume
+  file contents are excluded. The vendor stays behind the `GeminiClient` interface so
+  the test suite never calls Google and the vendor can change without an API break.
+  ASSOCIATE-role users cannot reach the endpoint.
+
 - **Exit auto-cleanup semantics** (2026-07-10): when an associate's last working day passes, a nightly scheduler flips their status to INACTIVE, truncates open-ended/overlapping allocations to end on their last working day, and removes any future allocations that never started.
 - **Partials-ranked-lower matching** (2026-07-10): position skill matching prioritizes full matches (possessing all required skills above min proficiency and matching work mode) over partial matches. Candidates are ranked by must-have matches, then nice-to-have matches, then bench age.
 - **Deterministic utilization forecast** (2026-07-10): the 30/60/90-day dashboard utilization forecast is computed deterministically from today's active roster and known allocation end-dates, assuming no new projects/allocations are added.
