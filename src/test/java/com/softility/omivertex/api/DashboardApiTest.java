@@ -88,6 +88,37 @@ class DashboardApiTest extends ApiTestBase {
     }
 
     @Test
+    void summary_excludesInactiveAssociatesFromKpis() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var active = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        allocation(active, proj, true);
+
+        // a leaver: inactive, never rolled off properly — must not distort any KPI
+        var leaver = associate("Gone Guy", "gone@softility.com", WorkMode.ONSHORE);
+        leaver.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
+        associateRepository.save(leaver);
+
+        // an inactive associate with a lingering open allocation must not count as staffed
+        var leaverStaffed = associate("Left Behind", "left@softility.com", WorkMode.ONSHORE);
+        allocation(leaverStaffed, proj, true);
+        leaverStaffed.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
+        associateRepository.save(leaverStaffed);
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAssociates").value(1))
+                .andExpect(jsonPath("$.billableCount").value(1))
+                .andExpect(jsonPath("$.benchCount").value(0))
+                .andExpect(jsonPath("$.onshoreCount").value(0))
+                .andExpect(jsonPath("$.offshoreCount").value(1))
+                // 1 fully billable of 1 active associate -> 100%, not diluted by leavers
+                .andExpect(jsonPath("$.utilizationPercent").value(100))
+                .andExpect(jsonPath("$.benchAssociates", hasSize(0)))
+                .andExpect(jsonPath("$.clientHeadcounts[0].headcount").value(1));
+    }
+
+    @Test
     void summary_withNoData_returnsZeros() throws Exception {
         mockMvc.perform(get("/api/v1/dashboard/summary"))
                 .andExpect(status().isOk())

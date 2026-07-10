@@ -2,6 +2,7 @@ package com.softility.omivertex.service;
 
 import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
+import com.softility.omivertex.domain.EntityStatus;
 import com.softility.omivertex.domain.PositionStatus;
 import com.softility.omivertex.domain.ProjectStatus;
 import com.softility.omivertex.domain.WorkMode;
@@ -59,9 +60,17 @@ public class DashboardService {
     }
 
     public DashboardSummaryResponse summary() {
-        List<Associate> associates = associateRepository.findAll();
+        // Every KPI is about the active workforce: leavers (INACTIVE) must not
+        // inflate the bench or dilute utilization, even with lingering allocations.
+        List<Associate> associates = associateRepository.findAll().stream()
+                .filter(a -> a.getStatus() == EntityStatus.ACTIVE)
+                .toList();
+        Set<Long> activeIds = associates.stream().map(Associate::getId).collect(Collectors.toSet());
         List<Allocation> all = allocationRepository.findAllWithDetails();
-        List<Allocation> current = all.stream().filter(Allocation::isCurrent).toList();
+        List<Allocation> current = all.stream()
+                .filter(Allocation::isCurrent)
+                .filter(a -> activeIds.contains(a.getAssociate().getId()))
+                .toList();
         Map<Long, List<Allocation>> byAssociate = all.stream()
                 .collect(Collectors.groupingBy(a -> a.getAssociate().getId()));
 
