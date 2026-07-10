@@ -64,6 +64,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/login", "/api/v1/auth/google").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // associates get ONLY their own /me surface — nothing else under /api/v1
+                        .requestMatchers("/api/v1/me/**").hasRole("ASSOCIATE")
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyRole("ADMIN", "VIEWER")
                         .requestMatchers("/api/v1/**").hasRole("ADMIN")
                         .anyRequest().permitAll())
