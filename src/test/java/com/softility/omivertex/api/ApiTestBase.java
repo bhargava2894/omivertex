@@ -21,6 +21,7 @@ public abstract class ApiTestBase {
     @Autowired protected AssociateRepository associateRepository;
     @Autowired protected AllocationRepository allocationRepository;
     @Autowired protected OpenPositionRepository openPositionRepository;
+    @Autowired protected PositionSkillRepository positionSkillRepository;
     @Autowired protected AuditEntryRepository auditEntryRepository;
     @Autowired protected AssociateSkillRepository associateSkillRepository;
     @Autowired protected CertificationRepository certificationRepository;
@@ -37,6 +38,7 @@ public abstract class ApiTestBase {
         associateSkillRepository.deleteAll();
         certificationRepository.deleteAll();
         allocationRepository.deleteAll();
+        positionSkillRepository.deleteAll();
         openPositionRepository.deleteAll();
         projectRepository.deleteAll();
         associateRepository.deleteAll();

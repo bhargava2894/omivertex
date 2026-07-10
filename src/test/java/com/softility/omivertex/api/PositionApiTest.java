@@ -100,10 +100,10 @@ class PositionApiTest extends ApiTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].name").value("Priya Sharma"))
-                .andExpect(jsonPath("$[0].skillMatch").value(true))
+                .andExpect(jsonPath("$[0].fullMatch").value(true))
                 .andExpect(jsonPath("$[0].availablePercent").value(100))
                 .andExpect(jsonPath("$[1].name").value("Rahul Verma"))
-                .andExpect(jsonPath("$[1].skillMatch").value(false));
+                .andExpect(jsonPath("$[1].fullMatch").value(false));
     }
 
     @Test
@@ -274,13 +274,15 @@ class PositionApiTest extends ApiTestBase {
         var created = mockMvc.perform(post("/api/v1/positions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"title":"Lead Java Dev","projectId":%d,"requiredSkillId":%d,"minProficiency":"ADVANCE",
+                                {"title":"Lead Java Dev","projectId":%d,
+                                 "skills":[{"skillId":%d,"minProficiency":"ADVANCE","required":true}],
                                  "billable":true,"allocationPercent":100}"""
                                 .formatted(proj.getId(), javaSkill.getId())))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.requiredSkillId").value(javaSkill.getId()))
-                .andExpect(jsonPath("$.requiredSkillName").value("Java"))
-                .andExpect(jsonPath("$.minProficiency").value("ADVANCE"))
+                .andExpect(jsonPath("$.skills", hasSize(1)))
+                .andExpect(jsonPath("$.skills[0].skillId").value(javaSkill.getId()))
+                .andExpect(jsonPath("$.skills[0].skillName").value("Java"))
+                .andExpect(jsonPath("$.skills[0].minProficiency").value("ADVANCE"))
                 .andReturn();
 
         long id = new com.fasterxml.jackson.databind.ObjectMapper()
@@ -291,10 +293,86 @@ class PositionApiTest extends ApiTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].name").value("Priya Sharma"))
-                .andExpect(jsonPath("$[0].skillMatch").value(true))
-                .andExpect(jsonPath("$[0].matchedProficiency").value("MASTERY"))
+                .andExpect(jsonPath("$[0].fullMatch").value(true))
+                .andExpect(jsonPath("$[0].matchedSkills[0]").value("Java"))
                 .andExpect(jsonPath("$[1].name").value("Rahul Verma"))
-                .andExpect(jsonPath("$[1].skillMatch").value(false))
-                .andExpect(jsonPath("$[1].matchedProficiency").isEmpty());
+                .andExpect(jsonPath("$[1].fullMatch").value(false))
+                .andExpect(jsonPath("$[1].missingRequirements[0]").value("Java (min ADVANCE)"));
+    }
+
+    @Test
+    void createPosition_withSkillRequirements() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var java = skill("Backend", "Java");
+        var aws = skill("Cloud", "AWS");
+
+        mockMvc.perform(post("/api/v1/positions").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Senior Java Developer","projectId":%d,"workMode":"ONSHORE",
+                                 "skills":[{"skillId":%d,"minProficiency":"INTERMEDIATE","required":true},
+                                           {"skillId":%d,"required":false}]}"""
+                                .formatted(proj.getId(), java.getId(), aws.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.workMode").value("ONSHORE"))
+                .andExpect(jsonPath("$.skills", hasSize(2)))
+                .andExpect(jsonPath("$.skills[0].skillName").value("Java"))
+                .andExpect(jsonPath("$.skills[0].required").value(true))
+                .andExpect(jsonPath("$.skills[1].skillName").value("AWS"))
+                .andExpect(jsonPath("$.skills[1].required").value(false));
+    }
+
+    @Test
+    void createPosition_duplicateSkill_returns400() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var java = skill("Backend", "Java");
+        mockMvc.perform(post("/api/v1/positions").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Dev","projectId":%d,
+                                 "skills":[{"skillId":%d,"required":true},{"skillId":%d,"required":false}]}"""
+                                .formatted(proj.getId(), java.getId(), java.getId())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void matches_ranksFullMatchesAbovePartialsWithMissingLabels() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var java = skill("Backend", "Java");
+        var aws = skill("Cloud", "AWS");
+        var k8s = skill("Cloud", "Kubernetes");
+
+        var full = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        rateSkill(full, java, com.softility.omivertex.domain.Proficiency.ADVANCE);
+        rateSkill(full, aws, com.softility.omivertex.domain.Proficiency.INTERMEDIATE);
+        rateSkill(full, k8s, com.softility.omivertex.domain.Proficiency.FOUNDATIONAL);
+
+        var partial = associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE);
+        rateSkill(partial, java, com.softility.omivertex.domain.Proficiency.ADVANCE); // missing AWS
+
+        var offshore = associate("Anita Rao", "anita@softility.com", WorkMode.OFFSHORE);
+        rateSkill(offshore, java, com.softility.omivertex.domain.Proficiency.ADVANCE);
+        rateSkill(offshore, aws, com.softility.omivertex.domain.Proficiency.ADVANCE); // skills ok, wrong shore
+
+        var created = mockMvc.perform(post("/api/v1/positions").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Senior Java Developer","projectId":%d,"workMode":"ONSHORE",
+                                 "skills":[{"skillId":%d,"minProficiency":"INTERMEDIATE","required":true},
+                                           {"skillId":%d,"required":true},
+                                           {"skillId":%d,"required":false}]}"""
+                                .formatted(proj.getId(), java.getId(), aws.getId(), k8s.getId())))
+                .andExpect(status().isCreated()).andReturn();
+        long id = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(get("/api/v1/positions/" + id + "/matches"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(3)))
+                .andExpect(jsonPath("$[0].name").value("Priya Sharma"))
+                .andExpect(jsonPath("$[0].fullMatch").value(true))
+                .andExpect(jsonPath("$[0].missingRequirements", hasSize(0)))
+                .andExpect(jsonPath("$[1].fullMatch").value(false))
+                .andExpect(jsonPath("$[2].fullMatch").value(false));
     }
 }
