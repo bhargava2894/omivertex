@@ -67,6 +67,8 @@ public class SecurityConfig {
                         // associates get their own /me surface plus the (non-sensitive)
                         // skill catalog they need to propose skill changes — nothing else
                         .requestMatchers("/api/v1/me/**").hasRole("ASSOCIATE")
+                        // the dashboard AI assistant is a manager tool: viewers may ask too
+                        .requestMatchers("/api/v1/assistant/**").hasAnyRole("ADMIN", "VIEWER")
                         .requestMatchers(HttpMethod.GET, "/api/v1/taxonomy")
                         .hasAnyRole("ADMIN", "VIEWER", "ASSOCIATE")
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").hasAnyRole("ADMIN", "VIEWER")
