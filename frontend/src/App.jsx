@@ -12,6 +12,7 @@ import AccessRequests from './pages/AccessRequests.jsx';
 import AuditLog from './pages/AuditLog.jsx';
 import Profile from './pages/Profile.jsx';
 import Taxonomy from './pages/Taxonomy.jsx';
+import Staffing from './pages/Staffing.jsx';
 import SkillReports from './pages/SkillReports.jsx';
 import { api } from './api.js';
 import { storedTheme, applyTheme, resolveTheme } from './theme.js';
@@ -51,6 +52,13 @@ const ROUTES = [
     icon: 'link',
     component: Allocations,
     sub: 'Assign associates to projects',
+  },
+  {
+    path: 'staffing',
+    label: 'Staffing',
+    icon: 'users',
+    component: Staffing,
+    sub: 'Billable and non-billable staffing by company and project',
   },
   {
     path: 'demand',
@@ -106,7 +114,7 @@ const routeByPath = Object.fromEntries(ROUTES.map((r) => [r.path, r]));
 const NAV_SECTIONS = [
   { label: null, items: ['dashboard'] },
   { label: 'Workforce', items: ['associates', 'taxonomy', 'skill-reports'] },
-  { label: 'Delivery', items: ['clients', 'projects', 'allocations', 'demand'] },
+  { label: 'Delivery', items: ['clients', 'projects', 'allocations', 'staffing', 'demand'] },
   { label: 'Admin', items: ['access-requests', 'audit'] },
   { label: null, items: ['settings'] },
 ];
