@@ -53,24 +53,14 @@ export default function Staffing() {
         <div className="card" key={c.clientId} style={{ padding: 0, overflow: 'hidden' }}>
           <button
             type="button"
+            className="staffing-toggle"
             onClick={() => toggle(c.clientId)}
             aria-expanded={isOpen(c.clientId)}
-            style={{
-              display: 'flex',
-              width: '100%',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '16px 20px',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}
           >
-            <span aria-hidden="true" style={{ fontSize: '12px' }}>
-              {isOpen(c.clientId) ? '▾' : '▸'}
+            <span aria-hidden="true" className="staffing-toggle-arrow">
+              ▸
             </span>
-            <h3 style={{ margin: 0, flexGrow: 1 }}>{c.clientName}</h3>
+            <h3 className="staffing-toggle-title">{c.clientName}</h3>
             <Badge value="Billable" label={`${c.billable} billable`} tone="green" />
             <Badge value="Non-billable" label={`${c.nonBillable} non-billable`} tone="amber" />
           </button>
