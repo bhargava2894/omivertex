@@ -91,6 +91,8 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **Gemini model selection & systemInstruction bypass** (2026-07-10): due to quota limitations on free tiers and deprecations of older models, `gemini-3.1-flash-lite` is chosen as the default model. Additionally, since the `systemInstruction` field is rejected by the upstream stable REST API version, system context is merged directly into the first prompt in the `contents` list, ensuring compatibility across all models.
+
 - **AI assistant sends FULL workforce detail to the Gemini API** (2026-07-10, user
   decision): each `/assistant/chat` question carries the complete active roster —
   names, emails, skills, allocations, exits, open demand — as model context. Resume
