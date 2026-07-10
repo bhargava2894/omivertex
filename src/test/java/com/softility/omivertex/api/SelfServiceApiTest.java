@@ -74,6 +74,68 @@ class SelfServiceApiTest extends ApiTestBase {
     }
 
     @Test
+    void admin_approvesSkillChange_appliesToProfile() throws Exception {
+        var dev = linkedAssociate();
+        var java = skill("Backend", "Java");
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/me/profile-changes/skills")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
+                                .user("priya@softility.com").roles("ASSOCIATE"))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"skills":[{"skillId":%d,"proficiency":"ADVANCE","primary":true}]}"""
+                                .formatted(java.getId())))
+                .andExpect(status().isCreated());
+        long changeId = profileChangeRequestRepository.findAll().get(0).getId();
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/profile-changes/" + changeId + "/approve"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
+
+        mockMvc.perform(get("/api/v1/associates/" + dev.getId()))
+                .andExpect(jsonPath("$.skillGroups[0].skills[0].name").value("Java"))
+                .andExpect(jsonPath("$.primarySkill").value("Java"));
+
+        // approving twice -> 409
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/profile-changes/" + changeId + "/approve"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void admin_rejectsWithNote_andQueueEmpties() throws Exception {
+        linkedAssociate();
+        var java = skill("Backend", "Java");
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/me/profile-changes/skills")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
+                                .user("priya@softility.com").roles("ASSOCIATE"))
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"skills":[{"skillId":%d,"proficiency":"ADVANCE","primary":true}]}"""
+                                .formatted(java.getId())))
+                .andExpect(status().isCreated());
+        long changeId = profileChangeRequestRepository.findAll().get(0).getId();
+
+        mockMvc.perform(get("/api/v1/profile-changes").param("status", "PENDING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/profile-changes/" + changeId + "/reject")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"note":"Please add a certification for this level"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"))
+                .andExpect(jsonPath("$.note").value("Please add a certification for this level"));
+
+        mockMvc.perform(get("/api/v1/profile-changes").param("status", "PENDING"))
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(0)));
+    }
+
+    @Test
     @WithMockUser(username = "priya@softility.com", roles = "ASSOCIATE")
     void associate_submitsResumeChange_andListsOwnRequests() throws Exception {
         linkedAssociate();
