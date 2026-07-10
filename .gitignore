@@ -40,3 +40,6 @@ graphify-out/
 *.log
 .DS_Store
 .env
+
+# Local-only secrets (Spring optional config import)
+application-local.properties

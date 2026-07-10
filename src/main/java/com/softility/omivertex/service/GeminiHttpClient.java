@@ -20,6 +20,8 @@ import java.util.Map;
 public class GeminiHttpClient implements GeminiClient {
 
     private static final Logger log = LoggerFactory.getLogger(GeminiHttpClient.class);
+    // v1beta, deliberately: the stable v1 surface rejects systemInstruction
+    // ("Unknown name") — verified against the live API 2026-07-11.
     private static final String ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
 
     private final String apiKey;
@@ -27,7 +29,7 @@ public class GeminiHttpClient implements GeminiClient {
     private final RestClient rest = RestClient.create();
 
     public GeminiHttpClient(@Value("${omivertex.assistant.gemini.api-key:}") String apiKey,
-                            @Value("${omivertex.assistant.gemini.model:gemini-2.5-flash}") String model) {
+                            @Value("${omivertex.assistant.gemini.model:gemini-3.1-flash-lite}") String model) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = model;
         if (this.apiKey.isEmpty()) {
@@ -44,14 +46,23 @@ public class GeminiHttpClient implements GeminiClient {
                     + "set OMIVERTEX_ASSISTANT_GEMINI_API_KEY and restart");
         }
         List<Map<String, Object>> contents = new ArrayList<>();
+        boolean first = true;
         for (Turn turn : history) {
+            String text = turn.content();
+            if (first && !"model".equals(turn.role())) {
+                text = workforceContext + "\n\n" + text;
+                first = false;
+            }
             contents.add(Map.of("role", "model".equals(turn.role()) ? "model" : "user",
-                    "parts", List.of(Map.of("text", turn.content()))));
+                    "parts", List.of(Map.of("text", text))));
         }
-        contents.add(Map.of("role", "user", "parts", List.of(Map.of("text", userMessage))));
-        Map<String, Object> body = Map.of(
-                "system_instruction", Map.of("parts", List.of(Map.of("text", workforceContext))),
-                "contents", contents);
+        String finalMessage = userMessage;
+        if (first) {
+            finalMessage = workforceContext + "\n\n" + finalMessage;
+        }
+        contents.add(Map.of("role", "user", "parts", List.of(Map.of("text", finalMessage))));
+
+        Map<String, Object> body = Map.of("contents", contents);
         try {
             Map<String, Object> response = rest.post()
                     .uri(ENDPOINT.formatted(model))
@@ -63,8 +74,13 @@ public class GeminiHttpClient implements GeminiClient {
             return extractText(response);
         } catch (BadRequestException e) {
             throw e;
+        } catch (org.springframework.web.client.RestClientResponseException e) {
+            // surface the upstream error body in the log — "unavailable" alone is undebuggable
+            log.warn("Gemini API returned {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BadRequestException("The AI assistant is unavailable right now (upstream "
+                    + e.getStatusCode().value() + ") — try again shortly");
         } catch (Exception e) {
-            log.warn("Gemini API call failed: {}", e.getMessage());
+            log.warn("Gemini API call failed", e);
             throw new BadRequestException("The AI assistant is unavailable right now — try again shortly");
         }
     }
