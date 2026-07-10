@@ -18,6 +18,7 @@ const EMPTY = {
   billable: true,
   allocationPercent: 100,
   startDate: '',
+  endDate: '',
   status: 'OPEN',
 };
 
@@ -52,6 +53,7 @@ export default function Positions({ showToast, canEdit }) {
         billable: row.billable,
         allocationPercent: row.allocationPercent,
         startDate: row.startDate || '',
+        endDate: row.endDate || '',
         status: row.status,
       },
     });
@@ -69,6 +71,7 @@ export default function Positions({ showToast, canEdit }) {
       minProficiency: f.minProficiency === '' ? null : f.minProficiency,
       allocationPercent: Number(f.allocationPercent),
       startDate: f.startDate || null,
+      endDate: f.endDate || null,
     };
     try {
       if (editing.id) await api.update('positions', editing.id, payload);
@@ -190,6 +193,7 @@ export default function Positions({ showToast, canEdit }) {
             render: (r) => `${r.allocationPercent}%`,
           },
           { key: 'startDate', label: 'Start', render: (r) => r.startDate || '—' },
+          { key: 'endDate', label: 'End', render: (r) => r.endDate || '—' },
           {
             key: 'status',
             label: 'Status',
@@ -293,6 +297,13 @@ export default function Positions({ showToast, canEdit }) {
                 type="date"
                 value={editing.form.startDate}
                 onChange={(e) => set('startDate', e.target.value)}
+              />
+            </Field>
+            <Field label="End date" error={errors.endDate}>
+              <input
+                type="date"
+                value={editing.form.endDate}
+                onChange={(e) => set('endDate', e.target.value)}
               />
             </Field>
             {editing.id ? (

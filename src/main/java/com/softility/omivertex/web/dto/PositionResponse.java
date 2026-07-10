@@ -18,6 +18,7 @@ public record PositionResponse(
         boolean billable,
         int allocationPercent,
         LocalDate startDate,
+        LocalDate endDate,
         PositionStatus status) {
 
     public static PositionResponse from(OpenPosition position) {
@@ -29,6 +30,7 @@ public record PositionResponse(
                 position.getRequiredSkillRef() == null ? null : position.getRequiredSkillRef().getName(),
                 position.getMinProficiency(),
                 position.isBillable(),
-                position.getAllocationPercent(), position.getStartDate(), position.getStatus());
+                position.getAllocationPercent(), position.getStartDate(), position.getEndDate(),
+                position.getStatus());
     }
 }

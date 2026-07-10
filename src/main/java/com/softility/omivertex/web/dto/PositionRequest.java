@@ -19,5 +19,6 @@ public record PositionRequest(
         @Max(value = 100, message = "Allocation cannot exceed 100%")
         Integer allocationPercent,
         LocalDate startDate,
+        LocalDate endDate,
         PositionStatus status) {
 }

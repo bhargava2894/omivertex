@@ -8,6 +8,7 @@ import com.softility.omivertex.repository.ProjectRepository;
 import com.softility.omivertex.repository.SkillRepository;
 import com.softility.omivertex.repository.AssociateSkillRepository;
 import com.softility.omivertex.web.dto.*;
+import com.softility.omivertex.web.error.BadRequestException;
 import com.softility.omivertex.web.error.ConflictException;
 import com.softility.omivertex.web.error.NotFoundException;
 import org.springframework.stereotype.Service;
@@ -145,12 +146,12 @@ public class PositionService {
         if (position.getStatus() != PositionStatus.OPEN) {
             throw new ConflictException("Position '" + position.getTitle() + "' is not open");
         }
-        // filling commits the associate immediately — capacity is consumed from today,
-        // regardless of the seat's nominal start date
-        LocalDate start = LocalDate.now();
+        // the allocation mirrors the seat's engagement window: capacity is consumed
+        // only for that period and the end date feeds the roll-off radar
+        LocalDate start = position.getStartDate() == null ? LocalDate.now() : position.getStartDate();
         allocationService.create(new AllocationRequest(request.associateId(),
                 position.getProject().getId(), position.isBillable(),
-                position.getAllocationPercent(), start, null));
+                position.getAllocationPercent(), start, position.getEndDate()));
         position.setStatus(PositionStatus.FILLED);
         auditService.record("FILLED", "Position", position.getId(),
                 "Filled position " + position.getTitle() + " with associate id " + request.associateId());
@@ -184,7 +185,12 @@ public class PositionService {
         position.setMinProficiency(request.minProficiency());
         position.setBillable(request.billable() == null || request.billable());
         position.setAllocationPercent(request.allocationPercent() == null ? 100 : request.allocationPercent());
+        if (request.startDate() != null && request.endDate() != null
+                && request.endDate().isBefore(request.startDate())) {
+            throw new BadRequestException("End date cannot be before start date");
+        }
         position.setStartDate(request.startDate());
+        position.setEndDate(request.endDate());
         position.setStatus(request.status() == null ? PositionStatus.OPEN : request.status());
     }
 }

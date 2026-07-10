@@ -16,7 +16,7 @@ class PositionApiTest extends ApiTestBase {
         return """
                 {"title":"Senior Java Developer","projectId":%d,"requiredSkill":"Java",
                  "billable":true,"allocationPercent":100,"startDate":"%s"}"""
-                .formatted(projectId, LocalDate.now().plusDays(7));
+                .formatted(projectId, LocalDate.now());
     }
 
     @Test
@@ -128,6 +128,60 @@ class PositionApiTest extends ApiTestBase {
         mockMvc.perform(get("/api/v1/associates/" + dev.getId()))
                 .andExpect(jsonPath("$.currentProject").value("Storefront Revamp"))
                 .andExpect(jsonPath("$.billable").value(true));
+    }
+
+    @Test
+    void fill_futureDatedPosition_allocatesForThePositionsPeriod() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var dev = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        LocalDate seatStart = LocalDate.now().plusDays(30);
+        LocalDate seatEnd = LocalDate.now().plusDays(90);
+
+        var created = mockMvc.perform(post("/api/v1/positions").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Senior Java Developer","projectId":%d,"requiredSkill":"Java",
+                                 "billable":true,"allocationPercent":100,
+                                 "startDate":"%s","endDate":"%s"}"""
+                                .formatted(proj.getId(), seatStart, seatEnd)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.endDate").value(seatEnd.toString()))
+                .andReturn();
+        long id = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(post("/api/v1/positions/" + id + "/fill")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"associateId":%d}""".formatted(dev.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FILLED"));
+
+        // the allocation carries the position's engagement window, so capacity is
+        // only consumed for that period and the roll-off radar can see the end
+        mockMvc.perform(get("/api/v1/allocations").param("associateId", dev.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].startDate").value(seatStart.toString()))
+                .andExpect(jsonPath("$[0].endDate").value(seatEnd.toString()))
+                .andExpect(jsonPath("$[0].active").value(false));
+
+        // seat hasn't started -> not staffed today, still free for interim work
+        mockMvc.perform(get("/api/v1/associates/" + dev.getId()))
+                .andExpect(jsonPath("$.currentProject").isEmpty());
+    }
+
+    @Test
+    void createPosition_endDateBeforeStartDate_returns400() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        mockMvc.perform(post("/api/v1/positions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Senior Java Developer","projectId":%d,
+                                 "startDate":"%s","endDate":"%s"}"""
+                                .formatted(proj.getId(), LocalDate.now().plusDays(30), LocalDate.now().plusDays(10))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
