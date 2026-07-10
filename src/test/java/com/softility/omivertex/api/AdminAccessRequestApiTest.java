@@ -76,6 +76,32 @@ class AdminAccessRequestApiTest extends ApiTestBase {
     }
 
     @Test
+    void approveAsAssociate_linksRosterRecord() throws Exception {
+        var dev = associate("Priya Sharma", "priya@softility.com", com.softility.omivertex.domain.WorkMode.OFFSHORE);
+        var u = appUser("priya@softility.com", AccessStatus.PENDING);
+
+        mockMvc.perform(post("/api/v1/admin/access-requests/" + u.getId() + "/approve")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"ASSOCIATE"}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("ASSOCIATE"));
+
+        var saved = appUserRepository.findById(u.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(dev.getId(), saved.getAssociateId());
+    }
+
+    @Test
+    void approveAsAssociate_withoutRosterMatch_returns400() throws Exception {
+        var u = appUser("stranger@softility.com", AccessStatus.PENDING);
+        mockMvc.perform(post("/api/v1/admin/access-requests/" + u.getId() + "/approve")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"ASSOCIATE"}"""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void reject_setsRejected() throws Exception {
         var u = appUser("nope@softility.com", AccessStatus.PENDING);
 

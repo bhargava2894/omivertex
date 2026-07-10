@@ -4,7 +4,9 @@ import com.softility.omivertex.domain.AccessStatus;
 import com.softility.omivertex.domain.AppUser;
 import com.softility.omivertex.domain.Role;
 import com.softility.omivertex.repository.AppUserRepository;
+import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.web.dto.AccessRequestResponse;
+import com.softility.omivertex.web.error.BadRequestException;
 import com.softility.omivertex.web.error.NotFoundException;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,9 +17,11 @@ import java.util.List;
 public class AdminUserController {
 
     private final AppUserRepository userRepository;
+    private final AssociateRepository associateRepository;
 
-    public AdminUserController(AppUserRepository userRepository) {
+    public AdminUserController(AppUserRepository userRepository, AssociateRepository associateRepository) {
         this.userRepository = userRepository;
+        this.associateRepository = associateRepository;
     }
 
     @GetMapping
@@ -33,7 +37,16 @@ public class AdminUserController {
         user.setStatus(AccessStatus.APPROVED);
         // The role is what the approving admin grants; default to read-only Viewer
         // when the caller doesn't specify one (backward-compatible with a bare POST).
-        user.setRole(body != null && body.role() != null ? body.role() : Role.VIEWER);
+        Role granted = body != null && body.role() != null ? body.role() : Role.VIEWER;
+        if (granted == Role.ASSOCIATE) {
+            // A self-service login must belong to someone on the roster.
+            var match = associateRepository.findByEmailIgnoreCase(user.getEmail())
+                    .orElseThrow(() -> new BadRequestException(
+                            "No associate on the roster with email " + user.getEmail()
+                            + " — add them to the roster first"));
+            user.setAssociateId(match.getId());
+        }
+        user.setRole(granted);
         return AccessRequestResponse.from(userRepository.save(user));
     }
 
