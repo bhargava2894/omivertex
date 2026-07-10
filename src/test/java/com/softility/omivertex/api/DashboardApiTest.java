@@ -138,6 +138,44 @@ class DashboardApiTest extends ApiTestBase {
     }
 
     @Test
+    void summary_reportsSkillGaps() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var java = skill("Backend", "Java");
+
+        // demand: one open position must-have Java >= INTERMEDIATE
+        var position = new com.softility.omivertex.domain.OpenPosition();
+        position.setTitle("Java Dev");
+        position.setProject(proj);
+        openPositionRepository.save(position);
+        var req = new com.softility.omivertex.domain.PositionSkill();
+        req.setPosition(position);
+        req.setSkill(java);
+        req.setMinProficiency(com.softility.omivertex.domain.Proficiency.INTERMEDIATE);
+        req.setRequired(true);
+        positionSkillRepository.save(req);
+
+        // supply: one on bench with Java ADVANCE, one allocated with Java MASTERY,
+        // one on bench below the required minimum
+        var bench = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        rateSkill(bench, java, com.softility.omivertex.domain.Proficiency.ADVANCE);
+        var busy = associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE);
+        rateSkill(busy, java, com.softility.omivertex.domain.Proficiency.MASTERY);
+        allocation(busy, proj, true);
+        var novice = associate("Anita Rao", "anita@softility.com", WorkMode.ONSHORE);
+        rateSkill(novice, java, com.softility.omivertex.domain.Proficiency.NOVICE);
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skillGaps", hasSize(1)))
+                .andExpect(jsonPath("$.skillGaps[0].skillName").value("Java"))
+                .andExpect(jsonPath("$.skillGaps[0].demand").value(1))
+                .andExpect(jsonPath("$.skillGaps[0].benchSupply").value(1))
+                .andExpect(jsonPath("$.skillGaps[0].totalSupply").value(2))
+                .andExpect(jsonPath("$.skillGaps[0].gap").value(0));
+    }
+
+    @Test
     void summary_withNoData_returnsZeros() throws Exception {
         mockMvc.perform(get("/api/v1/dashboard/summary"))
                 .andExpect(status().isOk())

@@ -2,8 +2,12 @@ package com.softility.omivertex.service;
 
 import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
+import com.softility.omivertex.domain.AssociateSkill;
 import com.softility.omivertex.domain.EntityStatus;
+import com.softility.omivertex.domain.PositionSkill;
 import com.softility.omivertex.domain.PositionStatus;
+import com.softility.omivertex.domain.Proficiency;
+import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.domain.ProjectStatus;
 import com.softility.omivertex.domain.WorkMode;
 import com.softility.omivertex.repository.AllocationRepository;
@@ -41,6 +45,8 @@ public class DashboardService {
     static final int CERT_EXPIRY_HORIZON_DAYS = 90;
     /** Trailing window for the exits (attrition) KPI (days). */
     static final int EXIT_WINDOW_DAYS = 365;
+    /** Cap on the skill-gap heatmap rows returned. */
+    static final int MAX_SKILL_GAP_ROWS = 20;
 
     private final AssociateRepository associateRepository;
     private final ClientRepository clientRepository;
@@ -48,17 +54,23 @@ public class DashboardService {
     private final AllocationRepository allocationRepository;
     private final com.softility.omivertex.repository.OpenPositionRepository openPositionRepository;
     private final com.softility.omivertex.repository.CertificationRepository certificationRepository;
+    private final com.softility.omivertex.repository.PositionSkillRepository positionSkillRepository;
+    private final com.softility.omivertex.repository.AssociateSkillRepository associateSkillRepository;
 
     public DashboardService(AssociateRepository associateRepository, ClientRepository clientRepository,
                             ProjectRepository projectRepository, AllocationRepository allocationRepository,
                             com.softility.omivertex.repository.OpenPositionRepository openPositionRepository,
-                            com.softility.omivertex.repository.CertificationRepository certificationRepository) {
+                            com.softility.omivertex.repository.CertificationRepository certificationRepository,
+                            com.softility.omivertex.repository.PositionSkillRepository positionSkillRepository,
+                            com.softility.omivertex.repository.AssociateSkillRepository associateSkillRepository) {
         this.associateRepository = associateRepository;
         this.clientRepository = clientRepository;
         this.projectRepository = projectRepository;
         this.allocationRepository = allocationRepository;
         this.openPositionRepository = openPositionRepository;
         this.certificationRepository = certificationRepository;
+        this.positionSkillRepository = positionSkillRepository;
+        this.associateSkillRepository = associateSkillRepository;
     }
 
     public DashboardSummaryResponse summary() {
@@ -160,6 +172,35 @@ public class DashboardService {
                         c.getName(), c.getExpiryDate(), ChronoUnit.DAYS.between(today, c.getExpiryDate())))
                 .toList();
 
+        // skill gaps: for every must-have skill on an OPEN position, demand vs how
+        // many active associates could fill at least one seat (lowest demanded min)
+        Map<Long, List<PositionSkill>> demandBySkill = positionSkillRepository.findAllWithDetails().stream()
+                .filter(PositionSkill::isRequired)
+                .filter(ps -> ps.getPosition().getStatus() == PositionStatus.OPEN)
+                .collect(Collectors.groupingBy(ps -> ps.getSkill().getId()));
+        List<AssociateSkill> ratedSkills = associateSkillRepository.findAllWithDetails();
+        List<DashboardSummaryResponse.SkillGap> skillGaps = demandBySkill.values().stream()
+                .map(reqs -> {
+                    Skill skill = reqs.get(0).getSkill();
+                    Proficiency threshold = reqs.stream()
+                            .map(r -> r.getMinProficiency() == null ? Proficiency.NOVICE : r.getMinProficiency())
+                            .min(Comparator.comparingInt(Enum::ordinal)).orElse(Proficiency.NOVICE);
+                    Set<Long> holders = ratedSkills.stream()
+                            .filter(s -> s.getSkill().getId().equals(skill.getId()))
+                            .filter(s -> s.getProficiency().ordinal() >= threshold.ordinal())
+                            .map(s -> s.getAssociate().getId())
+                            .filter(activeIds::contains)
+                            .collect(Collectors.toSet());
+                    long benchSupply = holders.stream().filter(h -> !allocatedIds.contains(h)).count();
+                    return new DashboardSummaryResponse.SkillGap(skill.getId(), skill.getName(),
+                            skill.getCategory().getName(), reqs.size(), benchSupply, holders.size(),
+                            reqs.size() - benchSupply);
+                })
+                .sorted(Comparator.comparingLong(DashboardSummaryResponse.SkillGap::gap).reversed()
+                        .thenComparing(DashboardSummaryResponse.SkillGap::skillName))
+                .limit(MAX_SKILL_GAP_ROWS)
+                .toList();
+
         // exits KPI counts leavers, who are INACTIVE — use the unfiltered roster
         LocalDate exitWindowStart = today.minusDays(EXIT_WINDOW_DAYS);
         long exitsLast12Months = associateRepository.findAll().stream()
@@ -173,7 +214,7 @@ public class DashboardService {
                 projectRepository.findAll().stream().filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count(),
                 openPositionRepository.countByStatus(PositionStatus.OPEN),
                 utilization, benchAging, benchAssociates, rolloffs,
-                headcounts, staffingTrend(), expiringCerts, exitsLast12Months);
+                headcounts, staffingTrend(), expiringCerts, exitsLast12Months, skillGaps);
     }
 
     /** Distinct allocated / billable associates per month for the trailing six months. */

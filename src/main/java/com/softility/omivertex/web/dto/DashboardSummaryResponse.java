@@ -19,7 +19,8 @@ public record DashboardSummaryResponse(
         List<ClientHeadcount> clientHeadcounts,
         List<TrendPoint> staffingTrend,
         List<ExpiringCert> expiringCertifications,
-        long exitsLast12Months) {
+        long exitsLast12Months,
+        List<SkillGap> skillGaps) {
 
     /**
      * Distinct current associates per client, split by billing. An associate counts
@@ -50,5 +51,14 @@ public record DashboardSummaryResponse(
     /** A certification expiring within the next 90 days. */
     public record ExpiringCert(Long certificationId, Long associateId, String associateName,
                                String name, java.time.LocalDate expiryDate, long daysLeft) {
+    }
+
+    /**
+     * Demand vs supply for one skill required by open positions. Supply counts
+     * ACTIVE associates at or above the lowest demanded proficiency; gap =
+     * demand - benchSupply (positive = hire or train).
+     */
+    public record SkillGap(Long skillId, String skillName, String category,
+                           long demand, long benchSupply, long totalSupply, long gap) {
     }
 }
