@@ -331,6 +331,59 @@ export default function Dashboard() {
           </div>
         )}
 
+        <div className="card panel">
+          <h2>
+            <Icon name="activity" size={15} /> Utilization Forecast
+          </h2>
+          <p className="stat-hint" style={{ marginTop: 0 }}>
+            From known end dates and recorded exits — assumes no new assignments.
+          </p>
+          {viewMode === 'charts' ? (
+            <TrendChart
+              points={(s.utilizationForecast || []).map((p) => ({
+                month: p.label,
+                percent: p.percent,
+              }))}
+              series={[{ key: 'percent', label: 'Utilization %', color: 'var(--chart-2)' }]}
+            />
+          ) : (
+            (s.utilizationForecast || []).map((p) => (
+              <div className="radar-row" key={p.label}>
+                <div className="cell-main">{p.label}</div>
+                <Badge
+                  tone={p.percent >= s.utilizationPercent ? 'green' : 'amber'}
+                  label={`${p.percent}%`}
+                />
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="card panel">
+          <h2>
+            <Icon name="target" size={15} /> Skill Gaps — open demand vs supply
+          </h2>
+          {(s.skillGaps || []).length === 0 ? (
+            <p className="stat-hint">No open positions demanding skills right now.</p>
+          ) : (
+            (s.skillGaps || []).map((g) => (
+              <div className="radar-row" key={g.skillId}>
+                <div>
+                  <div className="cell-main">{g.skillName}</div>
+                  <div className="cell-sub">
+                    {g.category} · {g.demand} open · {g.benchSupply} on bench · {g.totalSupply}{' '}
+                    total
+                  </div>
+                </div>
+                <Badge
+                  tone={g.gap > 0 ? 'red' : g.gap === 0 ? 'amber' : 'green'}
+                  label={g.gap > 0 ? `short ${g.gap}` : g.gap === 0 ? 'tight' : `+${-g.gap} spare`}
+                />
+              </div>
+            ))
+          )}
+        </div>
+
         <div className="card panel" style={{ gridColumn: '1 / -1' }}>
           <h2>Headcount by Client</h2>
           {s.clientHeadcounts.length === 0 ? (
