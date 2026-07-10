@@ -20,7 +20,8 @@ public record DashboardSummaryResponse(
         List<TrendPoint> staffingTrend,
         List<ExpiringCert> expiringCertifications,
         long exitsLast12Months,
-        List<SkillGap> skillGaps) {
+        List<SkillGap> skillGaps,
+        List<ForecastPoint> utilizationForecast) {
 
     /**
      * Distinct current associates per client, split by billing. An associate counts
@@ -60,5 +61,12 @@ public record DashboardSummaryResponse(
      */
     public record SkillGap(Long skillId, String skillName, String category,
                            long demand, long benchSupply, long totalSupply, long gap) {
+    }
+
+    /**
+     * FTE-weighted utilization projected at a future date from known allocation
+     * end dates and recorded exits — deterministic, assumes no new assignments.
+     */
+    public record ForecastPoint(String label, long percent) {
     }
 }

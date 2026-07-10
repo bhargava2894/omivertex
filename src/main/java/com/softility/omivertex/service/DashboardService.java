@@ -47,6 +47,8 @@ public class DashboardService {
     static final int EXIT_WINDOW_DAYS = 365;
     /** Cap on the skill-gap heatmap rows returned. */
     static final int MAX_SKILL_GAP_ROWS = 20;
+    /** Horizons for the deterministic utilization forecast (days from today). */
+    static final int[] FORECAST_OFFSET_DAYS = {0, 30, 60, 90};
 
     private final AssociateRepository associateRepository;
     private final ClientRepository clientRepository;
@@ -214,7 +216,36 @@ public class DashboardService {
                 projectRepository.findAll().stream().filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count(),
                 openPositionRepository.countByStatus(PositionStatus.OPEN),
                 utilization, benchAging, benchAssociates, rolloffs,
-                headcounts, staffingTrend(), expiringCerts, exitsLast12Months, skillGaps);
+                headcounts, staffingTrend(), expiringCerts, exitsLast12Months, skillGaps,
+                utilizationForecast(associates, all));
+    }
+
+    /**
+     * FTE-weighted utilization evaluated as of each forecast horizon, using only
+     * known allocation windows and recorded exits — no new assignments assumed.
+     */
+    private List<DashboardSummaryResponse.ForecastPoint> utilizationForecast(
+            List<Associate> activeAssociates, List<Allocation> all) {
+        List<DashboardSummaryResponse.ForecastPoint> points = new ArrayList<>();
+        for (int offset : FORECAST_OFFSET_DAYS) {
+            LocalDate at = LocalDate.now().plusDays(offset);
+            List<Associate> present = activeAssociates.stream()
+                    .filter(a -> a.getLastWorkingDay() == null || !a.getLastWorkingDay().isBefore(at))
+                    .toList();
+            Set<Long> presentIds = present.stream().map(Associate::getId).collect(Collectors.toSet());
+            Map<Long, Integer> billablePct = all.stream()
+                    .filter(Allocation::isBillable)
+                    .filter(a -> !a.getStartDate().isAfter(at)
+                            && (a.getEndDate() == null || !a.getEndDate().isBefore(at)))
+                    .filter(a -> presentIds.contains(a.getAssociate().getId()))
+                    .collect(Collectors.groupingBy(a -> a.getAssociate().getId(),
+                            Collectors.summingInt(Allocation::getAllocationPercent)));
+            double fte = billablePct.values().stream().mapToDouble(p -> Math.min(p, 100) / 100.0).sum();
+            long pct = present.isEmpty() ? 0 : Math.round(fte / present.size() * 100);
+            points.add(new DashboardSummaryResponse.ForecastPoint(
+                    offset == 0 ? "Today" : "+" + offset + "d", pct));
+        }
+        return points;
     }
 
     /** Distinct allocated / billable associates per month for the trailing six months. */

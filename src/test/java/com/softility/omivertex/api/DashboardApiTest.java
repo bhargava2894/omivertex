@@ -176,6 +176,27 @@ class DashboardApiTest extends ApiTestBase {
     }
 
     @Test
+    void summary_forecastsUtilizationFromKnownEndDates() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var stays = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        allocation(stays, proj, true); // open-ended billable
+        var rollsOff = associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE);
+        var ending = allocation(rollsOff, proj, true);
+        ending.setEndDate(java.time.LocalDate.now().plusDays(45));
+        allocationRepository.save(ending);
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.utilizationForecast", hasSize(4)))
+                .andExpect(jsonPath("$.utilizationForecast[0].label").value("Today"))
+                .andExpect(jsonPath("$.utilizationForecast[0].percent").value(100))
+                .andExpect(jsonPath("$.utilizationForecast[1].percent").value(100)) // +30d
+                .andExpect(jsonPath("$.utilizationForecast[2].percent").value(50)) // +60d
+                .andExpect(jsonPath("$.utilizationForecast[3].percent").value(50)); // +90d
+    }
+
+    @Test
     void summary_withNoData_returnsZeros() throws Exception {
         mockMvc.perform(get("/api/v1/dashboard/summary"))
                 .andExpect(status().isOk())
