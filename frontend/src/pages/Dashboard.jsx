@@ -4,6 +4,7 @@ import { useLoad } from '../hooks.js';
 import Icon from '../components/Icon.jsx';
 import Badge from '../components/Badge.jsx';
 import { TrendChart, DonutChart, VBarChart } from '../components/charts.jsx';
+import AssistantChat from '../components/AssistantChat.jsx';
 
 function StatCard({ icon, label, value, hint }) {
   return (
@@ -41,7 +42,7 @@ function SplitBar({ label, value, total, color }) {
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ showToast }) {
   const [viewMode, setViewMode] = useState(
     () => localStorage.getItem('ov-dashboard-view') || 'charts'
   );
@@ -158,6 +159,8 @@ export default function Dashboard() {
           hint="Left in the trailing year"
         />
       </div>
+
+      <AssistantChat showToast={showToast} />
 
       <div className="panel-grid">
         <div className="card panel">

@@ -142,6 +142,9 @@ export const api = {
     }
     return res.json();
   },
+  // Dashboard AI assistant
+  askAssistant: (message, history) =>
+    request('/assistant/chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
   // Admin profile changes queue
   listProfileChanges: (params = {}) => api.list('profile-changes', params),
   approveProfileChange: (id) => request(`/profile-changes/${id}/approve`, { method: 'POST' }),
