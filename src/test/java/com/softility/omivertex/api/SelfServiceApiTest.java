@@ -44,6 +44,13 @@ class SelfServiceApiTest extends ApiTestBase {
 
     @Test
     @WithMockUser(username = "priya@softility.com", roles = "ASSOCIATE")
+    void associate_canReadTaxonomy_toProposeSkills() throws Exception {
+        linkedAssociate();
+        mockMvc.perform(get("/api/v1/taxonomy")).andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "priya@softility.com", roles = "ASSOCIATE")
     void associate_submitsSkillChange_pendingAndDuplicateBlocked() throws Exception {
         linkedAssociate();
         var java = skill("Backend", "Java");

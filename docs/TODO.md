@@ -91,6 +91,11 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **Exit auto-cleanup semantics** (2026-07-10): when an associate's last working day passes, a nightly scheduler flips their status to INACTIVE, truncates open-ended/overlapping allocations to end on their last working day, and removes any future allocations that never started.
+- **Partials-ranked-lower matching** (2026-07-10): position skill matching prioritizes full matches (possessing all required skills above min proficiency and matching work mode) over partial matches. Candidates are ranked by must-have matches, then nice-to-have matches, then bench age.
+- **Deterministic utilization forecast** (2026-07-10): the 30/60/90-day dashboard utilization forecast is computed deterministically from today's active roster and known allocation end-dates, assuming no new projects/allocations are added.
+- **Pending-change approval model** (2026-07-10): associates can propose skill changes or upload a new resume. These edits do not apply live but sit in a pending queue until approved or rejected by an administrator.
+- **ASSOCIATE role access boundary** (2026-07-10): a new ASSOCIATE role is introduced. AppUsers approved under this role are linked to their roster record. They can access only their own `/me/profile` surface; sidebar navigation is limited to "My Profile".
 - **Import capacity rule** (2026-07-10): an import row that would push an associate
   past 100% is **rejected with a row error** (associate still imports) — chosen over
   auto-ending the older allocation (silently rewrites data) or importing at 0%

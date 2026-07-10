@@ -1,7 +1,7 @@
 # OmiVertex — Technical Documentation
 
 *Audience: developers building, maintaining, or extending the system.*
-*Last updated: 2026-07-03*
+*Last updated: 2026-07-10*
 
 ---
 
@@ -87,14 +87,16 @@ Client 1 ──── * Project 1 ──── * Allocation * ──── 1 Ass
 |---|---|---|
 | **Client** | name, industry, location, status (ACTIVE/INACTIVE) | `name` unique (case-insensitive check in service) |
 | **Project** | code, name, client FK, status (ACTIVE/ON_HOLD/COMPLETED), startDate, endDate | `code` unique |
-| **Associate** | name, email, company, location, workMode (ONSHORE/OFFSHORE), designation, joinedDate, status | `email` unique |
+| **Associate** | name, email, company, location, workMode (ONSHORE/OFFSHORE), designation, joinedDate, resignationDate, lastWorkingDay, exitReason, status | `email` unique |
 | **Allocation** | associate FK, project FK, billable (bool), allocationPercent (1–100), startDate, endDate (null = open) | see business rules |
-| **AppUser** | email, name, role (VIEWER/ADMIN), status (PENDING/APPROVED/REJECTED) | `email` unique; backs the company-email sign-in flow |
+| **AppUser** | email, name, role (VIEWER/ADMIN/ASSOCIATE), status (PENDING/APPROVED/REJECTED), associateId FK | `email` unique; backs the company-email sign-in flow |
 | **SkillCategory** | name | `name` unique |
 | **Skill** | name, category FK | `(name, category_id)` unique |
 | **AssociateSkill** | associate FK, skill FK, proficiency (NOVICE, FOUNDATIONAL, INTERMEDIATE, FUNCTIONAL_USER, ADVANCE, MASTERY) | `(associate_id, skill_id)` unique |
 | **Certification** | associate FK, name, authority, credentialId, issuedDate, expiryDate | — |
-| **OpenPosition** | title, project FK, requiredSkillRef FK, minProficiency, billable, allocationPercent, startDate, endDate, status (OPEN/FILLED/CANCELLED) | endDate ≥ startDate → else 400 |
+| **OpenPosition** | title, project FK, billable, allocationPercent, startDate, endDate, workMode, status (OPEN/FILLED/CANCELLED) | endDate ≥ startDate → else 400 |
+| **PositionSkill** | position FK, skill FK, minProficiency, required (bool) | `(position_id, skill_id)` unique |
+| **ProfileChangeRequest** | associate FK, type (SKILLS/RESUME), status (PENDING/APPROVED/REJECTED), skillsPayload (text), resumeFilename, resumeContentType, resumeByteSize, resumeContent (blob), note, decidedBy, decidedAt, createdAt | — |
 
 **Derived, never stored:** an associate's `currentProject`, `currentClient`,
 `billable`, and `benchDays` are computed from allocations at read time
@@ -124,6 +126,21 @@ introduce Flyway before making breaking changes.
    `createdAt` (2026-07-10: `joinedDate` added so roster imports don't reset the
    bench clock to the import day).
 6. **Skill validation** — on associate create/update, any provided primary or secondary skill must match a recognized skill name in the taxonomy (case-insensitive) → 400.
+7. **Exit auto-cleanup** (2026-07-10) — `exitReason` and `lastWorkingDay` must be set
+   together (→ 400); `resignationDate ≤ lastWorkingDay` (→ 400). Once the last working
+   day has passed, `AssociateService.processExits()` (nightly scheduler + inline when a
+   past date is recorded) flips status to INACTIVE, ends open/later-ending allocations
+   at the last working day, deletes never-started future allocations, and writes an
+   `EXITED` audit entry. Idempotent.
+8. **Position matching** (2026-07-10) — candidates need free capacity ≥ the position's
+   percent. Full match = all must-have `PositionSkill`s at min proficiency + work-mode
+   fit; ranked above partial matches, which carry `missingRequirements` labels. Order:
+   full first, then must-haves met, nice-to-haves met, bench days desc. Positions with
+   no structured skills fall back to legacy free-text headline matching.
+9. **Self-service approval** (2026-07-10) — associate-proposed skill/resume changes stay
+   PENDING (live data untouched) until an admin approves (applied through the existing
+   services, so validation + audit fire) or rejects with a note. One pending change per
+   (associate, type) → 409. Approving as ASSOCIATE requires a roster email match → 400.
 
 ## 6. REST API
 
@@ -136,7 +153,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/associates` | same | `?workMode=&billable=&bench=&categoryId=&skillId=&minProficiency=` |
 | `/allocations` | same (PUT uses `AllocationUpdateRequest` — no re-parenting) | `?projectId=&associateId=&active=` |
 | `/positions` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | `?status=&projectId=` |
-| `/positions/{id}/matches` | GET (returns scored candidates; ADMIN) | — |
+| `/positions/{id}/matches` | GET (candidates ranked full-match first, partials labeled with what's missing; ADMIN) | — |
 | `/positions/{id}/fill` | POST (fills position by creating an allocation over the position's start–end window, so capacity is consumed for that period and the end date feeds the roll-off radar; start defaults to today when the position has none; ADMIN) | — |
 | `/staffing` | GET (client → project → associates tree from *current* allocations; per-level billable/non-billable counts, "billable wins" per client; ADMIN+VIEWER) | — |
 | `/taxonomy` | GET (nested alphabetical tree) | — |
@@ -154,6 +171,13 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/data/export` | GET | `?format=xlsx|csv|pdf|docx` |
 | `/auth` | POST `/login`, POST `/google`, POST `/logout`, GET `/me` | — |
 | `/admin/access-requests` | GET, POST `/{id}/approve`, POST `/{id}/reject` (ADMIN) | — |
+| `/me/profile` | GET (own profile; ASSOCIATE) | — |
+| `/me/profile-changes` | GET (own change requests list; ASSOCIATE) | — |
+| `/me/profile-changes/skills` | POST (submit proposed skills; ASSOCIATE) | — |
+| `/me/profile-changes/resume` | POST multipart `file` (submit proposed resume; ASSOCIATE) | — |
+| `/profile-changes` | GET (review queue; ADMIN+VIEWER) | `?status=` |
+| `/profile-changes/{id}/approve` | POST (approve change request; ADMIN) | — |
+| `/profile-changes/{id}/reject` | POST (reject change request with note; ADMIN) | — |
 
 **Error contract** (from `GlobalExceptionHandler`):
 
@@ -183,6 +207,12 @@ upcomingRolloffs [ { allocationId, associateId, associateName,
 clientHeadcounts [ { clientName, headcount } ]
 staffingTrend    [ { month, total, billable } ]             // trailing 6 months
 expiringCertifications [ { certificationId, associateId, associateName, name, expiryDate, daysLeft } ] // ≤90 days
+exitsLast12Months             // leavers with lastWorkingDay in the trailing 365 days
+skillGaps [ { skillId, skillName, category, demand, benchSupply, totalSupply, gap } ]
+                              // per must-have skill on OPEN positions; supply counted at the
+                              // lowest demanded proficiency; sorted by gap desc, ≤20 rows
+utilizationForecast [ { label, percent } ]   // Today/+30d/+60d/+90d, deterministic from
+                              // known allocation end dates + recorded exits
 ```
 
 ## 7. Security

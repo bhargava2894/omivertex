@@ -16,7 +16,9 @@ export default function AccessRequests({ showToast }) {
     try {
       const role = roleChoice[id] || 'VIEWER';
       await api.approveRequest(id, role);
-      showToast(`Access approved as ${role === 'ADMIN' ? 'Admin' : 'Viewer'}`);
+      showToast(
+        `Access approved as ${role === 'ADMIN' ? 'Admin' : role === 'ASSOCIATE' ? 'Associate' : 'Viewer'}`
+      );
       reload();
     } catch (err) {
       showToast(err.message, true);
@@ -127,6 +129,7 @@ export default function AccessRequests({ showToast }) {
                           style={{ padding: '4px 8px', fontSize: '13px' }}
                         >
                           <option value="VIEWER">Viewer</option>
+                          <option value="ASSOCIATE">Associate</option>
                           <option value="ADMIN">Admin</option>
                         </select>
                         <button
