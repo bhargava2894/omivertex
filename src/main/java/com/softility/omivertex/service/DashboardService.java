@@ -39,6 +39,8 @@ public class DashboardService {
     static final int ROLLOFF_HORIZON_DAYS = 30;
     /** How far ahead the certification-expiry radar looks (days). */
     static final int CERT_EXPIRY_HORIZON_DAYS = 90;
+    /** Trailing window for the exits (attrition) KPI (days). */
+    static final int EXIT_WINDOW_DAYS = 365;
 
     private final AssociateRepository associateRepository;
     private final ClientRepository clientRepository;
@@ -158,12 +160,20 @@ public class DashboardService {
                         c.getName(), c.getExpiryDate(), ChronoUnit.DAYS.between(today, c.getExpiryDate())))
                 .toList();
 
+        // exits KPI counts leavers, who are INACTIVE — use the unfiltered roster
+        LocalDate exitWindowStart = today.minusDays(EXIT_WINDOW_DAYS);
+        long exitsLast12Months = associateRepository.findAll().stream()
+                .filter(a -> a.getLastWorkingDay() != null
+                        && !a.getLastWorkingDay().isAfter(today)
+                        && !a.getLastWorkingDay().isBefore(exitWindowStart))
+                .count();
+
         return new DashboardSummaryResponse(associates.size(), billableCount, nonBillableCount, benchCount,
                 onshore, offshore, clientRepository.count(),
                 projectRepository.findAll().stream().filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count(),
                 openPositionRepository.countByStatus(PositionStatus.OPEN),
                 utilization, benchAging, benchAssociates, rolloffs,
-                headcounts, staffingTrend(), expiringCerts);
+                headcounts, staffingTrend(), expiringCerts, exitsLast12Months);
     }
 
     /** Distinct allocated / billable associates per month for the trailing six months. */

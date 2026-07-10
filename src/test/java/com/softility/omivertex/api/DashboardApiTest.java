@@ -119,6 +119,25 @@ class DashboardApiTest extends ApiTestBase {
     }
 
     @Test
+    void summary_countsExitsInTrailingYear() throws Exception {
+        var recent = associate("Gone Recently", "gone1@softility.com", WorkMode.ONSHORE);
+        recent.setExitReason(com.softility.omivertex.domain.ExitReason.RESIGNED);
+        recent.setLastWorkingDay(java.time.LocalDate.now().minusDays(30));
+        recent.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
+        associateRepository.save(recent);
+
+        var old = associate("Gone Long Ago", "gone2@softility.com", WorkMode.ONSHORE);
+        old.setExitReason(com.softility.omivertex.domain.ExitReason.RESIGNED);
+        old.setLastWorkingDay(java.time.LocalDate.now().minusDays(400));
+        old.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
+        associateRepository.save(old);
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exitsLast12Months").value(1));
+    }
+
+    @Test
     void summary_withNoData_returnsZeros() throws Exception {
         mockMvc.perform(get("/api/v1/dashboard/summary"))
                 .andExpect(status().isOk())

@@ -18,7 +18,8 @@ public record DashboardSummaryResponse(
         List<Rolloff> upcomingRolloffs,
         List<ClientHeadcount> clientHeadcounts,
         List<TrendPoint> staffingTrend,
-        List<ExpiringCert> expiringCertifications) {
+        List<ExpiringCert> expiringCertifications,
+        long exitsLast12Months) {
 
     /**
      * Distinct current associates per client, split by billing. An associate counts
