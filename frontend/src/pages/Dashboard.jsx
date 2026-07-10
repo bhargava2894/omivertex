@@ -151,6 +151,12 @@ export default function Dashboard() {
           value={s.openPositions}
           hint="Positions awaiting a match"
         />
+        <StatCard
+          icon="logout"
+          label="Exits (12 mo)"
+          value={s.exitsLast12Months}
+          hint="Left in the trailing year"
+        />
       </div>
 
       <div className="panel-grid">

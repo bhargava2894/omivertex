@@ -18,6 +18,9 @@ const EMPTY = {
   workMode: 'ONSHORE',
   designation: '',
   joinedDate: '',
+  resignationDate: '',
+  lastWorkingDay: '',
+  exitReason: '',
   skills: {}, // skillId -> { proficiency, primary }
   status: 'ACTIVE',
 };
@@ -209,6 +212,9 @@ export default function Associates({ showToast, canEdit }) {
         workMode: row.workMode,
         designation: row.designation || '',
         joinedDate: row.joinedDate || '',
+        resignationDate: row.resignationDate || '',
+        lastWorkingDay: row.lastWorkingDay || '',
+        exitReason: row.exitReason || '',
         skills: (row.skillGroups || []).reduce((acc, group) => {
           (group.skills || []).forEach((s) => {
             acc[s.skillId] = { proficiency: s.proficiency, primary: !!s.primary };
@@ -228,6 +234,9 @@ export default function Associates({ showToast, canEdit }) {
     const payload = {
       ...rest,
       joinedDate: rest.joinedDate || null,
+      resignationDate: rest.resignationDate || null,
+      lastWorkingDay: rest.lastWorkingDay || null,
+      exitReason: rest.exitReason || null,
       skills: Object.entries(skills || {})
         .filter(([, v]) => v && v.proficiency)
         .map(([skillId, v]) => ({
@@ -474,6 +483,33 @@ export default function Associates({ showToast, canEdit }) {
                 <option value="ACTIVE">Active</option>
                 <option value="INACTIVE">Inactive</option>
               </select>
+            </Field>
+            <Field label="Exit reason" error={errors.exitReason}>
+              <select
+                value={editing.form.exitReason}
+                onChange={(e) => set('exitReason', e.target.value)}
+              >
+                <option value="">— still employed —</option>
+                <option value="RESIGNED">Resigned</option>
+                <option value="TERMINATED">Terminated</option>
+                <option value="CONTRACT_ENDED">Contract ended</option>
+                <option value="RETIRED">Retired</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </Field>
+            <Field label="Resignation date" error={errors.resignationDate}>
+              <input
+                type="date"
+                value={editing.form.resignationDate}
+                onChange={(e) => set('resignationDate', e.target.value)}
+              />
+            </Field>
+            <Field label="Last working day" error={errors.lastWorkingDay}>
+              <input
+                type="date"
+                value={editing.form.lastWorkingDay}
+                onChange={(e) => set('lastWorkingDay', e.target.value)}
+              />
             </Field>
             {!editing.id && (
               <Field label="Résumé (PDF/Word)" error={errors.resume} full>

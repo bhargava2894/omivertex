@@ -323,6 +323,12 @@ export default function Profile({ id, showToast, canEdit }) {
 
   return (
     <div style={{ display: 'grid', gap: '20px' }}>
+      {associate.exitReason && (
+        <div className="form-alert">
+          Exited — last working day {associate.lastWorkingDay} (
+          {associate.exitReason.replaceAll('_', ' ').toLowerCase()})
+        </div>
+      )}
       {/* Header Profile Card */}
       <div
         className="card profile-header"
