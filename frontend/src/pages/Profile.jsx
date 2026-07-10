@@ -158,7 +158,10 @@ export default function Profile({ id, showToast, canEdit }) {
       reloadAllocs();
       reloadAssoc(); // bench/billable badges may change
     } catch (err) {
-      setAllocErrors({ _general: err.message });
+      setAllocErrors({
+        ...err.fieldErrors,
+        _general: Object.keys(err.fieldErrors || {}).length ? null : err.message,
+      });
     } finally {
       setSavingAlloc(false);
     }
@@ -166,12 +169,25 @@ export default function Profile({ id, showToast, canEdit }) {
 
   const openAssign = () => {
     setAllocErrors({});
+    // The capacity guard counts an allocation's end date as still allocated, so a
+    // seamless End -> Assign needs the new start the day AFTER the latest end.
+    // Find the latest end date that is today or later (just-ended or ending soon).
+    const latestEnd = (allocations || [])
+      .map((a) => a.endDate)
+      .filter((d) => d && d >= todayStr())
+      .sort()
+      .pop();
+    const dayAfter = (iso) => {
+      const d = new Date(`${iso}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + 1);
+      return d.toISOString().slice(0, 10);
+    };
     setAssignForm({
       companyId: '',
       projectId: '',
       billable: true,
       allocationPercent: 100,
-      startDate: todayStr(),
+      startDate: latestEnd ? dayAfter(latestEnd) : todayStr(),
       endDate: '',
     });
     setAssigning(true);
@@ -683,7 +699,7 @@ export default function Profile({ id, showToast, canEdit }) {
                   <th>Start Date</th>
                   <th>End Date</th>
                   <th>Status</th>
-                  {canEdit && <th style={{ width: '70px' }} />}
+                  {canEdit && <th style={{ width: '70px' }} aria-label="Actions" />}
                 </tr>
               </thead>
               <tbody>
@@ -842,8 +858,8 @@ export default function Profile({ id, showToast, canEdit }) {
         >
           {allocErrors._general && <div className="form-alert">{allocErrors._general}</div>}
           <p className="cell-sub" style={{ marginTop: 0 }}>
-            The allocation stays in the history as “Ended” — nothing is deleted. Ending frees up
-            capacity so the associate can be assigned to a new project.
+            The allocation stays in the history as “Ended” — nothing is deleted. Capacity frees up
+            the day after the end date, so a same-day replacement should start the next day.
           </p>
           <div className="form-grid">
             <Field label="End date" required error={allocErrors.endDate}>
