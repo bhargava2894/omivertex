@@ -188,6 +188,7 @@ public class AssociateService {
         associate.setLocation(request.location());
         associate.setWorkMode(request.workMode());
         associate.setDesignation(request.designation());
+        associate.setJoinedDate(request.joinedDate());
         // primarySkill/secondarySkill are no longer set here — they are derived from
         // the rated skills in deriveHeadline() whenever the skill set changes.
         associate.setStatus(request.status() == null ? EntityStatus.ACTIVE : request.status());

@@ -185,6 +185,30 @@ class AssociateApiTest extends ApiTestBase {
     }
 
     @Test
+    void benchDays_fallBackToJoinedDateWhenNeverAllocated() throws Exception {
+        // roster record created today for someone who joined 45 days ago: the bench
+        // clock must count from their join date, not from when the row was imported
+        var veteran = associate("Meena Pillai", "meena@softility.com", WorkMode.ONSHORE);
+        veteran.setJoinedDate(java.time.LocalDate.now().minusDays(45));
+        associateRepository.save(veteran);
+
+        mockMvc.perform(get("/api/v1/associates/" + veteran.getId()))
+                .andExpect(jsonPath("$.joinedDate").value(java.time.LocalDate.now().minusDays(45).toString()))
+                .andExpect(jsonPath("$.benchDays").value(45));
+    }
+
+    @Test
+    void createAssociate_acceptsJoinedDate() throws Exception {
+        mockMvc.perform(post("/api/v1/associates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Meena Pillai","email":"meena@softility.com","company":"Softility",
+                                 "workMode":"ONSHORE","joinedDate":"2026-01-15"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.joinedDate").value("2026-01-15"));
+    }
+
+    @Test
     void listAssociates_paginatesWhenPageSupplied() throws Exception {
         associate("A One", "a1@softility.com", WorkMode.ONSHORE);
         associate("B Two", "b2@softility.com", WorkMode.OFFSHORE);

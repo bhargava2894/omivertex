@@ -92,6 +92,25 @@ class DataTransferApiTest extends ApiTestBase {
     }
 
     @Test
+    void importCsv_mapsJoinedDate_soBenchClockSurvivesImport() throws Exception {
+        // historical roster: the join date anchors the bench clock, not the import day
+        String csv = """
+                ASSOCIATE NAME,COMPANY,LOCATION,JOINED DATE
+                Meena Pillai,Softility,ONSHORE,%s
+                """.formatted(java.time.LocalDate.now().minusDays(45));
+        var file = new MockMultipartFile("file", "roster.csv", "text/csv", csv.getBytes());
+
+        mockMvc.perform(multipart("/api/v1/data/import").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.associatesCreated").value(1))
+                .andExpect(jsonPath("$.errors", hasSize(0)));
+
+        mockMvc.perform(get("/api/v1/associates"))
+                .andExpect(jsonPath("$[0].joinedDate").value(java.time.LocalDate.now().minusDays(45).toString()))
+                .andExpect(jsonPath("$[0].benchDays").value(45));
+    }
+
+    @Test
     void importCsv_associateWithoutProject_createsBenchAssociate() throws Exception {
         // New joiners not yet staffed: only a name (no CUSTOMER/PROJECT).
         String csv = """

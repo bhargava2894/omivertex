@@ -17,6 +17,7 @@ const EMPTY = {
   location: '',
   workMode: 'ONSHORE',
   designation: '',
+  joinedDate: '',
   skills: {}, // skillId -> { proficiency, primary }
   status: 'ACTIVE',
 };
@@ -207,6 +208,7 @@ export default function Associates({ showToast, canEdit }) {
         location: row.location || '',
         workMode: row.workMode,
         designation: row.designation || '',
+        joinedDate: row.joinedDate || '',
         skills: (row.skillGroups || []).reduce((acc, group) => {
           (group.skills || []).forEach((s) => {
             acc[s.skillId] = { proficiency: s.proficiency, primary: !!s.primary };
@@ -225,6 +227,7 @@ export default function Associates({ showToast, canEdit }) {
     const { skills, ...rest } = editing.form;
     const payload = {
       ...rest,
+      joinedDate: rest.joinedDate || null,
       skills: Object.entries(skills || {})
         .filter(([, v]) => v && v.proficiency)
         .map(([skillId, v]) => ({
@@ -442,6 +445,13 @@ export default function Associates({ showToast, canEdit }) {
               <input
                 value={editing.form.designation}
                 onChange={(e) => set('designation', e.target.value)}
+              />
+            </Field>
+            <Field label="Joined date" error={errors.joinedDate}>
+              <input
+                type="date"
+                value={editing.form.joinedDate}
+                onChange={(e) => set('joinedDate', e.target.value)}
               />
             </Field>
             <Field label="Location" error={errors.location}>

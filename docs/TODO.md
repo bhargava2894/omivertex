@@ -106,6 +106,23 @@ dashboard through caches/proxies).
   profile's Assign dialog defaults its start date to the day after the associate's
   latest current/just-ended end date so End → Assign passes with defaults.
 
+- **Dashboard counts ACTIVE associates only** (2026-07-10): INACTIVE leavers (and
+  their lingering open allocations) are excluded from every summary KPI — bench,
+  headcounts, utilization denominator. `staffingTrend` deliberately stays
+  historical (past allocations count regardless of today's status). Fixes leavers
+  permanently inflating the bench and depressing utilization.
+- **Position fill uses the seat's engagement window** (2026-07-10): `fill` creates
+  the allocation from the position's `startDate` (today if none) to its new
+  optional `endDate` (Flyway `V4`) — previously it always started today and open-
+  ended, so filled seats consumed capacity early and never surfaced on the
+  roll-off radar. A future-dated fill correctly leaves the associate off
+  `currentProject` until the seat starts.
+- **`joinedDate` anchors the bench clock** (2026-07-10): new optional field on
+  Associate (Flyway `V5`, form field, `JOINED DATE`/`DOJ` import column). For
+  never-allocated associates `benchDays` counts from it instead of `createdAt`,
+  so importing a historical roster no longer resets everyone's bench age to the
+  import day. Falls back to `createdAt` when absent.
+
 - **Legacy `primarySkill`/`secondarySkill`** (2026-07): KEPT, deliberately demoted
   to informal free-text "headline" fields (roster quick-glance + CSV `SKILL`-column
   import + text-match fallback in `PositionService`). The structured `AssociateSkill`

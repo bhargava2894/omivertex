@@ -87,14 +87,14 @@ Client 1 ──── * Project 1 ──── * Allocation * ──── 1 Ass
 |---|---|---|
 | **Client** | name, industry, location, status (ACTIVE/INACTIVE) | `name` unique (case-insensitive check in service) |
 | **Project** | code, name, client FK, status (ACTIVE/ON_HOLD/COMPLETED), startDate, endDate | `code` unique |
-| **Associate** | name, email, company, location, workMode (ONSHORE/OFFSHORE), designation, status | `email` unique |
+| **Associate** | name, email, company, location, workMode (ONSHORE/OFFSHORE), designation, joinedDate, status | `email` unique |
 | **Allocation** | associate FK, project FK, billable (bool), allocationPercent (1–100), startDate, endDate (null = open) | see business rules |
 | **AppUser** | email, name, role (VIEWER/ADMIN), status (PENDING/APPROVED/REJECTED) | `email` unique; backs the company-email sign-in flow |
 | **SkillCategory** | name | `name` unique |
 | **Skill** | name, category FK | `(name, category_id)` unique |
 | **AssociateSkill** | associate FK, skill FK, proficiency (NOVICE, FOUNDATIONAL, INTERMEDIATE, FUNCTIONAL_USER, ADVANCE, MASTERY) | `(associate_id, skill_id)` unique |
 | **Certification** | associate FK, name, authority, credentialId, issuedDate, expiryDate | — |
-| **OpenPosition** | title, project FK, requiredSkillRef FK, minProficiency, billable, allocationPercent, startDate, status (OPEN/FILLED/CANCELLED) | — |
+| **OpenPosition** | title, project FK, requiredSkillRef FK, minProficiency, billable, allocationPercent, startDate, endDate, status (OPEN/FILLED/CANCELLED) | endDate ≥ startDate → else 400 |
 
 **Derived, never stored:** an associate's `currentProject`, `currentClient`,
 `billable`, and `benchDays` are computed from allocations at read time
@@ -120,7 +120,9 @@ introduce Flyway before making breaking changes.
 4. **Protective deletes** — client with projects, project with allocations,
    associate with allocations → 409. Delete order: allocations → projects/associates → clients.
 5. **Bench** — associate with no current allocation. `benchDays` = days since the
-   latest past `endDate`, or since `createdAt` if never allocated.
+   latest past `endDate`; if never allocated, since `joinedDate`, falling back to
+   `createdAt` (2026-07-10: `joinedDate` added so roster imports don't reset the
+   bench clock to the import day).
 6. **Skill validation** — on associate create/update, any provided primary or secondary skill must match a recognized skill name in the taxonomy (case-insensitive) → 400.
 
 ## 6. REST API
@@ -135,7 +137,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/allocations` | same (PUT uses `AllocationUpdateRequest` — no re-parenting) | `?projectId=&associateId=&active=` |
 | `/positions` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | `?status=&projectId=` |
 | `/positions/{id}/matches` | GET (returns scored candidates; ADMIN) | — |
-| `/positions/{id}/fill` | POST (fills position by creating allocation; ADMIN) | — |
+| `/positions/{id}/fill` | POST (fills position by creating an allocation over the position's start–end window, so capacity is consumed for that period and the end date feeds the roll-off radar; start defaults to today when the position has none; ADMIN) | — |
 | `/staffing` | GET (client → project → associates tree from *current* allocations; per-level billable/non-billable counts, "billable wins" per client; ADMIN+VIEWER) | — |
 | `/taxonomy` | GET (nested alphabetical tree) | — |
 | `/taxonomy/categories` | POST, DELETE/{id} (ADMIN) | — |
@@ -165,7 +167,10 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 - 404 unknown id
 - 409 uniqueness, capacity, duplicate-allocation, protective-delete conflicts
 
-**`/dashboard/summary` response shape** (all computed live):
+**`/dashboard/summary` response shape** (all computed live; every KPI counts
+**ACTIVE associates only** — INACTIVE leavers and their lingering allocations are
+excluded from headcounts, bench, and utilization; the historical `staffingTrend`
+is the one series that keeps past allocations regardless of current status):
 
 ```
 totalAssociates, billableCount, nonBillableCount, benchCount,
@@ -213,7 +218,7 @@ Two sign-in paths coexist:
 **Import** (`ImportService`): accepts `.xlsx` (POI) or `.csv` files. It supports two modes:
 
 1. **Legacy Single-Sheet / CSV Import**:
-   Reads the active sheet. Header names matched case-insensitively: `ASSOCIATE NAME, COMPANY, LOCATION, CUSTOMER, BILLABLE, PROJECT` (aliases: NAME/CLIENT/WORK MODE/SHORE/BILLING).
+   Reads the active sheet. Header names matched case-insensitively: `ASSOCIATE NAME, COMPANY, LOCATION, CUSTOMER, BILLABLE, PROJECT, JOINED DATE` (aliases: NAME/CLIENT/WORK MODE/SHORE/BILLING/JOIN DATE/DATE OF JOINING/DOJ). `JOINED DATE` is optional and anchors the bench clock for never-allocated associates.
    - Email is generated as `first.last@softility.com` (idempotency key).
    - Client and project are found-or-created.
    - Allocation created at 100% starting today — subject to the capacity guard
