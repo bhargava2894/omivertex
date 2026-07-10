@@ -78,8 +78,33 @@ dashboard through caches/proxies).
 - [ ] Server-side pagination for the remaining lists (clients/projects/allocations).
       Associates is already server-paged+searched; the others are small and use
       derived-field filters, so deferred until volume warrants it.
+- [ ] Extract the profile's allocation section (history table + End/Assign modals,
+      ~250 lines) into a `ProfileAllocations` component — `Profile.jsx` is ~900
+      lines with five modals (flagged in the 2026-07-10 code review).
+- [ ] Shared local-date helper: `todayStr()` (Profile) duplicates `today()`
+      (Allocations), and both use `toISOString()` which is UTC — evening users west
+      of UTC get tomorrow's date. Extract a `dates.js` local-date version.
+- [ ] Import runs one transaction per file: a runtime exception thrown *through a
+      repository proxy* inside the row loop (not the guard's ConflictException,
+      which is handled) could still mark the batch rollback-only. Consider per-row
+      savepoints if imports grow (flagged in the 2026-07-10 review).
 
 ## Resolved decisions
+
+- **Import capacity rule** (2026-07-10): an import row that would push an associate
+  past 100% is **rejected with a row error** (associate still imports) — chosen over
+  auto-ending the older allocation (silently rewrites data) or importing at 0%
+  (invents data). Same `assertCapacity` implementation as the assign flow; no copy.
+  Pre-existing over-allocated data is fixed manually via the profile's End action —
+  no migration.
+- **Client-level billable counting** (2026-07-10): "billable wins" — a person with
+  any billable current allocation under a client counts once, as billable, for that
+  client (dashboard split + `/staffing` tree use the same rule). A person on two
+  clients appears under both; that reflects reality.
+- **Capacity end-date semantics** (2026-07-10): the guard counts an allocation's end
+  date as still allocated, so capacity frees the day *after* the end date. The
+  profile's Assign dialog defaults its start date to the day after the associate's
+  latest current/just-ended end date so End → Assign passes with defaults.
 
 - **Legacy `primarySkill`/`secondarySkill`** (2026-07): KEPT, deliberately demoted
   to informal free-text "headline" fields (roster quick-glance + CSV `SKILL`-column

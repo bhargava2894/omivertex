@@ -111,7 +111,12 @@ introduce Flyway before making breaking changes.
 3. **Capacity guard** — an associate is 100% capacity. On allocation create/update,
    the sum of `allocationPercent` across *date-overlapping* allocations
    (excluding self on update) must not exceed 100 → 409 with the computed total.
-   Overlap: `!(a.end < new.start) && !(new.end < a.start)` (null end = ∞).
+   Overlap: `!(a.end < new.start) && !(new.end < a.start)` (null end = ∞). Note the
+   end date itself still counts as allocated — capacity frees the day *after*.
+   **Import enforces the same guard** (2026-07-10): an over-capacity roster row is
+   reported as a row error (the associate still imports; the allocation is skipped).
+   One implementation: `AllocationService.assertCapacity` (package-private, annotated
+   `noRollbackFor=ConflictException` so a bad row can't doom the import batch).
 4. **Protective deletes** — client with projects, project with allocations,
    associate with allocations → 409. Delete order: allocations → projects/associates → clients.
 5. **Bench** — associate with no current allocation. `benchDays` = days since the
@@ -131,6 +136,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/positions` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | `?status=&projectId=` |
 | `/positions/{id}/matches` | GET (returns scored candidates; ADMIN) | — |
 | `/positions/{id}/fill` | POST (fills position by creating allocation; ADMIN) | — |
+| `/staffing` | GET (client → project → associates tree from *current* allocations; per-level billable/non-billable counts, "billable wins" per client; ADMIN+VIEWER) | — |
 | `/taxonomy` | GET (nested alphabetical tree) | — |
 | `/taxonomy/categories` | POST, DELETE/{id} (ADMIN) | — |
 | `/taxonomy/skills` | POST, DELETE/{id} (ADMIN) | — |
@@ -210,7 +216,9 @@ Two sign-in paths coexist:
    Reads the active sheet. Header names matched case-insensitively: `ASSOCIATE NAME, COMPANY, LOCATION, CUSTOMER, BILLABLE, PROJECT` (aliases: NAME/CLIENT/WORK MODE/SHORE/BILLING).
    - Email is generated as `first.last@softility.com` (idempotency key).
    - Client and project are found-or-created.
-   - Allocation created at 100% starting today.
+   - Allocation created at 100% starting today — subject to the capacity guard
+     (business rule 3): an over-capacity row becomes a row error, the associate
+     still imports, and the allocation is not created.
 
 2. **Multi-Sheet Excel Workbook Import (v2)**:
    Triggered if the workbook contains a sheet named `Employees`. It reads three sheets:
