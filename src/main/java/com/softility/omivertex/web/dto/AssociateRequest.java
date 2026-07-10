@@ -17,6 +17,9 @@ public record AssociateRequest(
         @NotNull(message = "Work mode is required") WorkMode workMode,
         String designation,
         java.time.LocalDate joinedDate,
+        java.time.LocalDate resignationDate,
+        java.time.LocalDate lastWorkingDay,
+        com.softility.omivertex.domain.ExitReason exitReason,
         // The rated skills to attach. Optional (null leaves skills unchanged on update,
         // empty on create). The primarySkill/secondarySkill headline is derived from these.
         @Valid List<SkillAssignmentRequest.Entry> skills,

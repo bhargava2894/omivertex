@@ -189,6 +189,16 @@ public class AssociateService {
         associate.setWorkMode(request.workMode());
         associate.setDesignation(request.designation());
         associate.setJoinedDate(request.joinedDate());
+        if ((request.exitReason() == null) != (request.lastWorkingDay() == null)) {
+            throw new BadRequestException("Exit reason and last working day must be provided together");
+        }
+        if (request.resignationDate() != null && request.lastWorkingDay() != null
+                && request.resignationDate().isAfter(request.lastWorkingDay())) {
+            throw new BadRequestException("Resignation date cannot be after the last working day");
+        }
+        associate.setResignationDate(request.resignationDate());
+        associate.setLastWorkingDay(request.lastWorkingDay());
+        associate.setExitReason(request.exitReason());
         // primarySkill/secondarySkill are no longer set here — they are derived from
         // the rated skills in deriveHeadline() whenever the skill set changes.
         associate.setStatus(request.status() == null ? EntityStatus.ACTIVE : request.status());

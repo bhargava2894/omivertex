@@ -185,6 +185,45 @@ class AssociateApiTest extends ApiTestBase {
     }
 
     @Test
+    void updateAssociate_recordsExit() throws Exception {
+        var dev = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        mockMvc.perform(put("/api/v1/associates/" + dev.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                 "workMode":"OFFSHORE","exitReason":"RESIGNED",
+                                 "resignationDate":"%s","lastWorkingDay":"%s"}"""
+                                .formatted(java.time.LocalDate.now(), java.time.LocalDate.now().plusDays(30))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exitReason").value("RESIGNED"))
+                .andExpect(jsonPath("$.lastWorkingDay").value(java.time.LocalDate.now().plusDays(30).toString()));
+    }
+
+    @Test
+    void exitReasonWithoutLastWorkingDay_returns400() throws Exception {
+        var dev = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        mockMvc.perform(put("/api/v1/associates/" + dev.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                 "workMode":"OFFSHORE","exitReason":"RESIGNED"}"""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void resignationAfterLastWorkingDay_returns400() throws Exception {
+        var dev = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        mockMvc.perform(put("/api/v1/associates/" + dev.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                 "workMode":"OFFSHORE","exitReason":"RESIGNED",
+                                 "resignationDate":"%s","lastWorkingDay":"%s"}"""
+                                .formatted(java.time.LocalDate.now().plusDays(10), java.time.LocalDate.now())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void benchDays_fallBackToJoinedDateWhenNeverAllocated() throws Exception {
         // roster record created today for someone who joined 45 days ago: the bench
         // clock must count from their join date, not from when the row was imported

@@ -4,6 +4,7 @@ import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
 import com.softility.omivertex.domain.AssociateSkill;
 import com.softility.omivertex.domain.EntityStatus;
+import com.softility.omivertex.domain.ExitReason;
 import com.softility.omivertex.domain.Proficiency;
 import com.softility.omivertex.domain.WorkMode;
 
@@ -24,6 +25,9 @@ public record AssociateResponse(
         WorkMode workMode,
         String designation,
         LocalDate joinedDate,
+        LocalDate resignationDate,
+        LocalDate lastWorkingDay,
+        ExitReason exitReason,
         String primarySkill,
         String secondarySkill,
         EntityStatus status,
@@ -58,6 +62,7 @@ public record AssociateResponse(
         return new AssociateResponse(associate.getId(), associate.getName(), associate.getEmail(),
                 associate.getCompany(), associate.getLocation(), associate.getWorkMode(),
                 associate.getDesignation(), associate.getJoinedDate(),
+                associate.getResignationDate(), associate.getLastWorkingDay(), associate.getExitReason(),
                 associate.getPrimarySkill(), associate.getSecondarySkill(),
                 associate.getStatus(), billable,
                 primary == null ? null : primary.getProject().getId(),
