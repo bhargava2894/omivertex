@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
-import DataTable from '../components/DataTable.jsx';
 import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
@@ -11,12 +10,11 @@ import SearchSelect from '../components/SearchSelect.jsx';
 const EMPTY = { code: '', name: '', clientId: '', status: 'ACTIVE', startDate: '', endDate: '' };
 
 export default function Projects({ showToast, canEdit }) {
-  const [clientFilter, setClientFilter] = useState('');
-  const { data, loading, reload } = useLoad(
-    () => api.list('projects', { clientId: clientFilter }),
-    [clientFilter]
-  );
+  const { data, loading, reload } = useLoad(() => api.list('projects'), []);
   const { data: clients, reload: reloadClients } = useLoad(() => api.list('clients'));
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [collapsed, setCollapsed] = useState({}); // clientId -> true
 
   const clientOptions = (clients || []).map((c) => ({ value: c.id, label: c.name }));
   // Inline "add client": create it, refresh the list, and return the new option.
@@ -85,22 +83,59 @@ export default function Projects({ showToast, canEdit }) {
     }
   };
 
+  const q = search.trim().toLowerCase();
+  const projectMatches = (p) =>
+    !q || p.name.toLowerCase().includes(q) || (p.code || '').toLowerCase().includes(q);
+
+  const sections = (clients || [])
+    .map((client) => {
+      const all = (data || []).filter((p) => p.clientId === client.id);
+      const clientHit = q && client.name.toLowerCase().includes(q);
+      const rows = all
+        .filter((p) => !statusFilter || p.status === statusFilter)
+        .filter((p) => clientHit || projectMatches(p))
+        .sort(
+          (a, b) =>
+            (a.status === 'ACTIVE' ? 0 : 1) - (b.status === 'ACTIVE' ? 0 : 1) ||
+            a.name.localeCompare(b.name)
+        );
+      return {
+        client,
+        rows,
+        total: all.length,
+        activeCount: all.filter((p) => p.status === 'ACTIVE').length,
+      };
+    })
+    .filter((s) => (q ? s.rows.length > 0 || s.client.name.toLowerCase().includes(q) : true))
+    .filter((s) => (statusFilter ? s.rows.length > 0 : true))
+    .sort((a, b) => a.client.name.localeCompare(b.client.name));
+
+  // searching auto-expands every visible section
+  const isCollapsed = (clientId) => !q && !!collapsed[clientId];
+  const toggle = (clientId) => setCollapsed((c) => ({ ...c, [clientId]: !c[clientId] }));
+
   return (
     <>
       <div className="toolbar">
         <div className="toolbar-filters">
+          <input
+            className="filter-select"
+            type="search"
+            placeholder="Search clients, projects, or codes…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search projects"
+          />
           <select
             className="filter-select"
-            value={clientFilter}
-            onChange={(e) => setClientFilter(e.target.value)}
-            aria-label="Filter by client"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by status"
           >
-            <option value="">All clients</option>
-            {(clients || []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
+            <option value="">All statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="ON_HOLD">On hold</option>
+            <option value="COMPLETED">Completed</option>
           </select>
         </div>
         {canEdit && (
@@ -110,29 +145,96 @@ export default function Projects({ showToast, canEdit }) {
         )}
       </div>
 
-      <DataTable
-        loading={loading}
-        rows={data || []}
-        emptyText="No projects found."
-        onEdit={canEdit ? openEdit : undefined}
-        onDelete={canEdit ? remove : undefined}
-        columns={[
-          {
-            key: 'name',
-            label: 'Project',
-            render: (r) => (
-              <div>
-                <div className="cell-main">{r.name}</div>
-                <div className="cell-sub">{r.code}</div>
-              </div>
-            ),
-          },
-          { key: 'clientName', label: 'Client' },
-          { key: 'status', label: 'Status', render: (r) => <Badge value={r.status} /> },
-          { key: 'startDate', label: 'Start', render: (r) => r.startDate || '—' },
-          { key: 'endDate', label: 'End', render: (r) => r.endDate || '—' },
-        ]}
-      />
+      {loading ? (
+        <div>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="skeleton-row" />
+          ))}
+        </div>
+      ) : sections.length === 0 ? (
+        <div className="card">
+          <div className="empty-state">
+            <Icon name="inbox" size={40} />
+            <p>No clients or projects found.</p>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '16px' }}>
+          {sections.map(({ client, rows, total, activeCount }) => (
+            <div className="card" key={client.id} style={{ padding: '16px 20px' }}>
+              <button
+                onClick={() => toggle(client.id)}
+                aria-expanded={!isCollapsed(client.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  color: 'var(--color-foreground)',
+                  textAlign: 'left',
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    display: 'inline-block',
+                    transition: 'transform 0.15s ease',
+                    transform: isCollapsed(client.id) ? 'none' : 'rotate(90deg)',
+                  }}
+                >
+                  ▸
+                </span>
+                <span style={{ fontWeight: 700, fontSize: '15px' }}>{client.name}</span>
+                <span className="cell-sub">
+                  {total === 0
+                    ? 'No projects yet'
+                    : `${total} project${total === 1 ? '' : 's'} · ${activeCount} active`}
+                </span>
+              </button>
+
+              {!isCollapsed(client.id) && rows.length > 0 && (
+                <div style={{ marginTop: '10px' }}>
+                  {rows.map((r) => (
+                    <div className="radar-row" key={r.id}>
+                      <div>
+                        <div className="cell-main">{r.name}</div>
+                        <div className="cell-sub">
+                          {r.code} · {r.startDate || '—'} → {r.endDate || '—'}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Badge value={r.status} />
+                        {canEdit && (
+                          <>
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => openEdit(r)}
+                              aria-label={`Edit ${r.name}`}
+                            >
+                              <Icon name="edit" size={14} /> Edit
+                            </button>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() => remove(r)}
+                              aria-label={`Delete ${r.name}`}
+                            >
+                              <Icon name="trash" size={14} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {editing && (
         <Modal
