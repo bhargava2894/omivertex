@@ -161,43 +161,35 @@ export default function Projects({ showToast, canEdit }) {
       ) : (
         <div style={{ display: 'grid', gap: '16px' }}>
           {sections.map(({ client, rows, total, activeCount }) => (
-            <div className="card" key={client.id} style={{ padding: '16px 20px' }}>
+            <div className="card client-section" key={client.id}>
               <button
+                className="client-header"
                 onClick={() => toggle(client.id)}
                 aria-expanded={!isCollapsed(client.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  width: '100%',
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  color: 'var(--color-foreground)',
-                  textAlign: 'left',
-                }}
               >
                 <span
+                  className="client-chevron"
                   aria-hidden
                   style={{
-                    display: 'inline-block',
-                    transition: 'transform 0.15s ease',
                     transform: isCollapsed(client.id) ? 'none' : 'rotate(90deg)',
                   }}
                 >
                   ▸
                 </span>
-                <span style={{ fontWeight: 700, fontSize: '15px' }}>{client.name}</span>
-                <span className="cell-sub">
-                  {total === 0
-                    ? 'No projects yet'
-                    : `${total} project${total === 1 ? '' : 's'} · ${activeCount} active`}
-                </span>
+                <Icon name="briefcase" size={16} className="client-icon" />
+                <span className="client-name">{client.name}</span>
+                {total === 0 ? (
+                  <span className="cell-sub">No projects yet</span>
+                ) : (
+                  <>
+                    <span className="client-count-pill">{total}</span>
+                    <span className="cell-sub">{activeCount} active</span>
+                  </>
+                )}
               </button>
 
               {!isCollapsed(client.id) && rows.length > 0 && (
-                <div style={{ marginTop: '10px' }}>
+                <div className="client-projects">
                   {rows.map((r) => (
                     <div className="radar-row" key={r.id}>
                       <div>

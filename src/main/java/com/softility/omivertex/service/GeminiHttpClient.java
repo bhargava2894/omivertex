@@ -148,7 +148,7 @@ public class GeminiHttpClient implements GeminiClient {
             if (READ_TOOLS.contains(name) && tools != null && round < MAX_TOOL_ROUNDS) {
                 String result = tools.execute(name, args);
                 contents.add(Map.of("role", "model",
-                        "parts", List.of(Map.of("functionCall", functionCall))));
+                        "parts", firstCandidateParts(response)));
                 contents.add(Map.of("role", "user",
                         "parts", List.of(Map.of("functionResponse",
                                 Map.of("name", name, "response", Map.of("result", result))))));
