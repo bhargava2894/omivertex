@@ -66,8 +66,14 @@ export default function Profile({ id, showToast, canEdit }) {
       const parseData = await api.parseResume(file);
       if (parseData.textExtracted && parseData.suggestedSkills?.length > 0) {
         setSuggestedSkills(parseData.suggestedSkills);
+        const detected = parseData.suggestedSkills.length;
+        const viaAi = parseData.source === 'AI';
         setResumeNotice(
-          `${parseData.suggestedSkills.length} skills detected from the résumé (added at Intermediate) — click "Review & Add Skills" to review and adjust before saving.`
+          (viaAi
+            ? `${detected} skills detected by AI with estimated proficiency` +
+              (parseData.experienceSummary ? ` — ${parseData.experienceSummary}` : '')
+            : `${detected} skills detected from the résumé (added at Intermediate)`) +
+            ' — click "Review & Add Skills" to review and adjust before saving.'
         );
       } else if (!parseData.textExtracted) {
         setResumeNotice(
@@ -120,7 +126,7 @@ export default function Profile({ id, showToast, canEdit }) {
     const skillsMap = existingSkillsMap();
     suggestedSkills.forEach((s) => {
       if (!skillsMap[s.skillId]) {
-        skillsMap[s.skillId] = { proficiency: 'INTERMEDIATE', primary: false };
+        skillsMap[s.skillId] = { proficiency: s.proficiency || 'INTERMEDIATE', primary: false };
       }
     });
     setSelectedSkills(skillsMap);
