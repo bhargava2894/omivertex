@@ -225,9 +225,24 @@ public class AssistantService {
     // ---- read tools (executed server-side, result goes back to the model) ----
 
     private String executeReadTool(String name, Map<String, Object> args) {
-        if (!"get_position_matches".equals(name)) {
-            return "Unknown tool: " + name;
-        }
+        return switch (name) {
+            case "get_position_matches" -> positionMatches(args);
+            case "search_associates" -> contextBuilder.searchAssociates(
+                    str(args, "name"), str(args, "skill"),
+                    proficiencyOrNull(str(args, "minProficiency")),
+                    boolOrDefault(args.get("benchOnly"), false));
+            case "get_associate_detail" -> {
+                Resolved<Associate> associate = resolveAssociate(str(args, "name"));
+                yield associate.reply() != null ? associate.reply()
+                        : contextBuilder.associateDetail(associate.value());
+            }
+            case "list_rolloffs" -> contextBuilder.rolloffs(intOrDefault(args.get("withinDays"), 30));
+            case "list_open_positions" -> contextBuilder.openPositions();
+            default -> "Unknown tool: " + name;
+        };
+    }
+
+    private String positionMatches(Map<String, Object> args) {
         Resolved<OpenPosition> position = resolvePosition(str(args, "positionTitle"));
         if (position.reply() != null) {
             return position.reply();
@@ -236,6 +251,17 @@ public class AssistantService {
             return objectMapper.writeValueAsString(positionService.matches(position.value().getId()));
         } catch (JsonProcessingException e) {
             return "Could not compute matches right now.";
+        }
+    }
+
+    private static com.softility.omivertex.domain.Proficiency proficiencyOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return com.softility.omivertex.domain.Proficiency.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return null;
         }
     }
 

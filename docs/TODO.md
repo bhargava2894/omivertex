@@ -125,12 +125,21 @@ dashboard through caches/proxies).
 
 - **Gemini model selection & systemInstruction bypass** (2026-07-10): due to quota limitations on free tiers and deprecations of older models, `gemini-3.1-flash-lite` is chosen as the default model. Additionally, since the `systemInstruction` field is rejected by the upstream stable REST API version, system context is merged directly into the first prompt in the `contents` list, ensuring compatibility across all models.
 
-- **AI assistant sends FULL workforce detail to the Gemini API** (2026-07-10, user
-  decision): each `/assistant/chat` question carries the complete active roster —
-  names, emails, skills, allocations, exits, open demand — as model context. Resume
-  file contents are excluded. The vendor stays behind the `GeminiClient` interface so
-  the test suite never calls Google and the vendor can change without an API break.
-  ASSOCIATE-role users cannot reach the endpoint.
+- **~~AI assistant sends FULL workforce detail to the Gemini API~~ SUPERSEDED
+  2026-07-11** (originally 2026-07-10) by the minimal-context decision below. The
+  parts that still hold: resume file contents are never sent; the vendor stays
+  behind the `GeminiClient` interface; ASSOCIATE-role users cannot reach the
+  endpoint.
+
+- **AI assistant sends aggregates only; roster data is fetched per-question via
+  read tools** (2026-07-11): the standing context is counts (associates, bench,
+  open positions, clients, projects) — no names, emails, skills, or allocations.
+  The model pulls specifics through server-side read tools (`search_associates`,
+  `get_associate_detail`, `list_rolloffs`, `list_open_positions`,
+  `get_position_matches`), each capped at 25 rows, max 3 tool rounds per turn.
+  Only the queried slice of personal data ever reaches Google. Chosen over
+  vector/RAG (structured Postgres data — exact filters beat semantic search).
+  A privacy-pin test asserts the standing context contains no roster rows.
 
 - **Exit auto-cleanup semantics** (2026-07-10): when an associate's last working day passes, a nightly scheduler flips their status to INACTIVE, truncates open-ended/overlapping allocations to end on their last working day, and removes any future allocations that never started.
 - **Partials-ranked-lower matching** (2026-07-10): position skill matching prioritizes full matches (possessing all required skills above min proficiency and matching work mode) over partial matches. Candidates are ranked by must-have matches, then nice-to-have matches, then bench age.

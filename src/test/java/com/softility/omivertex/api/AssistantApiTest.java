@@ -42,7 +42,9 @@ class AssistantApiTest extends ApiTestBase {
         // the live roster went along as context
         ArgumentCaptor<String> context = ArgumentCaptor.forClass(String.class);
         verify(geminiClient).replyWithTools(context.capture(), anyList(), anyString(), any());
-        assertThat(context.getValue()).contains("Priya Sharma");
+        // minimal-context design: the standing context carries aggregates, never roster rows
+        assertThat(context.getValue()).doesNotContain("Priya Sharma");
+        assertThat(context.getValue()).contains("Active associates: 1");
     }
 
     @Test
@@ -216,5 +218,45 @@ class AssistantApiTest extends ApiTestBase {
                                 {"message":"who matches the java dev seat?","history":[]}"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reply", containsString("Priya Sharma")));
+    }
+
+    @Test
+    void chat_readTool_searchAssociates() throws Exception {
+        var java = skill("Backend", "Java");
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        rateSkill(priya, java, com.softility.omivertex.domain.Proficiency.ADVANCE);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    String result = ex.execute("search_associates",
+                            Map.of("skill", "Java", "benchOnly", true));
+                    return new GeminiClient.AssistantReply("Found: " + result, null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"who on the bench knows java?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Priya Sharma")));
+    }
+
+    @Test
+    void chat_readTool_associateDetail_ambiguousNameAsksBack() throws Exception {
+        associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        associate("Priya Verma", "priya.v@softility.com", WorkMode.ONSHORE);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(
+                            ex.execute("get_associate_detail", Map.of("name", "Priya")), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"tell me about priya","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("more than one match")));
     }
 }
