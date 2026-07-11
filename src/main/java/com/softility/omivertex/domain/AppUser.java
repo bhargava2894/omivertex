@@ -26,6 +26,10 @@ public class AppUser {
     @Column(nullable = false)
     private AccessStatus status = AccessStatus.PENDING;
 
+    // Set only for ASSOCIATE-role users: the roster record this login belongs to.
+    @Column(name = "associate_id")
+    private Long associateId;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -40,5 +44,7 @@ public class AppUser {
     public void setRole(Role role) { this.role = role; }
     public AccessStatus getStatus() { return status; }
     public void setStatus(AccessStatus status) { this.status = status; }
+    public Long getAssociateId() { return associateId; }
+    public void setAssociateId(Long associateId) { this.associateId = associateId; }
     public Instant getCreatedAt() { return createdAt; }
 }

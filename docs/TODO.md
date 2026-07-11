@@ -78,8 +78,64 @@ dashboard through caches/proxies).
 - [ ] Server-side pagination for the remaining lists (clients/projects/allocations).
       Associates is already server-paged+searched; the others are small and use
       derived-field filters, so deferred until volume warrants it.
+- [ ] Extract the profile's allocation section (history table + End/Assign modals,
+      ~250 lines) into a `ProfileAllocations` component — `Profile.jsx` is ~900
+      lines with five modals (flagged in the 2026-07-10 code review).
+- [ ] Shared local-date helper: `todayStr()` (Profile) duplicates `today()`
+      (Allocations), and both use `toISOString()` which is UTC — evening users west
+      of UTC get tomorrow's date. Extract a `dates.js` local-date version.
+- [ ] Import runs one transaction per file: a runtime exception thrown *through a
+      repository proxy* inside the row loop (not the guard's ConflictException,
+      which is handled) could still mark the batch rollback-only. Consider per-row
+      savepoints if imports grow (flagged in the 2026-07-10 review).
 
 ## Resolved decisions
+
+- **Gemini model selection & systemInstruction bypass** (2026-07-10): due to quota limitations on free tiers and deprecations of older models, `gemini-3.1-flash-lite` is chosen as the default model. Additionally, since the `systemInstruction` field is rejected by the upstream stable REST API version, system context is merged directly into the first prompt in the `contents` list, ensuring compatibility across all models.
+
+- **AI assistant sends FULL workforce detail to the Gemini API** (2026-07-10, user
+  decision): each `/assistant/chat` question carries the complete active roster —
+  names, emails, skills, allocations, exits, open demand — as model context. Resume
+  file contents are excluded. The vendor stays behind the `GeminiClient` interface so
+  the test suite never calls Google and the vendor can change without an API break.
+  ASSOCIATE-role users cannot reach the endpoint.
+
+- **Exit auto-cleanup semantics** (2026-07-10): when an associate's last working day passes, a nightly scheduler flips their status to INACTIVE, truncates open-ended/overlapping allocations to end on their last working day, and removes any future allocations that never started.
+- **Partials-ranked-lower matching** (2026-07-10): position skill matching prioritizes full matches (possessing all required skills above min proficiency and matching work mode) over partial matches. Candidates are ranked by must-have matches, then nice-to-have matches, then bench age.
+- **Deterministic utilization forecast** (2026-07-10): the 30/60/90-day dashboard utilization forecast is computed deterministically from today's active roster and known allocation end-dates, assuming no new projects/allocations are added.
+- **Pending-change approval model** (2026-07-10): associates can propose skill changes or upload a new resume. These edits do not apply live but sit in a pending queue until approved or rejected by an administrator.
+- **ASSOCIATE role access boundary** (2026-07-10): a new ASSOCIATE role is introduced. AppUsers approved under this role are linked to their roster record. They can access only their own `/me/profile` surface; sidebar navigation is limited to "My Profile".
+- **Import capacity rule** (2026-07-10): an import row that would push an associate
+  past 100% is **rejected with a row error** (associate still imports) — chosen over
+  auto-ending the older allocation (silently rewrites data) or importing at 0%
+  (invents data). Same `assertCapacity` implementation as the assign flow; no copy.
+  Pre-existing over-allocated data is fixed manually via the profile's End action —
+  no migration.
+- **Client-level billable counting** (2026-07-10): "billable wins" — a person with
+  any billable current allocation under a client counts once, as billable, for that
+  client (dashboard split + `/staffing` tree use the same rule). A person on two
+  clients appears under both; that reflects reality.
+- **Capacity end-date semantics** (2026-07-10): the guard counts an allocation's end
+  date as still allocated, so capacity frees the day *after* the end date. The
+  profile's Assign dialog defaults its start date to the day after the associate's
+  latest current/just-ended end date so End → Assign passes with defaults.
+
+- **Dashboard counts ACTIVE associates only** (2026-07-10): INACTIVE leavers (and
+  their lingering open allocations) are excluded from every summary KPI — bench,
+  headcounts, utilization denominator. `staffingTrend` deliberately stays
+  historical (past allocations count regardless of today's status). Fixes leavers
+  permanently inflating the bench and depressing utilization.
+- **Position fill uses the seat's engagement window** (2026-07-10): `fill` creates
+  the allocation from the position's `startDate` (today if none) to its new
+  optional `endDate` (Flyway `V4`) — previously it always started today and open-
+  ended, so filled seats consumed capacity early and never surfaced on the
+  roll-off radar. A future-dated fill correctly leaves the associate off
+  `currentProject` until the seat starts.
+- **`joinedDate` anchors the bench clock** (2026-07-10): new optional field on
+  Associate (Flyway `V5`, form field, `JOINED DATE`/`DOJ` import column). For
+  never-allocated associates `benchDays` counts from it instead of `createdAt`,
+  so importing a historical roster no longer resets everyone's bench age to the
+  import day. Falls back to `createdAt` when absent.
 
 - **Legacy `primarySkill`/`secondarySkill`** (2026-07): KEPT, deliberately demoted
   to informal free-text "headline" fields (roster quick-glance + CSV `SKILL`-column

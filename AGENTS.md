@@ -11,10 +11,16 @@ The **workforce graph is the product**; keep its data true and its code consiste
 
 ## How to work here
 
+0. **Feature work follows spec → plan → TDD.** Before building a feature, a short
+   design spec goes to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` (what &
+   why, approved by the user) and an implementation plan to
+   `docs/superpowers/plans/` (bite-sized TDD tasks). Bug fixes can skip the spec but
+   never the failing test. This applies to every agent — Claude, Gemini,
+   ChatGPT/Codex — not just ones with a plugin that enforces it.
 1. **TDD, always.** Write the failing test first (`src/test/java/.../api/`), watch it
    fail for the right reason, then write minimal code to pass. No production code
    without a red test first. Run `./mvnw test` — **the full suite must be green before
-   every commit.** It is currently 101 tests (95 API + 6 architecture); never commit red.
+   every commit.** Never commit red.
 2. **Consult the graph before exploring.** A graphify knowledge graph lives in
    `graphify-out/`. Before answering architecture questions or hunting through files,
    read `graphify-out/GRAPH_REPORT.md` (god nodes + structure). Open the *minimum*
@@ -51,8 +57,11 @@ The **workforce graph is the product**; keep its data true and its code consiste
 ## Frontend rules (with examples)
 
 - **Colors come from CSS tokens, never raw hex.** ✅ `var(--color-primary)`,
-  `var(--chart-2)`. ❌ `#2563eb` inline. Tokens make dark mode work automatically
-  (`styles.css` defines both themes).
+  `var(--chart-2)`. ❌ `#2563eb` inline. ❌ `var(--color-success, #10b981)` — a hex
+  *fallback* inside `var()` is still raw hex; if the token doesn't exist in
+  `styles.css`, find the right existing token (greens are `--color-accent`), don't
+  invent one. Tokens make dark mode work automatically (`styles.css` defines both
+  themes).
 - **One shared module per cross-cutting concern.** ✅ import from `proficiency.js`
   for skill labels/tones/colors. ❌ re-declaring `PROF_COLORS`/`PROF_LABELS` per page —
   two copies already drifted and disagreed. If two screens need the same map, extract it.
@@ -96,6 +105,27 @@ you don't have to remember the rules.
   advisory rules (`exhaustive-deps`, `set-state-in-effect`, `immutability`, `use-memo`)
   are warnings — they surface but don't block, because they flag intentional patterns
   (e.g. the generic `useLoad(loader, deps)` hook). Run **`npm run lint`**.
+
+## Definition of Done — run this before you stop, every agent, every time
+
+Do not end your turn with the working tree dirty and these unchecked. "The code is
+written" is not done; **verified + documented + committed** is done. If you must stop
+early (limit, handoff), say exactly which of these you skipped so the next agent
+(whoever it is) can pick up.
+
+1. `./mvnw test` — full suite green (Spotless + ArchUnit included). If Spotless
+   complains: `./mvnw spotless:apply`, rerun.
+2. `cd frontend && npm run format && npm run build` — if you touched any frontend
+   file. The build runs Prettier + ESLint; a skipped build is how unformatted or
+   broken JSX gets handed to the next agent.
+3. **Docs updated** — `docs/TECHNICAL.md` for any behavior/contract change
+   (entities, endpoints, business rules, response shapes — all of them, not just the
+   tables) and `docs/TODO.md` "Resolved decisions" for any lasting choice.
+4. **Graph refreshed** —
+   `$(cat graphify-out/.graphify_python) -c "from graphify.watch import _rebuild_code; from pathlib import Path; _rebuild_code(Path('.'))"`
+5. **Committed** — small, focused commits, message ends with your co-author line
+   (`Co-Authored-By: <your model> <noreply@...>`). Uncommitted work is invisible
+   work: it can't be reviewed, reverted, or attributed.
 
 ## Known deliberate exceptions (don't "fix" these blindly)
 

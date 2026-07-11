@@ -2,7 +2,12 @@ package com.softility.omivertex.service;
 
 import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
+import com.softility.omivertex.domain.AssociateSkill;
+import com.softility.omivertex.domain.EntityStatus;
+import com.softility.omivertex.domain.PositionSkill;
 import com.softility.omivertex.domain.PositionStatus;
+import com.softility.omivertex.domain.Proficiency;
+import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.domain.ProjectStatus;
 import com.softility.omivertex.domain.WorkMode;
 import com.softility.omivertex.repository.AllocationRepository;
@@ -38,6 +43,12 @@ public class DashboardService {
     static final int ROLLOFF_HORIZON_DAYS = 30;
     /** How far ahead the certification-expiry radar looks (days). */
     static final int CERT_EXPIRY_HORIZON_DAYS = 90;
+    /** Trailing window for the exits (attrition) KPI (days). */
+    static final int EXIT_WINDOW_DAYS = 365;
+    /** Cap on the skill-gap heatmap rows returned. */
+    static final int MAX_SKILL_GAP_ROWS = 20;
+    /** Horizons for the deterministic utilization forecast (days from today). */
+    static final int[] FORECAST_OFFSET_DAYS = {0, 30, 60, 90};
 
     private final AssociateRepository associateRepository;
     private final ClientRepository clientRepository;
@@ -45,23 +56,37 @@ public class DashboardService {
     private final AllocationRepository allocationRepository;
     private final com.softility.omivertex.repository.OpenPositionRepository openPositionRepository;
     private final com.softility.omivertex.repository.CertificationRepository certificationRepository;
+    private final com.softility.omivertex.repository.PositionSkillRepository positionSkillRepository;
+    private final com.softility.omivertex.repository.AssociateSkillRepository associateSkillRepository;
 
     public DashboardService(AssociateRepository associateRepository, ClientRepository clientRepository,
                             ProjectRepository projectRepository, AllocationRepository allocationRepository,
                             com.softility.omivertex.repository.OpenPositionRepository openPositionRepository,
-                            com.softility.omivertex.repository.CertificationRepository certificationRepository) {
+                            com.softility.omivertex.repository.CertificationRepository certificationRepository,
+                            com.softility.omivertex.repository.PositionSkillRepository positionSkillRepository,
+                            com.softility.omivertex.repository.AssociateSkillRepository associateSkillRepository) {
         this.associateRepository = associateRepository;
         this.clientRepository = clientRepository;
         this.projectRepository = projectRepository;
         this.allocationRepository = allocationRepository;
         this.openPositionRepository = openPositionRepository;
         this.certificationRepository = certificationRepository;
+        this.positionSkillRepository = positionSkillRepository;
+        this.associateSkillRepository = associateSkillRepository;
     }
 
     public DashboardSummaryResponse summary() {
-        List<Associate> associates = associateRepository.findAll();
+        // Every KPI is about the active workforce: leavers (INACTIVE) must not
+        // inflate the bench or dilute utilization, even with lingering allocations.
+        List<Associate> associates = associateRepository.findAll().stream()
+                .filter(a -> a.getStatus() == EntityStatus.ACTIVE)
+                .toList();
+        Set<Long> activeIds = associates.stream().map(Associate::getId).collect(Collectors.toSet());
         List<Allocation> all = allocationRepository.findAllWithDetails();
-        List<Allocation> current = all.stream().filter(Allocation::isCurrent).toList();
+        List<Allocation> current = all.stream()
+                .filter(Allocation::isCurrent)
+                .filter(a -> activeIds.contains(a.getAssociate().getId()))
+                .toList();
         Map<Long, List<Allocation>> byAssociate = all.stream()
                 .collect(Collectors.groupingBy(a -> a.getAssociate().getId()));
 
@@ -79,11 +104,24 @@ public class DashboardService {
         long onshore = associates.stream().filter(a -> a.getWorkMode() == WorkMode.ONSHORE).count();
         long offshore = associates.stream().filter(a -> a.getWorkMode() == WorkMode.OFFSHORE).count();
 
-        Map<String, Set<Long>> byClient = current.stream().collect(Collectors.groupingBy(
-                a -> a.getProject().getClient().getName(),
-                Collectors.mapping(a -> a.getAssociate().getId(), Collectors.toSet())));
+        // Distinct associates per client, split billable/non-billable. Billable wins:
+        // one billable allocation under the client makes the person billable there.
+        record ClientKey(Long id, String name) {}
+        Map<ClientKey, List<Allocation>> byClient = current.stream().collect(Collectors.groupingBy(
+                a -> new ClientKey(a.getProject().getClient().getId(), a.getProject().getClient().getName())));
         List<ClientHeadcount> headcounts = byClient.entrySet().stream()
-                .map(e -> new ClientHeadcount(e.getKey(), e.getValue().size()))
+                .map(e -> {
+                    Set<Long> billableHere = e.getValue().stream()
+                            .filter(Allocation::isBillable)
+                            .map(a -> a.getAssociate().getId())
+                            .collect(Collectors.toSet());
+                    Set<Long> everyone = e.getValue().stream()
+                            .map(a -> a.getAssociate().getId())
+                            .collect(Collectors.toSet());
+                    long nonBillable = everyone.stream().filter(id -> !billableHere.contains(id)).count();
+                    return new ClientHeadcount(e.getKey().id(), e.getKey().name(),
+                            everyone.size(), billableHere.size(), nonBillable);
+                })
                 .sorted(Comparator.comparingLong(ClientHeadcount::headcount).reversed()
                         .thenComparing(ClientHeadcount::clientName))
                 .toList();
@@ -136,12 +174,78 @@ public class DashboardService {
                         c.getName(), c.getExpiryDate(), ChronoUnit.DAYS.between(today, c.getExpiryDate())))
                 .toList();
 
+        // skill gaps: for every must-have skill on an OPEN position, demand vs how
+        // many active associates could fill at least one seat (lowest demanded min)
+        Map<Long, List<PositionSkill>> demandBySkill = positionSkillRepository.findAllWithDetails().stream()
+                .filter(PositionSkill::isRequired)
+                .filter(ps -> ps.getPosition().getStatus() == PositionStatus.OPEN)
+                .collect(Collectors.groupingBy(ps -> ps.getSkill().getId()));
+        List<AssociateSkill> ratedSkills = associateSkillRepository.findAllWithDetails();
+        List<DashboardSummaryResponse.SkillGap> skillGaps = demandBySkill.values().stream()
+                .map(reqs -> {
+                    Skill skill = reqs.get(0).getSkill();
+                    Proficiency threshold = reqs.stream()
+                            .map(r -> r.getMinProficiency() == null ? Proficiency.NOVICE : r.getMinProficiency())
+                            .min(Comparator.comparingInt(Enum::ordinal)).orElse(Proficiency.NOVICE);
+                    Set<Long> holders = ratedSkills.stream()
+                            .filter(s -> s.getSkill().getId().equals(skill.getId()))
+                            .filter(s -> s.getProficiency().ordinal() >= threshold.ordinal())
+                            .map(s -> s.getAssociate().getId())
+                            .filter(activeIds::contains)
+                            .collect(Collectors.toSet());
+                    long benchSupply = holders.stream().filter(h -> !allocatedIds.contains(h)).count();
+                    return new DashboardSummaryResponse.SkillGap(skill.getId(), skill.getName(),
+                            skill.getCategory().getName(), reqs.size(), benchSupply, holders.size(),
+                            reqs.size() - benchSupply);
+                })
+                .sorted(Comparator.comparingLong(DashboardSummaryResponse.SkillGap::gap).reversed()
+                        .thenComparing(DashboardSummaryResponse.SkillGap::skillName))
+                .limit(MAX_SKILL_GAP_ROWS)
+                .toList();
+
+        // exits KPI counts leavers, who are INACTIVE — use the unfiltered roster
+        LocalDate exitWindowStart = today.minusDays(EXIT_WINDOW_DAYS);
+        long exitsLast12Months = associateRepository.findAll().stream()
+                .filter(a -> a.getLastWorkingDay() != null
+                        && !a.getLastWorkingDay().isAfter(today)
+                        && !a.getLastWorkingDay().isBefore(exitWindowStart))
+                .count();
+
         return new DashboardSummaryResponse(associates.size(), billableCount, nonBillableCount, benchCount,
                 onshore, offshore, clientRepository.count(),
                 projectRepository.findAll().stream().filter(p -> p.getStatus() == ProjectStatus.ACTIVE).count(),
                 openPositionRepository.countByStatus(PositionStatus.OPEN),
                 utilization, benchAging, benchAssociates, rolloffs,
-                headcounts, staffingTrend(), expiringCerts);
+                headcounts, staffingTrend(), expiringCerts, exitsLast12Months, skillGaps,
+                utilizationForecast(associates, all));
+    }
+
+    /**
+     * FTE-weighted utilization evaluated as of each forecast horizon, using only
+     * known allocation windows and recorded exits — no new assignments assumed.
+     */
+    private List<DashboardSummaryResponse.ForecastPoint> utilizationForecast(
+            List<Associate> activeAssociates, List<Allocation> all) {
+        List<DashboardSummaryResponse.ForecastPoint> points = new ArrayList<>();
+        for (int offset : FORECAST_OFFSET_DAYS) {
+            LocalDate at = LocalDate.now().plusDays(offset);
+            List<Associate> present = activeAssociates.stream()
+                    .filter(a -> a.getLastWorkingDay() == null || !a.getLastWorkingDay().isBefore(at))
+                    .toList();
+            Set<Long> presentIds = present.stream().map(Associate::getId).collect(Collectors.toSet());
+            Map<Long, Integer> billablePct = all.stream()
+                    .filter(Allocation::isBillable)
+                    .filter(a -> !a.getStartDate().isAfter(at)
+                            && (a.getEndDate() == null || !a.getEndDate().isBefore(at)))
+                    .filter(a -> presentIds.contains(a.getAssociate().getId()))
+                    .collect(Collectors.groupingBy(a -> a.getAssociate().getId(),
+                            Collectors.summingInt(Allocation::getAllocationPercent)));
+            double fte = billablePct.values().stream().mapToDouble(p -> Math.min(p, 100) / 100.0).sum();
+            long pct = present.isEmpty() ? 0 : Math.round(fte / present.size() * 100);
+            points.add(new DashboardSummaryResponse.ForecastPoint(
+                    offset == 0 ? "Today" : "+" + offset + "d", pct));
+        }
+        return points;
     }
 
     /** Distinct allocated / billable associates per month for the trailing six months. */

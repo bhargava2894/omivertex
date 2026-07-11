@@ -4,6 +4,7 @@ import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
 import com.softility.omivertex.domain.AssociateSkill;
 import com.softility.omivertex.domain.EntityStatus;
+import com.softility.omivertex.domain.ExitReason;
 import com.softility.omivertex.domain.Proficiency;
 import com.softility.omivertex.domain.WorkMode;
 
@@ -23,6 +24,10 @@ public record AssociateResponse(
         String location,
         WorkMode workMode,
         String designation,
+        LocalDate joinedDate,
+        LocalDate resignationDate,
+        LocalDate lastWorkingDay,
+        ExitReason exitReason,
         String primarySkill,
         String secondarySkill,
         EntityStatus status,
@@ -56,7 +61,9 @@ public record AssociateResponse(
                 .orElse(current.isEmpty() ? null : current.get(0));
         return new AssociateResponse(associate.getId(), associate.getName(), associate.getEmail(),
                 associate.getCompany(), associate.getLocation(), associate.getWorkMode(),
-                associate.getDesignation(), associate.getPrimarySkill(), associate.getSecondarySkill(),
+                associate.getDesignation(), associate.getJoinedDate(),
+                associate.getResignationDate(), associate.getLastWorkingDay(), associate.getExitReason(),
+                associate.getPrimarySkill(), associate.getSecondarySkill(),
                 associate.getStatus(), billable,
                 primary == null ? null : primary.getProject().getId(),
                 primary == null ? null : primary.getProject().getName(),
@@ -94,9 +101,14 @@ public record AssociateResponse(
                 .map(Allocation::getEndDate)
                 .filter(end -> end != null && end.isBefore(today))
                 .max(Comparator.naturalOrder())
-                .orElseGet(() -> associate.getCreatedAt() == null
-                        ? today
-                        : associate.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate());
+                .orElseGet(() -> {
+                    if (associate.getJoinedDate() != null) {
+                        return associate.getJoinedDate();
+                    }
+                    return associate.getCreatedAt() == null
+                            ? today
+                            : associate.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate();
+                });
         return Math.max(0, ChronoUnit.DAYS.between(since, today));
     }
 }

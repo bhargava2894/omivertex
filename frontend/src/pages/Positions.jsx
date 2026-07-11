@@ -13,11 +13,12 @@ const EMPTY = {
   title: '',
   projectId: '',
   requiredSkill: '',
-  requiredSkillId: '',
-  minProficiency: '',
+  workMode: '',
+  skills: [], // rows of { skillId, minProficiency, required }
   billable: true,
   allocationPercent: 100,
   startDate: '',
+  endDate: '',
   status: 'OPEN',
 };
 
@@ -47,16 +48,31 @@ export default function Positions({ showToast, canEdit }) {
         title: row.title,
         projectId: row.projectId,
         requiredSkill: row.requiredSkill || '',
-        requiredSkillId: row.requiredSkillId || '',
-        minProficiency: row.minProficiency || '',
+        workMode: row.workMode || '',
+        skills: (row.skills || []).map((s) => ({
+          skillId: s.skillId,
+          minProficiency: s.minProficiency || '',
+          required: s.required,
+        })),
         billable: row.billable,
         allocationPercent: row.allocationPercent,
         startDate: row.startDate || '',
+        endDate: row.endDate || '',
         status: row.status,
       },
     });
   };
   const set = (k, v) => setEditing((e) => ({ ...e, form: { ...e.form, [k]: v } }));
+  const setSkillRow = (i, row) =>
+    setEditing((e) => ({
+      ...e,
+      form: { ...e.form, skills: e.form.skills.map((s, idx) => (idx === i ? row : s)) },
+    }));
+  const removeSkillRow = (i) =>
+    setEditing((e) => ({
+      ...e,
+      form: { ...e.form, skills: e.form.skills.filter((_, idx) => idx !== i) },
+    }));
 
   const save = async () => {
     setSaving(true);
@@ -65,10 +81,17 @@ export default function Positions({ showToast, canEdit }) {
     const payload = {
       ...f,
       projectId: f.projectId === '' ? null : Number(f.projectId),
-      requiredSkillId: f.requiredSkillId === '' ? null : Number(f.requiredSkillId),
-      minProficiency: f.minProficiency === '' ? null : f.minProficiency,
+      workMode: f.workMode || null,
+      skills: (f.skills || [])
+        .filter((s) => s.skillId !== '' && s.skillId != null)
+        .map((s) => ({
+          skillId: Number(s.skillId),
+          minProficiency: s.minProficiency || null,
+          required: !!s.required,
+        })),
       allocationPercent: Number(f.allocationPercent),
       startDate: f.startDate || null,
+      endDate: f.endDate || null,
     };
     try {
       if (editing.id) await api.update('positions', editing.id, payload);
@@ -166,14 +189,25 @@ export default function Positions({ showToast, canEdit }) {
             ),
           },
           {
-            key: 'requiredSkill',
-            label: 'Skill',
+            key: 'skills',
+            label: 'Skills',
             render: (r) => (
               <div>
-                <div className="cell-main">{r.requiredSkillName || r.requiredSkill || '—'}</div>
-                {r.minProficiency && (
+                <div className="cell-main">
+                  {r.skills && r.skills.length
+                    ? r.skills
+                        .filter((s) => s.required)
+                        .map((s) => s.skillName)
+                        .join(', ') || '—'
+                    : r.requiredSkill || '—'}
+                </div>
+                {r.skills && r.skills.some((s) => !s.required) && (
                   <div className="cell-sub" style={{ fontSize: '11px' }}>
-                    Min: {r.minProficiency.replace('_', ' ')}
+                    Nice:{' '}
+                    {r.skills
+                      .filter((s) => !s.required)
+                      .map((s) => s.skillName)
+                      .join(', ')}
                   </div>
                 )}
               </div>
@@ -190,6 +224,7 @@ export default function Positions({ showToast, canEdit }) {
             render: (r) => `${r.allocationPercent}%`,
           },
           { key: 'startDate', label: 'Start', render: (r) => r.startDate || '—' },
+          { key: 'endDate', label: 'End', render: (r) => r.endDate || '—' },
           {
             key: 'status',
             label: 'Status',
@@ -247,29 +282,77 @@ export default function Positions({ showToast, canEdit }) {
                 invalid={!!errors.projectId}
               />
             </Field>
-            <Field label="Required Skill (Structured)" error={errors.requiredSkillId}>
-              <SearchSelect
-                options={(taxonomy || []).flatMap((cat) =>
-                  (cat.skills || []).map((s) => ({ value: s.id, label: `${cat.name} · ${s.name}` }))
-                )}
-                value={editing.form.requiredSkillId}
-                onChange={(v) => set('requiredSkillId', v)}
-                placeholder="Search skill from taxonomy…"
-                invalid={!!errors.requiredSkillId}
-              />
-            </Field>
-            <Field label="Minimum Proficiency" error={errors.minProficiency}>
-              <select
-                value={editing.form.minProficiency}
-                onChange={(e) => set('minProficiency', e.target.value)}
-                disabled={!editing.form.requiredSkillId}
-              >
-                <option value="">Any Level</option>
-                {PROFICIENCIES.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
+            <Field label="Skill requirements" error={errors.skills} full>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {editing.form.skills.map((row, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ flex: 2 }}>
+                      <SearchSelect
+                        options={(taxonomy || []).flatMap((cat) =>
+                          (cat.skills || []).map((s) => ({
+                            value: s.id,
+                            label: `${cat.name} · ${s.name}`,
+                          }))
+                        )}
+                        value={row.skillId}
+                        onChange={(v) => setSkillRow(i, { ...row, skillId: v })}
+                        placeholder="Search skill…"
+                      />
+                    </div>
+                    <select
+                      style={{ flex: 1 }}
+                      value={row.minProficiency}
+                      onChange={(e) => setSkillRow(i, { ...row, minProficiency: e.target.value })}
+                    >
+                      <option value="">Any level</option>
+                      {PROFICIENCIES.map((p) => (
+                        <option key={p.value} value={p.value}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      style={{ flex: 1 }}
+                      value={row.required ? 'must' : 'nice'}
+                      onChange={(e) =>
+                        setSkillRow(i, { ...row, required: e.target.value === 'must' })
+                      }
+                    >
+                      <option value="must">Must-have</option>
+                      <option value="nice">Nice-to-have</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => removeSkillRow(i)}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 ))}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  style={{ alignSelf: 'flex-start' }}
+                  onClick={() =>
+                    set('skills', [
+                      ...editing.form.skills,
+                      { skillId: '', minProficiency: '', required: true },
+                    ])
+                  }
+                >
+                  + Add requirement
+                </button>
+              </div>
+            </Field>
+            <Field label="Work mode">
+              <select
+                value={editing.form.workMode}
+                onChange={(e) => set('workMode', e.target.value)}
+              >
+                <option value="">Any</option>
+                <option value="ONSHORE">Onshore</option>
+                <option value="OFFSHORE">Offshore</option>
               </select>
             </Field>
             <Field label="Legacy Required Skill (Text fallback)" error={errors.requiredSkill} full>
@@ -293,6 +376,13 @@ export default function Positions({ showToast, canEdit }) {
                 type="date"
                 value={editing.form.startDate}
                 onChange={(e) => set('startDate', e.target.value)}
+              />
+            </Field>
+            <Field label="End date" error={errors.endDate}>
+              <input
+                type="date"
+                value={editing.form.endDate}
+                onChange={(e) => set('endDate', e.target.value)}
               />
             </Field>
             {editing.id ? (
@@ -330,12 +420,15 @@ export default function Positions({ showToast, canEdit }) {
           }
         >
           <p className="cell-sub" style={{ marginTop: 0 }}>
-            {matching.position.requiredSkillName
-              ? ` · needs ${matching.position.requiredSkillName}${matching.position.minProficiency ? ` (${matching.position.minProficiency.replace('_', ' ')}+)` : ''}`
+            {matching.position.skills && matching.position.skills.length
+              ? `needs ${matching.position.skills
+                  .map((s) => `${s.skillName}${s.required ? '' : ' (nice)'}`)
+                  .join(', ')}`
               : matching.position.requiredSkill
-                ? ` · needs ${matching.position.requiredSkill}`
-                : ''}{' '}
-            · {matching.position.allocationPercent}%
+                ? `needs ${matching.position.requiredSkill}`
+                : ''}
+            {matching.position.workMode ? ` · ${matching.position.workMode.toLowerCase()}` : ''} ·{' '}
+            {matching.position.allocationPercent}%
           </p>
           {matching.candidates == null ? (
             <div className="skeleton-row" />
@@ -347,17 +440,18 @@ export default function Positions({ showToast, canEdit }) {
                 <div>
                   <div className="cell-main">
                     {c.name}{' '}
-                    {c.skillMatch && (
-                      <Badge
-                        tone="green"
-                        label={`skill match${c.matchedProficiency ? ` (${c.matchedProficiency.replace('_', ' ')})` : ''}`}
-                      />
+                    {c.fullMatch ? (
+                      <Badge tone="green" label="full match" />
+                    ) : (
+                      <Badge tone="amber" label="partial" />
                     )}
                   </div>
                   <div className="cell-sub">
-                    {[c.designation, c.primarySkill, c.secondarySkill]
-                      .filter(Boolean)
-                      .join(' · ') || '—'}
+                    {c.fullMatch
+                      ? [c.designation, (c.matchedSkills || []).join(', ')]
+                          .filter(Boolean)
+                          .join(' · ') || '—'
+                      : `missing: ${(c.missingRequirements || []).join(', ') || '—'}`}
                   </div>
                 </div>
                 <div className="radar-right">

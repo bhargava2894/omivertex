@@ -18,9 +18,18 @@ public record DashboardSummaryResponse(
         List<Rolloff> upcomingRolloffs,
         List<ClientHeadcount> clientHeadcounts,
         List<TrendPoint> staffingTrend,
-        List<ExpiringCert> expiringCertifications) {
+        List<ExpiringCert> expiringCertifications,
+        long exitsLast12Months,
+        List<SkillGap> skillGaps,
+        List<ForecastPoint> utilizationForecast) {
 
-    public record ClientHeadcount(String clientName, long headcount) {
+    /**
+     * Distinct current associates per client, split by billing. An associate counts
+     * as billable for a client when ANY of their current allocations there is
+     * billable; headcount == billable + nonBillable.
+     */
+    public record ClientHeadcount(Long clientId, String clientName, long headcount,
+                                  long billable, long nonBillable) {
     }
 
     /** Distinct allocated / billable associates during one calendar month. */
@@ -43,5 +52,21 @@ public record DashboardSummaryResponse(
     /** A certification expiring within the next 90 days. */
     public record ExpiringCert(Long certificationId, Long associateId, String associateName,
                                String name, java.time.LocalDate expiryDate, long daysLeft) {
+    }
+
+    /**
+     * Demand vs supply for one skill required by open positions. Supply counts
+     * ACTIVE associates at or above the lowest demanded proficiency; gap =
+     * demand - benchSupply (positive = hire or train).
+     */
+    public record SkillGap(Long skillId, String skillName, String category,
+                           long demand, long benchSupply, long totalSupply, long gap) {
+    }
+
+    /**
+     * FTE-weighted utilization projected at a future date from known allocation
+     * end dates and recorded exits — deterministic, assumes no new assignments.
+     */
+    public record ForecastPoint(String label, long percent) {
     }
 }

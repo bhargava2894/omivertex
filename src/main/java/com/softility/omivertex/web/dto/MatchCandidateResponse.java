@@ -1,16 +1,14 @@
 package com.softility.omivertex.web.dto;
 
-import com.softility.omivertex.domain.Proficiency;
+import java.util.List;
 
 public record MatchCandidateResponse(
         Long associateId,
         String name,
         String designation,
-        String primarySkill,
-        String secondarySkill,
         Long benchDays,
         int availablePercent,
-        boolean skillMatch,
-        int score,
-        Proficiency matchedProficiency) {
+        boolean fullMatch,
+        List<String> matchedSkills,
+        List<String> missingRequirements) {
 }

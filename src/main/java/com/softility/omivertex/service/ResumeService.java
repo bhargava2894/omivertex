@@ -59,38 +59,38 @@ public class ResumeService {
     }
 
     public ResumeMetaResponse store(Long associateId, MultipartFile file) {
-        if (!associateRepository.existsById(associateId)) {
-            throw new NotFoundException("Associate", associateId);
-        }
         validateFileType(file);
-
         try {
-            byte[] bytes = file.getBytes();
-            String filename = file.getOriginalFilename();
-            String contentType = file.getContentType();
-
-            boolean exists = resumeRepository.existsByAssociateId(associateId);
-            if (exists) {
-                resumeRepository.deleteByAssociateId(associateId);
-                resumeRepository.flush();
-            }
-
-            Resume resume = new Resume();
-            resume.setAssociateId(associateId);
-            resume.setFilename(filename);
-            resume.setContentType(contentType);
-            resume.setByteSize(file.getSize());
-            resume.setContent(bytes);
-            resume.setUploadedAt(Instant.now());
-            resumeRepository.save(resume);
-
-            String auditMsg = exists ? "Replaced résumé: " + filename : "Uploaded résumé: " + filename;
-            auditService.record("UPDATED", "Associate", associateId, auditMsg);
-
-            return new ResumeMetaResponse(filename, contentType, file.getSize(), resume.getUploadedAt());
+            return store(associateId, file.getOriginalFilename(), file.getContentType(), file.getBytes());
         } catch (IOException e) {
             throw new BadRequestException("Failed to save uploaded résumé: " + e.getMessage());
         }
+    }
+
+    /** Same store rules from raw bytes — used when applying an approved profile change. */
+    public ResumeMetaResponse store(Long associateId, String filename, String contentType, byte[] bytes) {
+        if (!associateRepository.existsById(associateId)) {
+            throw new NotFoundException("Associate", associateId);
+        }
+        boolean exists = resumeRepository.existsByAssociateId(associateId);
+        if (exists) {
+            resumeRepository.deleteByAssociateId(associateId);
+            resumeRepository.flush();
+        }
+
+        Resume resume = new Resume();
+        resume.setAssociateId(associateId);
+        resume.setFilename(filename);
+        resume.setContentType(contentType);
+        resume.setByteSize((long) bytes.length);
+        resume.setContent(bytes);
+        resume.setUploadedAt(Instant.now());
+        resumeRepository.save(resume);
+
+        String auditMsg = exists ? "Replaced résumé: " + filename : "Uploaded résumé: " + filename;
+        auditService.record("UPDATED", "Associate", associateId, auditMsg);
+
+        return new ResumeMetaResponse(filename, contentType, (long) bytes.length, resume.getUploadedAt());
     }
 
     @Transactional(readOnly = true)

@@ -122,4 +122,35 @@ export const api = {
   deleteResume: (associateId) => {
     return request(`/associates/${associateId}/resume`, { method: 'DELETE' });
   },
+  // Associate self-service (ASSOCIATE role only)
+  myProfile: () => request('/me/profile'),
+  myChanges: () => request('/me/profile-changes'),
+  proposeSkills: (skills) =>
+    request('/me/profile-changes/skills', { method: 'POST', body: JSON.stringify({ skills }) }),
+  proposeResume: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/me/profile-changes/resume`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const error = new Error(body.message || 'Upload failed');
+      error.status = res.status;
+      throw error;
+    }
+    return res.json();
+  },
+  // Dashboard AI assistant
+  askAssistant: (message, history) =>
+    request('/assistant/chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
+  // Admin profile changes queue
+  listProfileChanges: (params = {}) => api.list('profile-changes', params),
+  approveProfileChange: (id) => request(`/profile-changes/${id}/approve`, { method: 'POST' }),
+  rejectProfileChange: (id, note) =>
+    request(`/profile-changes/${id}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ note }),
+    }),
 };

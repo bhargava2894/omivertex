@@ -12,7 +12,10 @@ import AccessRequests from './pages/AccessRequests.jsx';
 import AuditLog from './pages/AuditLog.jsx';
 import Profile from './pages/Profile.jsx';
 import Taxonomy from './pages/Taxonomy.jsx';
+import Staffing from './pages/Staffing.jsx';
 import SkillReports from './pages/SkillReports.jsx';
+import MyProfile from './pages/MyProfile.jsx';
+import ProfileChanges from './pages/ProfileChanges.jsx';
 import { api } from './api.js';
 import { storedTheme, applyTheme, resolveTheme } from './theme.js';
 
@@ -53,6 +56,13 @@ const ROUTES = [
     sub: 'Assign associates to projects',
   },
   {
+    path: 'staffing',
+    label: 'Staffing',
+    icon: 'users',
+    component: Staffing,
+    sub: 'Billable and non-billable staffing by company and project',
+  },
+  {
     path: 'demand',
     label: 'Demand',
     icon: 'target',
@@ -91,6 +101,22 @@ const ROUTES = [
     adminOnly: true,
   },
   {
+    path: 'my-profile',
+    label: 'My Profile',
+    icon: 'users',
+    component: MyProfile,
+    sub: 'Your associate profile and proposed changes',
+    associateOnly: true,
+  },
+  {
+    path: 'profile-changes',
+    label: 'Profile Changes',
+    icon: 'inbox',
+    component: ProfileChanges,
+    sub: 'Review proposed profile edits by associates',
+    adminOnly: true,
+  },
+  {
     path: 'settings',
     label: 'Settings',
     icon: 'settings',
@@ -104,10 +130,10 @@ const routeByPath = Object.fromEntries(ROUTES.map((r) => [r.path, r]));
 // Display grouping for the sidebar. A section with a null label renders no header
 // (standalone). The Admin section is entirely admin-only, so it disappears for viewers.
 const NAV_SECTIONS = [
-  { label: null, items: ['dashboard'] },
+  { label: null, items: ['my-profile', 'dashboard'] },
   { label: 'Workforce', items: ['associates', 'taxonomy', 'skill-reports'] },
-  { label: 'Delivery', items: ['clients', 'projects', 'allocations', 'demand'] },
-  { label: 'Admin', items: ['access-requests', 'audit'] },
+  { label: 'Delivery', items: ['clients', 'projects', 'allocations', 'staffing', 'demand'] },
+  { label: 'Admin', items: ['profile-changes', 'access-requests', 'audit'] },
   { label: null, items: ['settings'] },
 ];
 
@@ -163,8 +189,19 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (user?.role === 'ASSOCIATE' && window.location.hash !== '#/my-profile') {
+      window.location.hash = '/my-profile';
+    }
+  }, [user]);
+
   const canEdit = user?.role === 'ADMIN';
-  const visibleRoutes = ROUTES.filter((r) => !r.adminOnly || canEdit);
+  const visibleRoutes = ROUTES.filter((r) => {
+    if (user?.role === 'ASSOCIATE') {
+      return r.path === 'my-profile';
+    }
+    return !r.associateOnly && (!r.adminOnly || canEdit);
+  });
   const baseRoute = route.split('?')[0];
   let active = visibleRoutes.find((r) => r.path === baseRoute);
   let isProfile = false;
@@ -191,7 +228,9 @@ export default function App() {
     <div className="shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <img src="/logo-mark.png" alt="" className="brand-logo" />
+          <div className="brand-logo-wrap">
+            <img src="/logo-mark.png" alt="" className="brand-logo" />
+          </div>
           <div>
             <div className="brand-name">OmiVertex</div>
             <div className="brand-sub">Softility Resource Hub</div>
@@ -199,9 +238,14 @@ export default function App() {
         </div>
         <nav className="sidebar-nav" aria-label="Primary">
           {NAV_SECTIONS.map((section) => {
-            const items = section.items
+            let items = section.items
               .map((p) => routeByPath[p])
               .filter((r) => r && (!r.adminOnly || canEdit));
+            if (user?.role === 'ASSOCIATE') {
+              items = items.filter((r) => r.associateOnly);
+            } else {
+              items = items.filter((r) => !r.associateOnly);
+            }
             if (items.length === 0) return null;
             return (
               <div className="nav-group" key={section.label || items[0].path}>
@@ -240,8 +284,14 @@ export default function App() {
               <span className="user-avatar">{user.displayName.charAt(0)}</span>
               <span className="user-meta">
                 <span className="user-name">{user.displayName}</span>
-                <span className={`badge ${canEdit ? 'badge-blue' : 'badge-gray'}`}>
-                  {canEdit ? 'Admin' : 'Read-only'}
+                <span
+                  className={`badge ${user.role === 'ADMIN' ? 'badge-blue' : user.role === 'ASSOCIATE' ? 'badge-green' : 'badge-gray'}`}
+                >
+                  {user.role === 'ADMIN'
+                    ? 'Admin'
+                    : user.role === 'ASSOCIATE'
+                      ? 'Associate'
+                      : 'Viewer'}
                 </span>
               </span>
             </div>

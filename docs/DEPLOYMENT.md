@@ -33,6 +33,20 @@ The frontend needs the same client ID at build time as `VITE_GOOGLE_CLIENT_ID`
 to render the Google Identity Services button and obtain the ID token the backend
 verifies. Until both are set, only the built-in username/password login works.
 
+### Optional — dashboard AI assistant (Gemini)
+
+The "Ask OmiVertex AI" dashboard card is wired but inert until an API key is
+configured (the endpoint fails closed with a clear 400 otherwise):
+
+| Variable | Purpose |
+|---|---|
+| `OMIVERTEX_ASSISTANT_GEMINI_API_KEY` | Google AI Studio API key; enables `GeminiHttpClient` |
+| `OMIVERTEX_ASSISTANT_GEMINI_MODEL` | Optional; defaults to `gemini-2.5-flash` |
+
+Requires outbound HTTPS to `generativelanguage.googleapis.com` from the app
+server. Each question sends the full live workforce summary as model context
+(deliberate decision — see `docs/TODO.md`); resume file contents are never sent.
+
 ## Build
 
 ```bash

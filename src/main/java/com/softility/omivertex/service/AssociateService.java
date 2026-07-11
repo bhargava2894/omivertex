@@ -150,6 +150,7 @@ public class AssociateService {
         if (request.skills() != null) {
             replaceSkills(associate.getId(), new SkillAssignmentRequest(request.skills()));
         }
+        exitInlineIfPast(associate);
         return get(associate.getId());
     }
 
@@ -165,6 +166,7 @@ public class AssociateService {
         if (request.skills() != null) {
             replaceSkills(id, new SkillAssignmentRequest(request.skills()));
         }
+        exitInlineIfPast(associate);
         return get(id);
     }
 
@@ -181,6 +183,47 @@ public class AssociateService {
         return associateRepository.findById(id).orElseThrow(() -> new NotFoundException("Associate", id));
     }
 
+    /**
+     * Applies exit cleanup for every ACTIVE associate whose last working day has
+     * passed: status -> INACTIVE, open/later-ending allocations end on the last
+     * working day, allocations that never started are removed. Idempotent — runs
+     * daily from ExitScheduler and inline when an already-past exit is recorded.
+     */
+    @Transactional
+    public void processExits() {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        associateRepository.findAll().stream()
+                .filter(a -> a.getStatus() == EntityStatus.ACTIVE)
+                .filter(a -> a.getLastWorkingDay() != null && a.getLastWorkingDay().isBefore(today))
+                .forEach(this::applyExit);
+    }
+
+    private void exitInlineIfPast(Associate associate) {
+        if (associate.getLastWorkingDay() != null
+                && associate.getLastWorkingDay().isBefore(java.time.LocalDate.now())
+                && associate.getStatus() == EntityStatus.ACTIVE) {
+            applyExit(associate);
+        }
+    }
+
+    private void applyExit(Associate associate) {
+        java.time.LocalDate lastDay = associate.getLastWorkingDay();
+        int closed = 0;
+        for (Allocation allocation : allocationRepository.findByAssociateId(associate.getId())) {
+            if (allocation.getStartDate().isAfter(lastDay)) {
+                allocationRepository.delete(allocation);
+                closed++;
+            } else if (allocation.getEndDate() == null || allocation.getEndDate().isAfter(lastDay)) {
+                allocation.setEndDate(lastDay);
+                closed++;
+            }
+        }
+        associate.setStatus(EntityStatus.INACTIVE);
+        auditService.record("EXITED", "Associate", associate.getId(),
+                associate.getName() + " left on " + lastDay + " (" + associate.getExitReason() + "); "
+                + closed + " allocation(s) closed");
+    }
+
     private void apply(Associate associate, AssociateRequest request) {
         associate.setName(request.name());
         associate.setEmail(request.email());
@@ -188,6 +231,17 @@ public class AssociateService {
         associate.setLocation(request.location());
         associate.setWorkMode(request.workMode());
         associate.setDesignation(request.designation());
+        associate.setJoinedDate(request.joinedDate());
+        if ((request.exitReason() == null) != (request.lastWorkingDay() == null)) {
+            throw new BadRequestException("Exit reason and last working day must be provided together");
+        }
+        if (request.resignationDate() != null && request.lastWorkingDay() != null
+                && request.resignationDate().isAfter(request.lastWorkingDay())) {
+            throw new BadRequestException("Resignation date cannot be after the last working day");
+        }
+        associate.setResignationDate(request.resignationDate());
+        associate.setLastWorkingDay(request.lastWorkingDay());
+        associate.setExitReason(request.exitReason());
         // primarySkill/secondarySkill are no longer set here — they are derived from
         // the rated skills in deriveHeadline() whenever the skill set changes.
         associate.setStatus(request.status() == null ? EntityStatus.ACTIVE : request.status());

@@ -4,6 +4,7 @@ import { useLoad } from '../hooks.js';
 import Icon from '../components/Icon.jsx';
 import Badge from '../components/Badge.jsx';
 import { TrendChart, DonutChart, VBarChart } from '../components/charts.jsx';
+import AssistantChat from '../components/AssistantChat.jsx';
 
 function StatCard({ icon, label, value, hint }) {
   return (
@@ -41,7 +42,7 @@ function SplitBar({ label, value, total, color }) {
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ showToast }) {
   const [viewMode, setViewMode] = useState(
     () => localStorage.getItem('ov-dashboard-view') || 'charts'
   );
@@ -119,6 +120,8 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <AssistantChat showToast={showToast} />
+
       <div className="stat-grid">
         <StatCard
           icon="users"
@@ -150,6 +153,12 @@ export default function Dashboard() {
           label="Open Demand"
           value={s.openPositions}
           hint="Positions awaiting a match"
+        />
+        <StatCard
+          icon="logout"
+          label="Exits (12 mo)"
+          value={s.exitsLast12Months}
+          hint="Left in the trailing year"
         />
       </div>
 
@@ -325,6 +334,59 @@ export default function Dashboard() {
           </div>
         )}
 
+        <div className="card panel">
+          <h2>
+            <Icon name="activity" size={15} /> Utilization Forecast
+          </h2>
+          <p className="stat-hint" style={{ marginTop: 0 }}>
+            From known end dates and recorded exits — assumes no new assignments.
+          </p>
+          {viewMode === 'charts' ? (
+            <TrendChart
+              points={(s.utilizationForecast || []).map((p) => ({
+                month: p.label,
+                percent: p.percent,
+              }))}
+              series={[{ key: 'percent', label: 'Utilization %', color: 'var(--chart-2)' }]}
+            />
+          ) : (
+            (s.utilizationForecast || []).map((p) => (
+              <div className="radar-row" key={p.label}>
+                <div className="cell-main">{p.label}</div>
+                <Badge
+                  tone={p.percent >= s.utilizationPercent ? 'green' : 'amber'}
+                  label={`${p.percent}%`}
+                />
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="card panel">
+          <h2>
+            <Icon name="target" size={15} /> Skill Gaps — open demand vs supply
+          </h2>
+          {(s.skillGaps || []).length === 0 ? (
+            <p className="stat-hint">No open positions demanding skills right now.</p>
+          ) : (
+            (s.skillGaps || []).map((g) => (
+              <div className="radar-row" key={g.skillId}>
+                <div>
+                  <div className="cell-main">{g.skillName}</div>
+                  <div className="cell-sub">
+                    {g.category} · {g.demand} open · {g.benchSupply} on bench · {g.totalSupply}{' '}
+                    total
+                  </div>
+                </div>
+                <Badge
+                  tone={g.gap > 0 ? 'red' : g.gap === 0 ? 'amber' : 'green'}
+                  label={g.gap > 0 ? `short ${g.gap}` : g.gap === 0 ? 'tight' : `+${-g.gap} spare`}
+                />
+              </div>
+            ))
+          )}
+        </div>
+
         <div className="card panel" style={{ gridColumn: '1 / -1' }}>
           <h2>Headcount by Client</h2>
           {s.clientHeadcounts.length === 0 ? (
@@ -336,13 +398,21 @@ export default function Dashboard() {
             />
           ) : (
             s.clientHeadcounts.map((c, i) => (
-              <div className="rank-row" key={c.clientName}>
+              <div
+                className="rank-row"
+                key={c.clientName}
+                style={{ cursor: 'pointer' }}
+                onClick={() => (window.location.hash = `/staffing?clientId=${c.clientId}`)}
+                title={`Open staffing for ${c.clientName}`}
+              >
                 <span className="rank-name">{c.clientName}</span>
-                <span className="rank-count">{c.headcount} associates</span>
+                <span className="rank-count">
+                  {c.headcount} — {c.billable} billable / {c.nonBillable} non-billable
+                </span>
                 <div
                   className="rank-track"
                   role="img"
-                  aria-label={`${c.clientName}: ${c.headcount} associates`}
+                  aria-label={`${c.clientName}: ${c.headcount} associates, ${c.billable} billable, ${c.nonBillable} non-billable`}
                 >
                   <div
                     className="rank-fill"

@@ -106,10 +106,22 @@ public class AllocationService {
 
     /**
      * An associate is 100% capacity: the sum of allocation percentages across
-     * date-overlapping allocations may never exceed it.
+     * date-overlapping allocations may never exceed it. Package-private so
+     * ImportService applies the SAME rule (one implementation, no copies).
+     *
+     * <p>{@code noRollbackFor} matters only for that external caller: ImportService
+     * invokes this through the Spring proxy from inside its own outer transaction, so
+     * the call participates in (joins) that transaction rather than starting a new
+     * one. Without this, the default rollback rule would mark the WHOLE import
+     * transaction rollback-only on the first over-capacity row, even though
+     * ImportService catches the exception and continues — turning one bad row into an
+     * UnexpectedRollbackException for the entire batch. Internal callers (create/update
+     * in this class) invoke this via {@code this.assertCapacity(...)}, a self-call that
+     * bypasses the proxy entirely, so they are unaffected by this annotation.
      */
-    private void assertCapacity(Associate associate, Long excludeAllocationId, int newPercent,
-                                java.time.LocalDate newStart, java.time.LocalDate newEnd) {
+    @Transactional(noRollbackFor = ConflictException.class)
+    void assertCapacity(Associate associate, Long excludeAllocationId, int newPercent,
+                        java.time.LocalDate newStart, java.time.LocalDate newEnd) {
         int existing = allocationRepository.findByAssociateId(associate.getId()).stream()
                 .filter(a -> !a.getId().equals(excludeAllocationId))
                 .filter(a -> overlaps(a, newStart, newEnd))

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "associates", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
@@ -29,6 +30,21 @@ public class Associate {
     private WorkMode workMode;
 
     private String designation;
+
+    // Day the person joined the company. Anchors the bench clock for associates who
+    // have never been allocated; without it, re-importing a roster would reset
+    // everyone's bench age to the row's creation date.
+    private LocalDate joinedDate;
+
+    // Exit lifecycle: set together (reason + last working day). Once the last working
+    // day has passed, AssociateService.processExits() flips status to INACTIVE and
+    // closes open allocations — see docs/TECHNICAL.md business rules.
+    private LocalDate resignationDate;
+
+    private LocalDate lastWorkingDay;
+
+    @Enumerated(EnumType.STRING)
+    private ExitReason exitReason;
 
     // Informal free-text "headline" skills only: a roster quick-glance value and the
     // target of the CSV SKILL column on import. The authoritative skill model is the
@@ -62,6 +78,14 @@ public class Associate {
     public void setWorkMode(WorkMode workMode) { this.workMode = workMode; }
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }
+    public LocalDate getJoinedDate() { return joinedDate; }
+    public void setJoinedDate(LocalDate joinedDate) { this.joinedDate = joinedDate; }
+    public LocalDate getResignationDate() { return resignationDate; }
+    public void setResignationDate(LocalDate resignationDate) { this.resignationDate = resignationDate; }
+    public LocalDate getLastWorkingDay() { return lastWorkingDay; }
+    public void setLastWorkingDay(LocalDate lastWorkingDay) { this.lastWorkingDay = lastWorkingDay; }
+    public ExitReason getExitReason() { return exitReason; }
+    public void setExitReason(ExitReason exitReason) { this.exitReason = exitReason; }
     public String getPrimarySkill() { return primarySkill; }
     public void setPrimarySkill(String primarySkill) { this.primarySkill = primarySkill; }
     public String getSecondarySkill() { return secondarySkill; }
