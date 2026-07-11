@@ -35,6 +35,8 @@ public record AssociateResponse(
         Long currentProjectId,
         String currentProject,
         String currentClient,
+        LocalDate currentProjectStartDate,
+        LocalDate currentProjectEndDate,
         Long benchDays,
         List<SkillGroup> skillGroups,
         String resumeFilename) {
@@ -68,6 +70,8 @@ public record AssociateResponse(
                 primary == null ? null : primary.getProject().getId(),
                 primary == null ? null : primary.getProject().getName(),
                 primary == null ? null : primary.getProject().getClient().getName(),
+                primary == null ? null : primary.getStartDate(),
+                primary == null ? null : primary.getEndDate(),
                 benchDays(associate, allocations),
                 groupSkills(ratedSkills),
                 resumeFilename);

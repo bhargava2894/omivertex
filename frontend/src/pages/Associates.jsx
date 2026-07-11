@@ -396,7 +396,23 @@ export default function Associates({ showToast, canEdit }) {
           { key: 'location', label: 'Location', render: (r) => r.location || '—' },
           { key: 'workMode', label: 'Shore', render: (r) => <Badge value={r.workMode} /> },
           { key: 'currentClient', label: 'Customer', render: (r) => r.currentClient || '—' },
-          { key: 'currentProject', label: 'Project', render: (r) => r.currentProject || '—' },
+          {
+            key: 'currentProject',
+            label: 'Project',
+            render: (r) =>
+              r.currentProject ? (
+                <div>
+                  <div className="cell-main">{r.currentProject}</div>
+                  {(r.currentProjectStartDate || r.currentProjectEndDate) && (
+                    <div className="cell-sub">
+                      {r.currentProjectStartDate || '—'} → {r.currentProjectEndDate || '—'}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                '—'
+              ),
+          },
           {
             key: 'billable',
             label: 'Billability',
