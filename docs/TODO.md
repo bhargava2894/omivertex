@@ -91,6 +91,16 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **AI bulkhead + timeouts** (2026-07-11): all Gemini calls run on a dedicated
+  4-thread executor (queue 8; saturation → fast 503) behind async controllers,
+  with 5s connect / 30s read timeouts. Sized small deliberately — the upstream
+  is the bottleneck; revisit pool size only with observed contention. Chosen
+  over a background job queue (overkill for interactive endpoints).
+
+- **Plan docs are write-once scaffolding** (2026-07-11): implementation plans in
+  `docs/superpowers/plans/` are never updated after their run; specs and
+  `docs/TECHNICAL.md` are the living documentation.
+
 - **The assistant executes nothing server-side** (2026-07-11): write tools
   (`propose_allocation`, `propose_position_fill`) only ever produce a visible
   draft card; execution happens in the browser through the existing endpoints,
