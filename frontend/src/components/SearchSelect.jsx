@@ -144,6 +144,7 @@ export default function SearchSelect({
           }
         }}
       />
+      <span className="search-select-chevron">▼</span>
       {open && (
         <ul className="search-select-menu" role="listbox">
           {isAsync && loading ? (

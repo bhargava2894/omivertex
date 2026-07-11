@@ -581,7 +581,34 @@ td.actions { text-align: right; white-space: nowrap; }
 
 /* ---------- Searchable select (combobox) ---------- */
 .search-select { position: relative; }
-.search-select > input { width: 100%; }
+.search-select > input {
+  width: 100%;
+  padding: 8px 30px 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-foreground);
+  min-height: 38px;
+  font-size: 14px;
+  transition: border-color 0.18s var(--ease), background 0.25s var(--ease);
+}
+.search-select > input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -1px;
+}
+.search-select > input.invalid {
+  border-color: var(--color-destructive);
+}
+.search-select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-muted-fg);
+  pointer-events: none;
+  font-size: 11px;
+  user-select: none;
+}
 .search-select-menu {
   position: absolute;
   z-index: 50;
