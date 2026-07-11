@@ -7,6 +7,7 @@ const SUGGESTIONS = [
   'Which open positions have no bench match?',
   'Who rolls off a project in the next 30 days?',
   'Summarize our biggest skill gaps.',
+  'Who matches our open positions?',
 ];
 
 /** Renders reply text: blank-line paragraphs, "- " bullets, **bold** — no innerHTML. */
@@ -60,8 +61,8 @@ function ReplyText({ text }) {
   return <>{blocks}</>;
 }
 
-export default function AssistantChat({ showToast }) {
-  const [messages, setMessages] = useState([]); // { role: 'user'|'model', content }
+export default function AssistantChat({ showToast, canEdit }) {
+  const [messages, setMessages] = useState([]); // { role, content, action?, actionDone? }
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const logRef = useRef(null);
@@ -74,8 +75,8 @@ export default function AssistantChat({ showToast }) {
     const history = messages;
     setMessages((m) => [...m, { role: 'user', content: question }]);
     try {
-      const { reply } = await api.askAssistant(question, history);
-      setMessages((m) => [...m, { role: 'model', content: reply }]);
+      const { reply, proposedAction } = await api.askAssistant(question, history);
+      setMessages((m) => [...m, { role: 'model', content: reply, action: proposedAction }]);
     } catch (err) {
       setMessages((m) => m.slice(0, -1));
       showToast(err.message, true);
@@ -83,6 +84,38 @@ export default function AssistantChat({ showToast }) {
       setBusy(false);
       setTimeout(() => logRef.current?.scrollTo(0, logRef.current.scrollHeight), 50);
     }
+  };
+
+  const confirmAction = async (index) => {
+    const action = messages[index]?.action;
+    if (!action || busy) return;
+    setBusy(true);
+    try {
+      if (action.type === 'CREATE_ALLOCATION') {
+        await api.create('allocations', {
+          associateId: action.associateId,
+          projectId: action.projectId,
+          billable: action.billable,
+          allocationPercent: action.percent,
+          startDate: action.startDate,
+          endDate: action.endDate,
+        });
+      } else {
+        await api.create(`positions/${action.positionId}/fill`, {
+          associateId: action.associateId,
+        });
+      }
+      setMessages((m) => m.map((msg, i) => (i === index ? { ...msg, actionDone: true } : msg)));
+      showToast(`Done — ${action.summary}`);
+    } catch (err) {
+      showToast(err.message, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const dismissAction = (index) => {
+    setMessages((m) => m.map((msg, i) => (i === index ? { ...msg, action: null } : msg)));
   };
 
   return (
@@ -131,6 +164,54 @@ export default function AssistantChat({ showToast }) {
             >
               {m.role === 'model' && <Icon name="sparkles" size={12} />}{' '}
               <ReplyText text={m.content} />
+              {m.action && (
+                <div
+                  style={{
+                    marginTop: '8px',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--color-primary)',
+                    background: 'var(--color-primary-soft)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                  }}
+                >
+                  <strong style={{ fontSize: '13px' }}>{m.action.summary}</strong>
+                  {(m.action.warnings || []).map((w) => (
+                    <div key={w} style={{ fontSize: '12px', color: 'var(--color-warn)' }}>
+                      ⚠ {w}
+                    </div>
+                  ))}
+                  {m.actionDone ? (
+                    <div style={{ fontSize: '12px', color: 'var(--color-accent)' }}>✓ Done</div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {canEdit && (
+                        <button
+                          className="btn btn-primary btn-sm"
+                          disabled={busy}
+                          onClick={() => confirmAction(i)}
+                        >
+                          Confirm
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        disabled={busy}
+                        onClick={() => dismissAction(i)}
+                      >
+                        Dismiss
+                      </button>
+                      {!canEdit && (
+                        <span className="stat-hint" style={{ alignSelf: 'center' }}>
+                          Requires admin to confirm
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
           {busy && <div className="stat-hint">Thinking…</div>}
