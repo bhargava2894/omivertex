@@ -11,7 +11,13 @@ import java.util.List;
  */
 public interface GeminiClient {
 
-    String reply(String workforceContext, List<Turn> history, String userMessage);
+    /**
+     * One assistant turn with tool support. Read tools run via {@code tools};
+     * a write tool surfaces as {@link AssistantReply#action()} for the caller
+     * to turn into a user-confirmable draft. Never mutates anything itself.
+     */
+    AssistantReply replyWithTools(String workforceContext, List<Turn> history,
+                                  String userMessage, ToolExecutor tools);
 
     /** True when an API key is present; callers use this to pick AI vs fallback paths. */
     boolean isConfigured();
@@ -24,6 +30,17 @@ public interface GeminiClient {
 
     /** One prior chat turn; role is "user" or "model". */
     record Turn(String role, String content) {}
+
+    /** Executes a read-only tool server-side; returns a compact result for the model. */
+    interface ToolExecutor {
+        String execute(String name, java.util.Map<String, Object> args);
+    }
+
+    /** A write tool the model wants to run — name + raw args, pending resolution. */
+    record ActionCall(String name, java.util.Map<String, Object> args) {}
+
+    /** Model output for one turn: prose text and/or a proposed write action. */
+    record AssistantReply(String text, ActionCall action) {}
 
     /** One taxonomy entry offered to the model for matching. */
     record SkillOption(Long skillId, String name) {}

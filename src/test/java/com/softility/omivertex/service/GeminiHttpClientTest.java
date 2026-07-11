@@ -14,7 +14,7 @@ class GeminiHttpClientTest {
     @Test
     void withoutApiKey_failsClosedWithClearMessage() {
         GeminiHttpClient client = new GeminiHttpClient("", "gemini-2.5-flash");
-        assertThatThrownBy(() -> client.reply("context", List.of(), "who is on the bench?"))
+        assertThatThrownBy(() -> client.replyWithTools("context", List.of(), "who is on the bench?", null))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("not configured");
     }

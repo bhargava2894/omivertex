@@ -2,6 +2,8 @@ package com.softility.omivertex.api;
 
 import com.softility.omivertex.domain.WorkMode;
 import com.softility.omivertex.service.GeminiClient;
+
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -11,6 +13,7 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -26,8 +29,8 @@ class AssistantApiTest extends ApiTestBase {
     @Test
     void chat_answersWithWorkforceContext() throws Exception {
         associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE); // on bench
-        when(geminiClient.reply(anyString(), anyList(), anyString()))
-                .thenReturn("Priya Sharma is on the bench.");
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenReturn(new GeminiClient.AssistantReply("Priya Sharma is on the bench.", null));
 
         mockMvc.perform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -38,13 +41,14 @@ class AssistantApiTest extends ApiTestBase {
 
         // the live roster went along as context
         ArgumentCaptor<String> context = ArgumentCaptor.forClass(String.class);
-        verify(geminiClient).reply(context.capture(), anyList(), anyString());
+        verify(geminiClient).replyWithTools(context.capture(), anyList(), anyString(), any());
         assertThat(context.getValue()).contains("Priya Sharma");
     }
 
     @Test
     void chat_viewerAllowed_associateForbidden() throws Exception {
-        when(geminiClient.reply(anyString(), anyList(), anyString())).thenReturn("ok");
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenReturn(new GeminiClient.AssistantReply("ok", null));
         mockMvc.perform(post("/api/v1/assistant/chat")
                         .with(SecurityMockMvcRequestPostProcessors.user("viewer").roles("VIEWER"))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -76,7 +80,8 @@ class AssistantApiTest extends ApiTestBase {
     @Test
     @SuppressWarnings("unchecked")
     void chat_capsHistoryToLast20Turns() throws Exception {
-        when(geminiClient.reply(anyString(), anyList(), anyString())).thenReturn("ok");
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenReturn(new GeminiClient.AssistantReply("ok", null));
         StringBuilder history = new StringBuilder("[");
         for (int i = 0; i < 30; i++) {
             if (i > 0) {
@@ -93,8 +98,123 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<List<GeminiClient.Turn>> turns = ArgumentCaptor.forClass(List.class);
-        verify(geminiClient).reply(any(), turns.capture(), any());
+        verify(geminiClient).replyWithTools(any(), turns.capture(), any(), any());
         assertThat(turns.getValue()).hasSize(20);
         assertThat(turns.getValue().get(0).content()).isEqualTo("turn 10"); // oldest dropped
+    }
+
+    @Test
+    void chat_draftsAllocation_fromToolCall() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_allocation",
+                                Map.of("associateName", "Priya Sharma", "projectName", "Storefront Revamp",
+                                        "percent", 50, "billable", true))));
+
+        mockMvc.perform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"allocate priya to storefront at 50%","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction.type").value("CREATE_ALLOCATION"))
+                .andExpect(jsonPath("$.proposedAction.associateId").value(priya.getId()))
+                .andExpect(jsonPath("$.proposedAction.projectId").value(proj.getId()))
+                .andExpect(jsonPath("$.proposedAction.percent").value(50))
+                .andExpect(jsonPath("$.proposedAction.billable").value(true))
+                .andExpect(jsonPath("$.proposedAction.warnings").isEmpty())
+                .andExpect(jsonPath("$.reply").isNotEmpty());
+    }
+
+    @Test
+    void chat_ambiguousAssociate_asksInsteadOfDrafting() throws Exception {
+        var acme = client("Acme Corp");
+        project("ACM-100", "Storefront Revamp", acme);
+        associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        associate("Priya Verma", "priya.v@softility.com", WorkMode.ONSHORE);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_allocation",
+                                Map.of("associateName", "Priya", "projectName", "Storefront Revamp"))));
+
+        mockMvc.perform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"allocate priya to storefront","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction").doesNotExist())
+                .andExpect(jsonPath("$.reply", containsString("Priya Sharma")))
+                .andExpect(jsonPath("$.reply", containsString("Priya Verma")));
+    }
+
+    @Test
+    void chat_overCapacityDraft_carriesWarning() throws Exception {
+        var acme = client("Acme Corp");
+        project("ACM-100", "Storefront Revamp", acme);
+        var other = project("ACM-200", "Data Platform", acme);
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        allocation(priya, other, true);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_allocation",
+                                Map.of("associateName", "Priya Sharma", "projectName", "Storefront Revamp",
+                                        "percent", 50))));
+
+        mockMvc.perform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"add priya to storefront at 50%","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction.warnings[0]", containsString("100%")));
+    }
+
+    @Test
+    void chat_draftsPositionFill() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var pos = new com.softility.omivertex.domain.OpenPosition();
+        pos.setTitle("Java Dev");
+        pos.setProject(proj);
+        openPositionRepository.save(pos);
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_position_fill",
+                                Map.of("positionTitle", "Java Dev", "associateName", "Priya Sharma"))));
+
+        mockMvc.perform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"fill the java dev seat with priya","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction.type").value("FILL_POSITION"))
+                .andExpect(jsonPath("$.proposedAction.positionId").value(pos.getId()))
+                .andExpect(jsonPath("$.proposedAction.associateId").value(priya.getId()));
+    }
+
+    @Test
+    void chat_readTool_executesPositionMatches() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var pos = new com.softility.omivertex.domain.OpenPosition();
+        pos.setTitle("Java Dev");
+        pos.setProject(proj);
+        openPositionRepository.save(pos);
+        associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE); // on bench
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    String result = ex.execute("get_position_matches", Map.of("positionTitle", "Java Dev"));
+                    return new GeminiClient.AssistantReply("Matches: " + result, null);
+                });
+
+        mockMvc.perform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"who matches the java dev seat?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Priya Sharma")));
     }
 }
