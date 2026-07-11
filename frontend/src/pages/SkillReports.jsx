@@ -4,9 +4,17 @@ import { useLoad } from '../hooks.js';
 import Icon from '../components/Icon.jsx';
 import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
+import { HBarChart } from '../components/charts.jsx';
 import { PROF_COLORS, PROF_LABELS, PROF_TONES } from '../proficiency.js';
 
 const MAX_TOOLTIP_NAMES = 8;
+
+/** Mirrors the Dashboard panel's gap tones — keep the two views consistent. */
+function gapBadge(gap) {
+  if (gap > 0) return { tone: 'red', label: `short ${gap}` };
+  if (gap === 0) return { tone: 'amber', label: 'tight' };
+  return { tone: 'green', label: `+${-gap} spare` };
+}
 
 function SkillBar({ skillName, counts, people, onDrillDown }) {
   const [hover, setHover] = useState(null); // { prof, leftPct }
@@ -204,6 +212,7 @@ function CategoryPanel({ category, skills, onDrillDown }) {
 export default function SkillReports() {
   const { data: reports, loading } = useLoad(() => api.list('reports/skills'), []);
   const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
+  const { data: gaps } = useLoad(() => api.list('reports/skill-gaps'), []);
   const [drill, setDrill] = useState(null); // { skill, prof, people }
 
   const onDrillDown = (skill, prof, people) => setDrill({ skill, prof, people });
@@ -246,6 +255,52 @@ export default function SkillReports() {
 
   return (
     <div style={{ display: 'grid', gap: '24px' }}>
+      {gaps && gaps.length > 0 && (
+        <div className="card" style={{ padding: '24px' }}>
+          <h3
+            style={{
+              margin: '0 0 6px 0',
+              fontSize: '16px',
+              fontWeight: '700',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Skill Gaps — open demand vs supply
+          </h3>
+          <p className="stat-hint" style={{ marginTop: 0 }}>
+            Every skill with open demand or rated associates. Gap = open seats minus bench supply at
+            the required proficiency.
+          </p>
+          {gaps.filter((g) => g.gap > 0).length > 0 && (
+            <HBarChart
+              rows={gaps
+                .filter((g) => g.gap > 0)
+                .map((g) => ({ label: g.skillName, value: g.gap }))}
+              color="var(--chart-1)"
+              unit=" short"
+            />
+          )}
+          <div style={{ marginTop: '12px' }}>
+            {gaps.map((g) => {
+              const badge = gapBadge(g.gap);
+              return (
+                <div className="radar-row" key={g.skillId}>
+                  <div>
+                    <div className="cell-main">{g.skillName}</div>
+                    <div className="cell-sub">
+                      {g.category} · {g.demand} open · {g.benchSupply} on bench · {g.totalSupply}{' '}
+                      total
+                    </div>
+                  </div>
+                  <Badge tone={badge.tone} label={badge.label} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {!reports || reports.length === 0 ? (
         <div className="card">
           <div className="empty-state">
