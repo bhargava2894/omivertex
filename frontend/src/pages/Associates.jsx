@@ -404,7 +404,7 @@ export default function Associates({ showToast, canEdit }) {
                 <div>
                   <div className="cell-main">{r.currentProject}</div>
                   {(r.currentProjectStartDate || r.currentProjectEndDate) && (
-                    <div className="cell-sub">
+                    <div className="cell-sub" title="Allocation start and end date">
                       {r.currentProjectStartDate || '—'} → {r.currentProjectEndDate || '—'}
                     </div>
                   )}
