@@ -85,6 +85,16 @@ public class GeminiHttpClient implements GeminiClient {
         }
     }
 
+    @Override
+    public boolean isConfigured() {
+        return !apiKey.isEmpty();
+    }
+
+    @Override
+    public ResumeExtraction extractResume(String resumeText, List<SkillOption> taxonomy) {
+        throw new UnsupportedOperationException("implemented in the next commit");
+    }
+
     @SuppressWarnings("unchecked")
     private String extractText(Map<String, Object> response) {
         try {
