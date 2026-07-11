@@ -43,3 +43,4 @@ graphify-out/
 
 # Local-only secrets (Spring optional config import)
 application-local.properties
+.superpowers/
