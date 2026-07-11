@@ -57,8 +57,12 @@ public class GeminiHttpClient implements GeminiClient {
     }
 
     /** Max read-tool round-trips per turn before we force a final answer. */
-    static final int MAX_TOOL_ROUNDS = 2;
+    static final int MAX_TOOL_ROUNDS = 3;
     static final String READ_TOOL_MATCHES = "get_position_matches";
+
+    /** Tools executed server-side and fed back to the model (write tools return as drafts). */
+    static final Set<String> READ_TOOLS = Set.of(READ_TOOL_MATCHES,
+            "search_associates", "get_associate_detail", "list_rolloffs", "list_open_positions");
 
     /** The three assistant tools. Write tools are drafts only — the server never executes them. */
     private static final List<Map<String, Object>> FUNCTION_DECLARATIONS = List.of(
@@ -89,7 +93,37 @@ public class GeminiHttpClient implements GeminiClient {
                             + " Use when asked who matches or could fill a position.",
                     "parameters", Map.of("type", "object",
                             "properties", Map.of("positionTitle", Map.of("type", "string")),
-                            "required", List.of("positionTitle"))));
+                            "required", List.of("positionTitle"))),
+            Map.of("name", "search_associates",
+                    "description", "Look up associates by name, skill, proficiency, or bench status."
+                            + " Always use this before answering questions about specific people or"
+                            + " who has a skill / is available.",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of(
+                                    "name", Map.of("type", "string",
+                                            "description", "partial or full name"),
+                                    "skill", Map.of("type", "string",
+                                            "description", "skill name to filter by"),
+                                    "minProficiency", Map.of("type", "string",
+                                            "description", "NOVICE, FOUNDATIONAL, INTERMEDIATE,"
+                                                    + " FUNCTIONAL_USER, ADVANCE or MASTERY"),
+                                    "benchOnly", Map.of("type", "boolean",
+                                            "description", "true = only unallocated associates")))),
+            Map.of("name", "get_associate_detail",
+                    "description", "Full profile of one associate: skills with proficiency, current"
+                            + " allocations, bench days, upcoming exit.",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of("name", Map.of("type", "string")),
+                            "required", List.of("name"))),
+            Map.of("name", "list_rolloffs",
+                    "description", "Current allocations ending soon — who rolls off which project"
+                            + " and when.",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of("withinDays", Map.of("type", "integer",
+                                    "description", "look-ahead window in days; default 30")))),
+            Map.of("name", "list_open_positions",
+                    "description", "All open positions with project, client, and required skills.",
+                    "parameters", Map.of("type", "object", "properties", Map.of())));
 
     @Override
     public AssistantReply replyWithTools(String workforceContext, List<Turn> history,
@@ -111,7 +145,7 @@ public class GeminiHttpClient implements GeminiClient {
             @SuppressWarnings("unchecked")
             Map<String, Object> args = functionCall.get("args") instanceof Map<?, ?> m
                     ? (Map<String, Object>) m : Map.of();
-            if (READ_TOOL_MATCHES.equals(name) && tools != null && round < MAX_TOOL_ROUNDS) {
+            if (READ_TOOLS.contains(name) && tools != null && round < MAX_TOOL_ROUNDS) {
                 String result = tools.execute(name, args);
                 contents.add(Map.of("role", "model",
                         "parts", List.of(Map.of("functionCall", functionCall))));
