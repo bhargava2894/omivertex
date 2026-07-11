@@ -171,7 +171,8 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/associates/{id}/skills` | PUT (idempotent rated-skills replace; ADMIN) | — |
 | `/associates/{id}/certifications` | GET, POST (ADMIN) | — |
 | `/associates/{id}/resume` | GET (download), POST (upload/replace; ADMIN), DELETE (remove; ADMIN) | — |
-| `/resumes/parse` | POST multipart `file` (stateless suggestion; ADMIN) | — |
+| `/resumes/parse` | POST multipart `file` (stateless suggestions; ADMIN; AI extraction with per-skill `proficiency`+`evidence` and `experienceSummary` when Gemini is configured, keyword fallback otherwise; `source: AI\|KEYWORD`) | — |
+| `/me/resumes/parse` | POST multipart `file` (same stateless parse for the self-service propose flow; ASSOCIATE) | — |
 | `/certifications` | GET (org-wide, alphabetical soonest expiry first) | `?q=` (search by name, authority, associate name) |
 | `/certifications/{id}` | DELETE (ADMIN) | — |
 | `/reports/skills` | GET (proficiency distribution tree) | — |

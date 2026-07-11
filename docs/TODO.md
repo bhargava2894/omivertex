@@ -91,6 +91,13 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **AI resume parsing fails open to keyword matching** (2026-07-11): any Gemini
+  failure (no key, upstream error, malformed JSON) silently degrades to the
+  word-boundary matcher — parsing never breaks an environment. AI input is capped
+  at 20k chars; unknown skill ids are dropped, unknown proficiencies degrade to
+  INTERMEDIATE. The LLM only drafts: all writes still flow through
+  replace-skills / propose+approve.
+
 - **Skill-gap report reuses `DashboardSummaryResponse.SkillGap`** (2026-07-11): one DTO
   for one concept — `/reports/skill-gaps` and the dashboard panel share `SkillGapService`
   math and shape. Positions carrying only the legacy free-text `requiredSkill` (no
