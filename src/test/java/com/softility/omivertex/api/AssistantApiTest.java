@@ -32,7 +32,7 @@ class AssistantApiTest extends ApiTestBase {
         when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
                 .thenReturn(new GeminiClient.AssistantReply("Priya Sharma is on the bench.", null));
 
-        mockMvc.perform(post("/api/v1/assistant/chat")
+        asyncPerform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"message":"who is on the bench?","history":[]}"""))
@@ -49,7 +49,7 @@ class AssistantApiTest extends ApiTestBase {
     void chat_viewerAllowed_associateForbidden() throws Exception {
         when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
                 .thenReturn(new GeminiClient.AssistantReply("ok", null));
-        mockMvc.perform(post("/api/v1/assistant/chat")
+        asyncPerform(post("/api/v1/assistant/chat")
                         .with(SecurityMockMvcRequestPostProcessors.user("viewer").roles("VIEWER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -91,7 +91,7 @@ class AssistantApiTest extends ApiTestBase {
                     {"role":"user","content":"turn %d"}""".formatted(i));
         }
         history.append("]");
-        mockMvc.perform(post("/api/v1/assistant/chat")
+        asyncPerform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"message":"hello","history":%s}""".formatted(history)))
@@ -114,7 +114,7 @@ class AssistantApiTest extends ApiTestBase {
                                 Map.of("associateName", "Priya Sharma", "projectName", "Storefront Revamp",
                                         "percent", 50, "billable", true))));
 
-        mockMvc.perform(post("/api/v1/assistant/chat")
+        asyncPerform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"message":"allocate priya to storefront at 50%","history":[]}"""))
@@ -139,7 +139,7 @@ class AssistantApiTest extends ApiTestBase {
                         new GeminiClient.ActionCall("propose_allocation",
                                 Map.of("associateName", "Priya", "projectName", "Storefront Revamp"))));
 
-        mockMvc.perform(post("/api/v1/assistant/chat")
+        asyncPerform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"message":"allocate priya to storefront","history":[]}"""))
@@ -162,7 +162,7 @@ class AssistantApiTest extends ApiTestBase {
                                 Map.of("associateName", "Priya Sharma", "projectName", "Storefront Revamp",
                                         "percent", 50))));
 
-        mockMvc.perform(post("/api/v1/assistant/chat")
+        asyncPerform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"message":"add priya to storefront at 50%","history":[]}"""))
@@ -184,7 +184,7 @@ class AssistantApiTest extends ApiTestBase {
                         new GeminiClient.ActionCall("propose_position_fill",
                                 Map.of("positionTitle", "Java Dev", "associateName", "Priya Sharma"))));
 
-        mockMvc.perform(post("/api/v1/assistant/chat")
+        asyncPerform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"message":"fill the java dev seat with priya","history":[]}"""))
@@ -210,7 +210,7 @@ class AssistantApiTest extends ApiTestBase {
                     return new GeminiClient.AssistantReply("Matches: " + result, null);
                 });
 
-        mockMvc.perform(post("/api/v1/assistant/chat")
+        asyncPerform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"message":"who matches the java dev seat?","history":[]}"""))

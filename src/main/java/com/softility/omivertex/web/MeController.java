@@ -2,6 +2,7 @@ package com.softility.omivertex.web;
 
 import com.softility.omivertex.domain.AppUser;
 import com.softility.omivertex.repository.AppUserRepository;
+import com.softility.omivertex.service.AiExecutor;
 import com.softility.omivertex.service.AssociateService;
 import com.softility.omivertex.service.ProfileChangeService;
 import com.softility.omivertex.service.ResumeService;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /** The ASSOCIATE-role self-service surface: own profile and change proposals. */
 @RestController
@@ -33,13 +35,16 @@ public class MeController {
     private final AssociateService associateService;
     private final ProfileChangeService profileChangeService;
     private final ResumeService resumeService;
+    private final AiExecutor aiExecutor;
 
     public MeController(AppUserRepository appUsers, AssociateService associateService,
-                        ProfileChangeService profileChangeService, ResumeService resumeService) {
+                        ProfileChangeService profileChangeService, ResumeService resumeService,
+                        AiExecutor aiExecutor) {
         this.appUsers = appUsers;
         this.associateService = associateService;
         this.profileChangeService = profileChangeService;
         this.resumeService = resumeService;
+        this.aiExecutor = aiExecutor;
     }
 
     @GetMapping("/profile")
@@ -63,8 +68,8 @@ public class MeController {
 
     /** Stateless AI/keyword skill suggestions from a resume — same parse the admin flow uses. */
     @PostMapping("/resumes/parse")
-    public ParsedResumeResponse parseResume(@RequestParam("file") MultipartFile file) {
-        return resumeService.parse(file);
+    public CompletableFuture<ParsedResumeResponse> parseResume(@RequestParam("file") MultipartFile file) {
+        return aiExecutor.submit(() -> resumeService.parse(file));
     }
 
     @GetMapping("/profile-changes")

@@ -63,7 +63,7 @@ class ResumeApiTest extends ApiTestBase {
                 pdfBytes
         );
 
-        mockMvc.perform(multipart("/api/v1/resumes/parse").file(file))
+        asyncPerform(multipart("/api/v1/resumes/parse").file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.textExtracted").value(true))
                 .andExpect(jsonPath("$.suggestedSkills", hasSize(2)))
@@ -80,7 +80,7 @@ class ResumeApiTest extends ApiTestBase {
                 new byte[]{1, 2, 3, 4}
         );
 
-        mockMvc.perform(multipart("/api/v1/resumes/parse").file(file))
+        asyncPerform(multipart("/api/v1/resumes/parse").file(file))
                 .andExpect(status().isBadRequest());
     }
 
@@ -229,7 +229,7 @@ class ResumeApiTest extends ApiTestBase {
                                 "led a Java microservices team")),
                         "8 years of experience, most recently a senior backend engineer."));
 
-        mockMvc.perform(multipart("/api/v1/resumes/parse")
+        asyncPerform(multipart("/api/v1/resumes/parse")
                         .file(new MockMultipartFile("file", "resume.pdf", "application/pdf",
                                 createPdf("Java expert"))))
                 .andExpect(status().isOk())
@@ -249,7 +249,7 @@ class ResumeApiTest extends ApiTestBase {
         when(geminiClient.extractResume(anyString(), anyList()))
                 .thenThrow(new RuntimeException("upstream 500"));
 
-        mockMvc.perform(multipart("/api/v1/resumes/parse")
+        asyncPerform(multipart("/api/v1/resumes/parse")
                         .file(new MockMultipartFile("file", "resume.pdf", "application/pdf",
                                 createPdf("Java expert"))))
                 .andExpect(status().isOk())
@@ -262,7 +262,7 @@ class ResumeApiTest extends ApiTestBase {
     void parseMyResume_associateAllowed_viaMeEndpoint() throws Exception {
         skill("Backend", "Java");
         // not configured -> keyword path; the point is the ASSOCIATE-role route works
-        mockMvc.perform(multipart("/api/v1/me/resumes/parse")
+        asyncPerform(multipart("/api/v1/me/resumes/parse")
                         .file(new MockMultipartFile("file", "resume.pdf", "application/pdf",
                                 createPdf("Java expert")))
                         .with(SecurityMockMvcRequestPostProcessors.user("a@softility.com").roles("ASSOCIATE")))

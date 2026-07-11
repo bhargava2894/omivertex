@@ -7,6 +7,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.RequestBuilder;
+import org.springframework.test.web.servlet.ResultActions;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 
 import java.time.LocalDate;
 
@@ -47,6 +53,14 @@ public abstract class ApiTestBase {
         clientRepository.deleteAll();
         skillRepository.deleteAll();
         skillCategoryRepository.deleteAll();
+    }
+
+    /** Two-step MockMvc for async (CompletableFuture) endpoints. */
+    protected ResultActions asyncPerform(RequestBuilder requestBuilder) throws Exception {
+        MvcResult started = mockMvc.perform(requestBuilder)
+                .andExpect(request().asyncStarted())
+                .andReturn();
+        return mockMvc.perform(asyncDispatch(started));
     }
 
     protected Skill skill(String categoryName, String skillName) {
