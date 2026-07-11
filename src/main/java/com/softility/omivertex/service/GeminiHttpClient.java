@@ -8,9 +8,11 @@ import com.softility.omivertex.web.error.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,12 +36,20 @@ public class GeminiHttpClient implements GeminiClient {
 
     private final String apiKey;
     private final String model;
-    private final RestClient rest = RestClient.create();
+    private final RestClient rest;
 
-    public GeminiHttpClient(@Value("${omivertex.assistant.gemini.api-key:}") String apiKey,
-                            @Value("${omivertex.assistant.gemini.model:gemini-3.1-flash-lite}") String model) {
+    public GeminiHttpClient(
+            @Value("${omivertex.assistant.gemini.api-key:}") String apiKey,
+            @Value("${omivertex.assistant.gemini.model:gemini-3.1-flash-lite}") String model,
+            @Value("${omivertex.assistant.gemini.connect-timeout:5s}") Duration connectTimeout,
+            @Value("${omivertex.assistant.gemini.read-timeout:30s}") Duration readTimeout) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = model;
+        // Bounded I/O: a hung upstream call must never hold an ai-* thread forever.
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout((int) connectTimeout.toMillis());
+        requestFactory.setReadTimeout((int) readTimeout.toMillis());
+        this.rest = RestClient.builder().requestFactory(requestFactory).build();
         if (this.apiKey.isEmpty()) {
             log.warn("omivertex.assistant.gemini.api-key is not set — the AI assistant is disabled "
                     + "(the endpoint will return 400). Set it to enable the dashboard assistant.");

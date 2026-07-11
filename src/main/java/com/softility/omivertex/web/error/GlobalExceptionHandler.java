@@ -59,4 +59,10 @@ public class GlobalExceptionHandler {
     public ApiError handleIntegrity(DataIntegrityViolationException ex) {
         return ApiError.of("Operation conflicts with existing data");
     }
+
+    @ExceptionHandler(ServiceUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ApiError handleServiceUnavailable(ServiceUnavailableException ex) {
+        return ApiError.of(ex.getMessage());
+    }
 }

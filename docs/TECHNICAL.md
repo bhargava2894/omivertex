@@ -202,6 +202,14 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 - 403 viewer attempting a write ("Your account is read-only")
 - 404 unknown id
 - 409 uniqueness, capacity, duplicate-allocation, protective-delete conflicts
+- 503 AI executor saturated (`ServiceUnavailableException`) — retry shortly
+
+**AI execution model:** the three AI endpoints (`/assistant/chat`,
+`/resumes/parse`, `/me/resumes/parse`) run asynchronously on a dedicated
+4-thread bulkhead (`AiExecutor`, queue 8) so Gemini latency never occupies
+servlet threads; the Gemini HTTP client has 5s connect / 30s read timeouts
+(`omivertex.assistant.gemini.connect-timeout` / `read-timeout`). Response
+contracts are unchanged.
 
 **`/dashboard/summary` response shape** (all computed live; every KPI counts
 **ACTIVE associates only** — INACTIVE leavers and their lingering allocations are

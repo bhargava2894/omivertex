@@ -1,6 +1,7 @@
 package com.softility.omivertex.web;
 
 import com.softility.omivertex.domain.Resume;
+import com.softility.omivertex.service.AiExecutor;
 import com.softility.omivertex.service.ResumeService;
 import com.softility.omivertex.web.dto.ResumeDtos.ParsedResumeResponse;
 import com.softility.omivertex.web.dto.ResumeDtos.ResumeMetaResponse;
@@ -11,19 +12,24 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.concurrent.CompletableFuture;
+
 @RestController
 @RequestMapping("/api/v1")
 public class ResumeController {
 
     private final ResumeService resumeService;
+    private final AiExecutor aiExecutor;
 
-    public ResumeController(ResumeService resumeService) {
+    public ResumeController(ResumeService resumeService, AiExecutor aiExecutor) {
         this.resumeService = resumeService;
+        this.aiExecutor = aiExecutor;
     }
 
+    /** Async on the AI bulkhead: the servlet thread is freed while Gemini responds. */
     @PostMapping("/resumes/parse")
-    public ParsedResumeResponse parseResume(@RequestParam("file") MultipartFile file) {
-        return resumeService.parse(file);
+    public CompletableFuture<ParsedResumeResponse> parseResume(@RequestParam("file") MultipartFile file) {
+        return aiExecutor.submit(() -> resumeService.parse(file));
     }
 
     @PostMapping("/associates/{id}/resume")
