@@ -91,6 +91,15 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **The assistant executes nothing server-side** (2026-07-11): write tools
+  (`propose_allocation`, `propose_position_fill`) only ever produce a visible
+  draft card; execution happens in the browser through the existing endpoints,
+  so role checks, the ≤100% capacity guard, and audit fire exactly as manual
+  edits — and prompt injection in workforce data can at worst draft a card the
+  user must read and confirm. Name resolution requires a unique ACTIVE match
+  (exact-then-contains) or the assistant asks back; the read tool
+  (`get_position_matches`) is capped at 2 rounds per turn.
+
 - **AI resume parsing fails open to keyword matching** (2026-07-11): any Gemini
   failure (no key, upstream error, malformed JSON) silently degrades to the
   word-boundary matcher — parsing never breaks an environment. AI input is capped
