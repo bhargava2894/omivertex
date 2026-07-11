@@ -26,13 +26,22 @@ does today.
 
 ---
 
-## Feature 1 — Skill-gap heatmap
+## Feature 1 — Skill-gap heatmap (full report)
+
+> **Already built:** the Dashboard summary already computes a capped (20-row,
+> demand-only) skill-gap list with this exact math (`DashboardService`,
+> `skillGaps` panel on `Dashboard.jsx`, landed 2026-07-10). This feature is the
+> **full-report extension** of that panel; the gap math below restates the
+> existing rules and must stay consistent with them (one source of truth —
+> extract the shared computation rather than duplicating it).
 
 ### Backend
 
 - New `SkillGapService` + `GET /api/reports/skill-gaps`, readable by ADMIN and
-  VIEWER (same as other reports).
-- One row per skill that has open demand **or** at least one rated associate:
+  VIEWER (same as other reports). `DashboardService` delegates its capped
+  `skillGaps` panel to the same computation (no second copy of the math).
+- Unlike the dashboard panel: **no row cap**, and includes surplus rows —
+  one row per skill that has open demand **or** at least one rated associate:
   - `demandSeats` — count of OPEN positions listing the skill as a **required**
     `PositionSkill`.
   - `benchCount` — active associates with no current allocation whose proficiency

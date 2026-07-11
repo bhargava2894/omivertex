@@ -101,6 +101,21 @@ export const api = {
     }
     return res.json();
   },
+  parseMyResume: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/me/resumes/parse`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const error = new Error(body.message || 'Parsing failed');
+      error.status = res.status;
+      throw error;
+    }
+    return res.json();
+  },
   uploadResume: async (associateId, file) => {
     const formData = new FormData();
     formData.append('file', file);

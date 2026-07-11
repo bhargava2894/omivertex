@@ -4,11 +4,15 @@ import com.softility.omivertex.domain.Resume;
 import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.ResumeRepository;
+import com.softility.omivertex.repository.SkillRepository;
 import com.softility.omivertex.web.dto.ResumeDtos.ParsedResumeResponse;
 import com.softility.omivertex.web.dto.ResumeDtos.ResumeMetaResponse;
 import com.softility.omivertex.web.dto.ResumeDtos.SuggestedSkill;
+import com.softility.omivertex.web.dto.ResumeDtos.SuggestionSource;
 import com.softility.omivertex.web.error.BadRequestException;
 import com.softility.omivertex.web.error.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -23,22 +28,33 @@ import java.util.stream.Collectors;
 @Transactional
 public class ResumeService {
 
+    /** AI extraction input cap — keeps prompts bounded for very long resumes. */
+    static final int MAX_AI_RESUME_CHARS = 20_000;
+
+    private static final Logger log = LoggerFactory.getLogger(ResumeService.class);
+
     private final ResumeRepository resumeRepository;
     private final AssociateRepository associateRepository;
     private final ResumeTextExtractor textExtractor;
     private final ResumeSkillMatcher skillMatcher;
     private final AuditService auditService;
+    private final GeminiClient geminiClient;
+    private final SkillRepository skillRepository;
 
     public ResumeService(ResumeRepository resumeRepository,
                          AssociateRepository associateRepository,
                          ResumeTextExtractor textExtractor,
                          ResumeSkillMatcher skillMatcher,
-                         AuditService auditService) {
+                         AuditService auditService,
+                         GeminiClient geminiClient,
+                         SkillRepository skillRepository) {
         this.resumeRepository = resumeRepository;
         this.associateRepository = associateRepository;
         this.textExtractor = textExtractor;
         this.skillMatcher = skillMatcher;
         this.auditService = auditService;
+        this.geminiClient = geminiClient;
+        this.skillRepository = skillRepository;
     }
 
     @Transactional(readOnly = true)
@@ -48,14 +64,42 @@ public class ResumeService {
             byte[] bytes = file.getBytes();
             String text = textExtractor.extractText(bytes, file.getContentType(), file.getOriginalFilename());
             boolean textExtracted = text != null && !text.isBlank();
+
+            if (textExtracted && geminiClient.isConfigured()) {
+                try {
+                    return aiParse(text);
+                } catch (Exception e) {
+                    log.warn("AI resume extraction failed — falling back to keyword matching", e);
+                }
+            }
+
             List<Skill> matched = skillMatcher.matchSkills(text);
             List<SuggestedSkill> suggestions = matched.stream()
-                    .map(s -> new SuggestedSkill(s.getId(), s.getName(), s.getCategory().getName()))
+                    .map(s -> new SuggestedSkill(s.getId(), s.getName(), s.getCategory().getName(), null, null))
                     .collect(Collectors.toList());
-            return new ParsedResumeResponse(suggestions, textExtracted);
+            return new ParsedResumeResponse(suggestions, textExtracted, null, SuggestionSource.KEYWORD);
         } catch (IOException e) {
             throw new BadRequestException("Failed to read upload file: " + e.getMessage());
         }
+    }
+
+    private ParsedResumeResponse aiParse(String text) {
+        Map<Long, Skill> byId = skillRepository.findAll().stream()
+                .collect(Collectors.toMap(Skill::getId, s -> s));
+        List<GeminiClient.SkillOption> taxonomy = byId.values().stream()
+                .map(s -> new GeminiClient.SkillOption(s.getId(), s.getName()))
+                .toList();
+        String capped = text.length() > MAX_AI_RESUME_CHARS ? text.substring(0, MAX_AI_RESUME_CHARS) : text;
+        GeminiClient.ResumeExtraction extraction = geminiClient.extractResume(capped, taxonomy);
+        List<SuggestedSkill> suggestions = extraction.skills().stream()
+                .filter(s -> byId.containsKey(s.skillId()))
+                .map(s -> {
+                    Skill skill = byId.get(s.skillId());
+                    return new SuggestedSkill(skill.getId(), skill.getName(),
+                            skill.getCategory().getName(), s.proficiency(), s.evidence());
+                })
+                .toList();
+        return new ParsedResumeResponse(suggestions, true, extraction.experienceSummary(), SuggestionSource.AI);
     }
 
     public ResumeMetaResponse store(Long associateId, MultipartFile file) {

@@ -171,16 +171,18 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/associates/{id}/skills` | PUT (idempotent rated-skills replace; ADMIN) | — |
 | `/associates/{id}/certifications` | GET, POST (ADMIN) | — |
 | `/associates/{id}/resume` | GET (download), POST (upload/replace; ADMIN), DELETE (remove; ADMIN) | — |
-| `/resumes/parse` | POST multipart `file` (stateless suggestion; ADMIN) | — |
+| `/resumes/parse` | POST multipart `file` (stateless suggestions; ADMIN; AI extraction with per-skill `proficiency`+`evidence` and `experienceSummary` when Gemini is configured, keyword fallback otherwise; `source: AI\|KEYWORD`) | — |
+| `/me/resumes/parse` | POST multipart `file` (same stateless parse for the self-service propose flow; ASSOCIATE) | — |
 | `/certifications` | GET (org-wide, alphabetical soonest expiry first) | `?q=` (search by name, authority, associate name) |
 | `/certifications/{id}` | DELETE (ADMIN) | — |
 | `/reports/skills` | GET (proficiency distribution tree) | — |
+| `/reports/skill-gaps` | GET (full supply-vs-demand report; one row per skill with open required demand **or** ≥1 rated associate; fields `skillId`, `skillName`, `category`, `demand` = open seats requiring the skill, `benchSupply`/`totalSupply` = ACTIVE associates at/above the lowest demanded min-proficiency (any proficiency when demand is 0), `gap` = demand − benchSupply, positive = shortage; sorted worst gap first, uncapped; the dashboard `skillGaps` panel is the same math via `SkillGapService`, capped at 20 demand-only rows) | — |
 | `/dashboard/summary` | GET | — |
 | `/data/import` | POST multipart `file` (.xlsx/.csv) | `?ignoreNovice=` |
 | `/data/export` | GET | `?format=xlsx|csv|pdf|docx` |
 | `/auth` | POST `/login`, POST `/google`, POST `/logout`, GET `/me` | — |
 | `/admin/access-requests` | GET, POST `/{id}/approve`, POST `/{id}/reject` (ADMIN) | — |
-| `/assistant/chat` | POST (natural-language Q&A over live workforce context via Gemini; ADMIN+VIEWER) | — |
+| `/assistant/chat` | POST (natural-language Q&A over live workforce context via Gemini; ADMIN+VIEWER; may return `proposedAction {type: CREATE_ALLOCATION\|FILL_POSITION, resolved ids/names, percent, billable, dates, summary, warnings[]}` — the endpoint itself never mutates; the UI confirms via `POST /allocations` or `POST /positions/{id}/fill` under the user's own session) | — |
 | `/me/profile` | GET (own profile; ASSOCIATE) | — |
 | `/me/profile-changes` | GET (own change requests list; ASSOCIATE) | — |
 | `/me/profile-changes/skills` | POST (submit proposed skills; ASSOCIATE) | — |

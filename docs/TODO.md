@@ -91,6 +91,28 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **The assistant executes nothing server-side** (2026-07-11): write tools
+  (`propose_allocation`, `propose_position_fill`) only ever produce a visible
+  draft card; execution happens in the browser through the existing endpoints,
+  so role checks, the ≤100% capacity guard, and audit fire exactly as manual
+  edits — and prompt injection in workforce data can at worst draft a card the
+  user must read and confirm. Name resolution requires a unique ACTIVE match
+  (exact-then-contains) or the assistant asks back; the read tool
+  (`get_position_matches`) is capped at 2 rounds per turn.
+
+- **AI resume parsing fails open to keyword matching** (2026-07-11): any Gemini
+  failure (no key, upstream error, malformed JSON) silently degrades to the
+  word-boundary matcher — parsing never breaks an environment. AI input is capped
+  at 20k chars; unknown skill ids are dropped, unknown proficiencies degrade to
+  INTERMEDIATE. The LLM only drafts: all writes still flow through
+  replace-skills / propose+approve.
+
+- **Skill-gap report reuses `DashboardSummaryResponse.SkillGap`** (2026-07-11): one DTO
+  for one concept — `/reports/skill-gaps` and the dashboard panel share `SkillGapService`
+  math and shape. Positions carrying only the legacy free-text `requiredSkill` (no
+  structured `PositionSkill` rows) are excluded from gap demand, consistent with the
+  structured-skills direction.
+
 - **Gemini model selection & systemInstruction bypass** (2026-07-10): due to quota limitations on free tiers and deprecations of older models, `gemini-3.1-flash-lite` is chosen as the default model. Additionally, since the `systemInstruction` field is rejected by the upstream stable REST API version, system context is merged directly into the first prompt in the `contents` list, ensuring compatibility across all models.
 
 - **AI assistant sends FULL workforce detail to the Gemini API** (2026-07-10, user

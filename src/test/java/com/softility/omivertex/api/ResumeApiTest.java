@@ -1,26 +1,37 @@
 package com.softility.omivertex.api;
 
 import com.softility.omivertex.domain.Associate;
+import com.softility.omivertex.domain.Proficiency;
 import com.softility.omivertex.domain.WorkMode;
+import com.softility.omivertex.service.GeminiClient;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class ResumeApiTest extends ApiTestBase {
+
+    /** Mockito boolean default (false) keeps every pre-existing test on the keyword path. */
+    @MockBean GeminiClient geminiClient;
 
     private byte[] createPdf(String text) throws IOException {
         try (PDDocument document = new PDDocument()) {
@@ -206,5 +217,56 @@ class ResumeApiTest extends ApiTestBase {
 
         mockMvc.perform(delete("/api/v1/associates/" + assoc.getId() + "/resume"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void parseResume_usesAiExtraction_whenConfigured() throws Exception {
+        var java = skill("Backend", "Java");
+        when(geminiClient.isConfigured()).thenReturn(true);
+        when(geminiClient.extractResume(anyString(), anyList()))
+                .thenReturn(new GeminiClient.ResumeExtraction(
+                        List.of(new GeminiClient.ExtractedSkill(java.getId(), Proficiency.ADVANCE,
+                                "led a Java microservices team")),
+                        "8 years of experience, most recently a senior backend engineer."));
+
+        mockMvc.perform(multipart("/api/v1/resumes/parse")
+                        .file(new MockMultipartFile("file", "resume.pdf", "application/pdf",
+                                createPdf("Java expert"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("AI"))
+                .andExpect(jsonPath("$.experienceSummary").value(
+                        "8 years of experience, most recently a senior backend engineer."))
+                .andExpect(jsonPath("$.suggestedSkills", hasSize(1)))
+                .andExpect(jsonPath("$.suggestedSkills[0].skillName").value("Java"))
+                .andExpect(jsonPath("$.suggestedSkills[0].proficiency").value("ADVANCE"))
+                .andExpect(jsonPath("$.suggestedSkills[0].evidence").value("led a Java microservices team"));
+    }
+
+    @Test
+    void parseResume_fallsBackToKeyword_whenGeminiFails() throws Exception {
+        skill("Backend", "Java");
+        when(geminiClient.isConfigured()).thenReturn(true);
+        when(geminiClient.extractResume(anyString(), anyList()))
+                .thenThrow(new RuntimeException("upstream 500"));
+
+        mockMvc.perform(multipart("/api/v1/resumes/parse")
+                        .file(new MockMultipartFile("file", "resume.pdf", "application/pdf",
+                                createPdf("Java expert"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("KEYWORD"))
+                .andExpect(jsonPath("$.suggestedSkills", hasSize(1)))
+                .andExpect(jsonPath("$.suggestedSkills[0].skillName").value("Java"));
+    }
+
+    @Test
+    void parseMyResume_associateAllowed_viaMeEndpoint() throws Exception {
+        skill("Backend", "Java");
+        // not configured -> keyword path; the point is the ASSOCIATE-role route works
+        mockMvc.perform(multipart("/api/v1/me/resumes/parse")
+                        .file(new MockMultipartFile("file", "resume.pdf", "application/pdf",
+                                createPdf("Java expert")))
+                        .with(SecurityMockMvcRequestPostProcessors.user("a@softility.com").roles("ASSOCIATE")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("KEYWORD"));
     }
 }

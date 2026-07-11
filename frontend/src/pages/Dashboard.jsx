@@ -42,7 +42,7 @@ function SplitBar({ label, value, total, color }) {
   );
 }
 
-export default function Dashboard({ showToast }) {
+export default function Dashboard({ showToast, canEdit }) {
   const [viewMode, setViewMode] = useState(
     () => localStorage.getItem('ov-dashboard-view') || 'charts'
   );
@@ -120,7 +120,7 @@ export default function Dashboard({ showToast }) {
         </div>
       </div>
 
-      <AssistantChat showToast={showToast} />
+      <AssistantChat showToast={showToast} canEdit={canEdit} />
 
       <div className="stat-grid">
         <StatCard

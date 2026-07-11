@@ -4,8 +4,10 @@ import com.softility.omivertex.domain.AppUser;
 import com.softility.omivertex.repository.AppUserRepository;
 import com.softility.omivertex.service.AssociateService;
 import com.softility.omivertex.service.ProfileChangeService;
+import com.softility.omivertex.service.ResumeService;
 import com.softility.omivertex.web.dto.AssociateResponse;
 import com.softility.omivertex.web.dto.ProfileChangeResponse;
+import com.softility.omivertex.web.dto.ResumeDtos.ParsedResumeResponse;
 import com.softility.omivertex.web.dto.SkillAssignmentRequest;
 import com.softility.omivertex.web.error.NotFoundException;
 import jakarta.validation.Valid;
@@ -30,12 +32,14 @@ public class MeController {
     private final AppUserRepository appUsers;
     private final AssociateService associateService;
     private final ProfileChangeService profileChangeService;
+    private final ResumeService resumeService;
 
     public MeController(AppUserRepository appUsers, AssociateService associateService,
-                        ProfileChangeService profileChangeService) {
+                        ProfileChangeService profileChangeService, ResumeService resumeService) {
         this.appUsers = appUsers;
         this.associateService = associateService;
         this.profileChangeService = profileChangeService;
+        this.resumeService = resumeService;
     }
 
     @GetMapping("/profile")
@@ -55,6 +59,12 @@ public class MeController {
     public ProfileChangeResponse proposeResume(Authentication auth,
                                                @RequestParam("file") MultipartFile file) {
         return profileChangeService.submitResume(linkedAssociateId(auth), file);
+    }
+
+    /** Stateless AI/keyword skill suggestions from a resume — same parse the admin flow uses. */
+    @PostMapping("/resumes/parse")
+    public ParsedResumeResponse parseResume(@RequestParam("file") MultipartFile file) {
+        return resumeService.parse(file);
     }
 
     @GetMapping("/profile-changes")

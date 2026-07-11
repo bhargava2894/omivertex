@@ -20,6 +20,7 @@ export default function MyProfile({ showToast }) {
 
   const [editingSkills, setEditingSkills] = useState(null); // map skillId -> {proficiency, primary}
   const [submitting, setSubmitting] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState(null); // ParsedResumeResponse after a proposal
 
   if (loading || !profile) return <div className="skeleton-row" />;
 
@@ -64,9 +65,31 @@ export default function MyProfile({ showToast }) {
       await api.proposeResume(file);
       showToast('Resume submitted for approval');
       reloadChanges();
+      try {
+        const parsed = await api.parseMyResume(file);
+        if (parsed.suggestedSkills?.length > 0) setAiSuggestions(parsed);
+      } catch {
+        // parsing is best-effort; the proposal itself already succeeded
+      }
     } catch (err) {
       showToast(err.message, true);
     }
+  };
+
+  const reviewSuggestedSkills = () => {
+    const held = {};
+    (profile.skillGroups || []).forEach((group) =>
+      (group.skills || []).forEach((s) => {
+        held[s.skillId] = { proficiency: s.proficiency, primary: !!s.primary };
+      })
+    );
+    aiSuggestions.suggestedSkills.forEach((s) => {
+      if (!held[s.skillId]) {
+        held[s.skillId] = { proficiency: s.proficiency || 'INTERMEDIATE', primary: false };
+      }
+    });
+    setEditingSkills(held);
+    setAiSuggestions(null);
   };
 
   return (
@@ -80,6 +103,23 @@ export default function MyProfile({ showToast }) {
       {pendingResume && (
         <div className="form-alert">
           Your resume “{pendingResume.resumeFilename}” is awaiting admin approval.
+        </div>
+      )}
+      {aiSuggestions && (
+        <div className="form-alert">
+          <div>
+            {aiSuggestions.suggestedSkills.length} skills detected in your resume
+            {aiSuggestions.experienceSummary ? ` — ${aiSuggestions.experienceSummary}` : ''}
+          </div>
+          {!pendingSkills && (
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ marginTop: '8px' }}
+              onClick={reviewSuggestedSkills}
+            >
+              Review &amp; propose skills
+            </button>
+          )}
         </div>
       )}
       {!pendingSkills && !pendingResume && lastRejected && (
