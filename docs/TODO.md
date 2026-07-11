@@ -91,6 +91,12 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **Skill-gap report reuses `DashboardSummaryResponse.SkillGap`** (2026-07-11): one DTO
+  for one concept — `/reports/skill-gaps` and the dashboard panel share `SkillGapService`
+  math and shape. Positions carrying only the legacy free-text `requiredSkill` (no
+  structured `PositionSkill` rows) are excluded from gap demand, consistent with the
+  structured-skills direction.
+
 - **Gemini model selection & systemInstruction bypass** (2026-07-10): due to quota limitations on free tiers and deprecations of older models, `gemini-3.1-flash-lite` is chosen as the default model. Additionally, since the `systemInstruction` field is rejected by the upstream stable REST API version, system context is merged directly into the first prompt in the `contents` list, ensuring compatibility across all models.
 
 - **AI assistant sends FULL workforce detail to the Gemini API** (2026-07-10, user

@@ -175,6 +175,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/certifications` | GET (org-wide, alphabetical soonest expiry first) | `?q=` (search by name, authority, associate name) |
 | `/certifications/{id}` | DELETE (ADMIN) | — |
 | `/reports/skills` | GET (proficiency distribution tree) | — |
+| `/reports/skill-gaps` | GET (full supply-vs-demand report; one row per skill with open required demand **or** ≥1 rated associate; fields `skillId`, `skillName`, `category`, `demand` = open seats requiring the skill, `benchSupply`/`totalSupply` = ACTIVE associates at/above the lowest demanded min-proficiency (any proficiency when demand is 0), `gap` = demand − benchSupply, positive = shortage; sorted worst gap first, uncapped; the dashboard `skillGaps` panel is the same math via `SkillGapService`, capped at 20 demand-only rows) | — |
 | `/dashboard/summary` | GET | — |
 | `/data/import` | POST multipart `file` (.xlsx/.csv) | `?ignoreNovice=` |
 | `/data/export` | GET | `?format=xlsx|csv|pdf|docx` |
