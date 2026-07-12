@@ -5,6 +5,7 @@ import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
 import Icon from '../components/Icon.jsx';
 import AllocationForm from '../components/AllocationForm.jsx';
+import CollapsibleCard from '../components/CollapsibleCard.jsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -218,113 +219,112 @@ export default function Allocations({ showToast, canEdit }) {
       ) : (
         <div style={{ display: 'grid', gap: '16px' }}>
           {sections.map((c) => (
-            <div className="card" key={c.key} style={{ padding: 0, overflow: 'hidden' }}>
-              <button
-                type="button"
-                className="staffing-toggle"
-                onClick={() => toggle(c.key)}
-                aria-expanded={isOpen(c.key)}
-              >
-                <span aria-hidden="true" className="staffing-toggle-arrow">
-                  ▸
-                </span>
-                <h3 className="staffing-toggle-title">{c.name}</h3>
-                <Badge value="Billable" label={`${c.billable} billable`} tone="green" />
-                <Badge value="Non-billable" label={`${c.nonBillable} non-billable`} tone="amber" />
-              </button>
-
-              {isOpen(c.key) && (
-                <div style={{ padding: '0 20px 20px', display: 'grid', gap: '16px' }}>
-                  {c.projects.map((p) => (
-                    <div key={p.projectId}>
-                      <div
-                        className="cell-sub"
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          fontWeight: 600,
-                          margin: '8px 0',
-                        }}
-                      >
-                        <span>
-                          {p.name}
-                          {p.code && <span style={{ fontWeight: 400 }}> · {p.code}</span>}
-                        </span>
-                      </div>
-                      <div
-                        className="table-wrap"
-                        style={{
-                          margin: 0,
-                          boxShadow: 'none',
-                          border: '1px solid var(--color-border)',
-                        }}
-                      >
-                        <table style={{ fontSize: '13px' }}>
-                          <thead>
-                            <tr>
-                              <th>Associate</th>
-                              <th>Billing</th>
-                              <th>Allocation</th>
-                              <th>Start</th>
-                              <th>End</th>
-                              <th>State</th>
-                              {canEdit && <th aria-label="Actions" />}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {p.rows.map((r) => (
-                              <tr key={r.id}>
-                                <td>
-                                  <a className="cell-main" href={`#/associates/${r.associateId}`}>
-                                    {r.associateName}
-                                  </a>
-                                </td>
-                                <td>
-                                  <Badge value={r.billable ? 'Billable' : 'Non-billable'} />
-                                </td>
-                                <td>{r.allocationPercent}%</td>
-                                <td>{r.startDate}</td>
-                                <td>{r.endDate || '—'}</td>
-                                <td>
-                                  <Badge value={r.active ? 'Current' : 'Ended'} />
-                                </td>
-                                {canEdit && (
-                                  <td>
-                                    <div
-                                      style={{
-                                        display: 'flex',
-                                        gap: '8px',
-                                        justifyContent: 'flex-end',
-                                      }}
-                                    >
-                                      <button
-                                        className="btn btn-ghost btn-sm"
-                                        onClick={() => openEdit(r)}
-                                        aria-label={`Edit allocation of ${r.associateName}`}
-                                      >
-                                        <Icon name="edit" size={14} /> Edit
-                                      </button>
-                                      <button
-                                        className="btn btn-danger btn-sm"
-                                        onClick={() => remove(r)}
-                                        aria-label={`Remove allocation of ${r.associateName}`}
-                                      >
-                                        <Icon name="trash" size={14} />
-                                      </button>
-                                    </div>
-                                  </td>
-                                )}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+            <CollapsibleCard
+              key={c.key}
+              open={isOpen(c.key)}
+              onToggle={() => toggle(c.key)}
+              header={
+                <>
+                  <h3 className="staffing-toggle-title">{c.name}</h3>
+                  <Badge value="Billable" label={`${c.billable} billable`} tone="green" />
+                  <Badge
+                    value="Non-billable"
+                    label={`${c.nonBillable} non-billable`}
+                    tone="amber"
+                  />
+                </>
+              }
+            >
+              <div style={{ padding: '0 20px 20px', display: 'grid', gap: '16px' }}>
+                {c.projects.map((p) => (
+                  <div key={p.projectId}>
+                    <div
+                      className="cell-sub"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        fontWeight: 600,
+                        margin: '8px 0',
+                      }}
+                    >
+                      <span>
+                        {p.name}
+                        {p.code && <span style={{ fontWeight: 400 }}> · {p.code}</span>}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <div
+                      className="table-wrap"
+                      style={{
+                        margin: 0,
+                        boxShadow: 'none',
+                        border: '1px solid var(--color-border)',
+                      }}
+                    >
+                      <table style={{ fontSize: '13px' }}>
+                        <thead>
+                          <tr>
+                            <th>Associate</th>
+                            <th>Billing</th>
+                            <th>Allocation</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>State</th>
+                            {canEdit && <th aria-label="Actions" />}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {p.rows.map((r) => (
+                            <tr key={r.id}>
+                              <td>
+                                <a className="cell-main" href={`#/associates/${r.associateId}`}>
+                                  {r.associateName}
+                                </a>
+                              </td>
+                              <td>
+                                <Badge value={r.billable ? 'Billable' : 'Non-billable'} />
+                              </td>
+                              <td>{r.allocationPercent}%</td>
+                              <td>{r.startDate}</td>
+                              <td>{r.endDate || '—'}</td>
+                              <td>
+                                <Badge value={r.active ? 'Current' : 'Ended'} />
+                              </td>
+                              {canEdit && (
+                                <td>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      gap: '8px',
+                                      justifyContent: 'flex-end',
+                                    }}
+                                  >
+                                    <button
+                                      className="btn btn-ghost btn-sm"
+                                      onClick={() => openEdit(r)}
+                                      aria-label={`Edit allocation of ${r.associateName}`}
+                                    >
+                                      <Icon name="edit" size={14} /> Edit
+                                    </button>
+                                    <button
+                                      className="btn btn-danger btn-sm"
+                                      onClick={() => remove(r)}
+                                      aria-label={`Remove allocation of ${r.associateName}`}
+                                    >
+                                      <Icon name="trash" size={14} />
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleCard>
           ))}
         </div>
       )}
