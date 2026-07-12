@@ -321,9 +321,9 @@ export default function Dashboard({ showToast, canEdit }) {
           )}
         </div>
 
-        {viewMode === 'charts' && (
-          <div className="card panel" style={{ gridColumn: '1 / -1' }}>
-            <h2>Staffing Trend — last 6 months</h2>
+        <div className="card panel" style={{ gridColumn: '1 / -1' }}>
+          <h2>Staffing Trend — last 6 months</h2>
+          {viewMode === 'charts' ? (
             <TrendChart
               points={s.staffingTrend}
               series={[
@@ -331,8 +331,72 @@ export default function Dashboard({ showToast, canEdit }) {
                 { key: 'billable', label: 'Billable', color: 'var(--chart-2)' },
               ]}
             />
-          </div>
-        )}
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: '16px',
+                marginTop: '16px',
+              }}
+            >
+              {(s.staffingTrend || []).map((p) => (
+                <div
+                  key={p.month}
+                  style={{
+                    background: 'var(--color-muted)',
+                    padding: '16px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        textTransform: 'uppercase',
+                        fontWeight: '700',
+                        letterSpacing: '0.05em',
+                        color: 'var(--color-muted-fg)',
+                      }}
+                    >
+                      {p.month}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '20px',
+                        fontWeight: '800',
+                        color: 'var(--color-foreground)',
+                        marginTop: '4px',
+                      }}
+                    >
+                      {p.total}{' '}
+                      <span
+                        style={{
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          color: 'var(--color-muted-fg)',
+                        }}
+                      >
+                        allocated
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <Badge tone="green" label={`${p.billable} billable`} />
+                    {p.total - p.billable > 0 && (
+                      <Badge tone="amber" label={`${p.total - p.billable} non-billable`} />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="card panel">
           <h2>
