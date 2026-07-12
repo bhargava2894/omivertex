@@ -97,9 +97,12 @@ dashboard through caches/proxies).
   is the bottleneck; revisit pool size only with observed contention. Chosen
   over a background job queue (overkill for interactive endpoints).
 
-- **Plan docs are write-once scaffolding** (2026-07-11): implementation plans in
-  `docs/superpowers/plans/` are never updated after their run; specs and
-  `docs/TECHNICAL.md` are the living documentation.
+- **Plan docs are disposable; delete after merge** (2026-07-11, revised 2026-07-12):
+  implementation plans in `docs/superpowers/plans/` are never updated after their run
+  and are **deleted once the feature merges** — git history is the archive, a kept
+  plan is dead weight. Specs (`docs/superpowers/specs/`), `docs/TECHNICAL.md`, and
+  this file are the living documentation and are kept. Enforced for all agents in
+  `AGENTS.md`. (The 15 already-implemented plans were removed 2026-07-12.)
 
 - **The assistant executes nothing server-side** (2026-07-11): write tools
   (`propose_allocation`, `propose_position_fill`) only ever produce a visible

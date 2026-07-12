@@ -17,9 +17,14 @@ The **workforce graph is the product**; keep its data true and its code consiste
    `docs/superpowers/plans/` (bite-sized TDD tasks). Bug fixes can skip the spec but
    never the failing test. This applies to every agent — Claude, Gemini,
    ChatGPT/Codex — not just ones with a plugin that enforces it.
-   Plan docs are **write-once scaffolding** for a single implementation run — never
-   update an old plan. Specs and `docs/TECHNICAL.md` are the living documentation;
-   plans stay as historical record only.
+   Plan docs are **disposable scaffolding** for a single implementation run — never
+   update an old plan, and **delete the plan file once its feature is merged**
+   (`git rm docs/superpowers/plans/<file>.md` in the same or a follow-up commit). Git
+   history is the archive; a kept plan is just dead weight. Specs and
+   `docs/TECHNICAL.md` are the living documentation and are **kept**; the durable
+   "what & why" belongs in the spec, decisions in `docs/TODO.md`, and the contract in
+   `docs/TECHNICAL.md` — not in a stale plan. This applies to every agent (Claude,
+   Gemini, ChatGPT/Codex).
 1. **TDD, always.** Write the failing test first (`src/test/java/.../api/`), watch it
    fail for the right reason, then write minimal code to pass. No production code
    without a red test first. Run `./mvnw test` — **the full suite must be green before
