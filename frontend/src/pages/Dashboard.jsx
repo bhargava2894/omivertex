@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Icon from '../components/Icon.jsx';
 import Badge from '../components/Badge.jsx';
+import Modal from '../components/Modal.jsx';
 import { TrendChart, DonutChart, VBarChart } from '../components/charts.jsx';
 import AssistantChat from '../components/AssistantChat.jsx';
 
@@ -46,6 +48,8 @@ export default function Dashboard({ showToast, canEdit }) {
   const [viewMode, setViewMode] = useState(
     () => localStorage.getItem('ov-dashboard-view') || 'charts'
   );
+  const [showRolloffsModal, setShowRolloffsModal] = useState(false);
+  const [showExpiriesModal, setShowExpiriesModal] = useState(false);
 
   const toggleViewMode = (mode) => {
     setViewMode(mode);
@@ -170,23 +174,42 @@ export default function Dashboard({ showToast, canEdit }) {
           {s.upcomingRolloffs.length === 0 ? (
             <p className="stat-hint">No allocations ending in the next 30 days.</p>
           ) : (
-            s.upcomingRolloffs.map((r) => (
-              <div className="radar-row" key={r.allocationId}>
-                <div>
-                  <div className="cell-main">{r.associateName}</div>
-                  <div className="cell-sub">
-                    {r.projectName} · {r.clientName}
+            <>
+              {s.upcomingRolloffs.slice(0, 6).map((r) => (
+                <div className="radar-row" key={r.allocationId}>
+                  <div>
+                    <div className="cell-main">{r.associateName}</div>
+                    <div className="cell-sub">
+                      {r.projectName} · {r.clientName}
+                    </div>
+                  </div>
+                  <div className="radar-right">
+                    <span className="cell-sub">{r.endDate}</span>
+                    <Badge
+                      tone={r.daysLeft <= 7 ? 'red' : r.daysLeft <= 14 ? 'amber' : 'blue'}
+                      label={r.daysLeft <= 0 ? 'today' : `${r.daysLeft}d left`}
+                    />
                   </div>
                 </div>
-                <div className="radar-right">
-                  <span className="cell-sub">{r.endDate}</span>
-                  <Badge
-                    tone={r.daysLeft <= 7 ? 'red' : r.daysLeft <= 14 ? 'amber' : 'blue'}
-                    label={r.daysLeft <= 0 ? 'today' : `${r.daysLeft}d left`}
-                  />
+              ))}
+              {s.upcomingRolloffs.length > 6 && (
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setShowRolloffsModal(true)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    View all {s.upcomingRolloffs.length} roll-offs →
+                  </button>
                 </div>
-              </div>
-            ))
+              )}
+            </>
           )}
         </div>
 
@@ -197,21 +220,40 @@ export default function Dashboard({ showToast, canEdit }) {
           {!s.expiringCertifications || s.expiringCertifications.length === 0 ? (
             <p className="stat-hint">No certifications expiring in the next 90 days.</p>
           ) : (
-            s.expiringCertifications.map((c) => (
-              <div className="radar-row" key={c.certificationId}>
-                <div>
-                  <div className="cell-main">{c.associateName}</div>
-                  <div className="cell-sub">{c.name}</div>
+            <>
+              {s.expiringCertifications.slice(0, 6).map((c) => (
+                <div className="radar-row" key={c.certificationId}>
+                  <div>
+                    <div className="cell-main">{c.associateName}</div>
+                    <div className="cell-sub">{c.name}</div>
+                  </div>
+                  <div className="radar-right">
+                    <span className="cell-sub">{c.expiryDate}</span>
+                    <Badge
+                      tone={c.daysLeft <= 30 ? 'red' : c.daysLeft <= 60 ? 'amber' : 'blue'}
+                      label={c.daysLeft <= 0 ? 'expired' : `${c.daysLeft}d left`}
+                    />
+                  </div>
                 </div>
-                <div className="radar-right">
-                  <span className="cell-sub">{c.expiryDate}</span>
-                  <Badge
-                    tone={c.daysLeft <= 30 ? 'red' : c.daysLeft <= 60 ? 'amber' : 'blue'}
-                    label={c.daysLeft <= 0 ? 'expired' : `${c.daysLeft}d left`}
-                  />
+              ))}
+              {s.expiringCertifications.length > 6 && (
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setShowExpiriesModal(true)}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    View all {s.expiringCertifications.length} expiring certs →
+                  </button>
                 </div>
-              </div>
-            ))
+              )}
+            </>
           )}
         </div>
 
@@ -508,6 +550,92 @@ export default function Dashboard({ showToast, canEdit }) {
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {showRolloffsModal && (
+          <Modal
+            title={`Upcoming Roll-offs — next 30 days (${s.upcomingRolloffs.length})`}
+            onClose={() => setShowRolloffsModal(false)}
+            footer={
+              <button className="btn btn-ghost" onClick={() => setShowRolloffsModal(false)}>
+                Close
+              </button>
+            }
+          >
+            <div style={{ display: 'grid', gap: '8px' }}>
+              {s.upcomingRolloffs.map((r) => (
+                <div className="radar-row" key={r.allocationId} style={{ padding: '8px 0' }}>
+                  <div>
+                    <a
+                      href={`#/associates/${r.associateId}`}
+                      className="cell-main"
+                      style={{
+                        color: 'var(--color-primary)',
+                        textDecoration: 'none',
+                        fontWeight: '600',
+                      }}
+                      onClick={() => setShowRolloffsModal(false)}
+                    >
+                      {r.associateName}
+                    </a>
+                    <div className="cell-sub">
+                      {r.projectName} · {r.clientName}
+                    </div>
+                  </div>
+                  <div className="radar-right">
+                    <span className="cell-sub">{r.endDate}</span>
+                    <Badge
+                      tone={r.daysLeft <= 7 ? 'red' : r.daysLeft <= 14 ? 'amber' : 'blue'}
+                      label={r.daysLeft <= 0 ? 'today' : `${r.daysLeft}d left`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Modal>
+        )}
+
+        {showExpiriesModal && (
+          <Modal
+            title={`Expiring Certifications — next 90 days (${s.expiringCertifications.length})`}
+            onClose={() => setShowExpiriesModal(false)}
+            footer={
+              <button className="btn btn-ghost" onClick={() => setShowExpiriesModal(false)}>
+                Close
+              </button>
+            }
+          >
+            <div style={{ display: 'grid', gap: '8px' }}>
+              {s.expiringCertifications.map((c) => (
+                <div className="radar-row" key={c.certificationId} style={{ padding: '8px 0' }}>
+                  <div>
+                    <a
+                      href={`#/associates/${c.associateId}`}
+                      className="cell-main"
+                      style={{
+                        color: 'var(--color-primary)',
+                        textDecoration: 'none',
+                        fontWeight: '600',
+                      }}
+                      onClick={() => setShowExpiriesModal(false)}
+                    >
+                      {c.associateName}
+                    </a>
+                    <div className="cell-sub">{c.name}</div>
+                  </div>
+                  <div className="radar-right">
+                    <span className="cell-sub">{c.expiryDate}</span>
+                    <Badge
+                      tone={c.daysLeft <= 30 ? 'red' : c.daysLeft <= 60 ? 'amber' : 'blue'}
+                      label={c.daysLeft <= 0 ? 'expired' : `${c.daysLeft}d left`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
     </>
   );
 }
