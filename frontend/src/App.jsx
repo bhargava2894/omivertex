@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Icon from './components/Icon.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Associates from './pages/Associates.jsx';
@@ -18,6 +19,7 @@ import MyProfile from './pages/MyProfile.jsx';
 import ProfileChanges from './pages/ProfileChanges.jsx';
 import { api } from './api.js';
 import { storedTheme, applyTheme, resolveTheme } from './theme.js';
+import { toastSlide, useMotionVariants } from './motion.js';
 
 const ROUTES = [
   {
@@ -151,6 +153,7 @@ function useHashRoute() {
 export default function App() {
   const route = useHashRoute();
   const [toast, setToast] = useState(null);
+  const toastAnim = useMotionVariants(toastSlide);
   const [theme, setThemeState] = useState(storedTheme);
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
 
@@ -317,11 +320,20 @@ export default function App() {
         </main>
       </div>
 
-      {toast && (
-        <div className={`toast ${toast.isError ? 'error' : ''}`} role="status" aria-live="polite">
-          {toast.message}
-        </div>
-      )}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            className={`toast ${toast.isError ? 'error' : ''}`}
+            role="status"
+            aria-live="polite"
+            initial={toastAnim.initial}
+            animate={toastAnim.animate}
+            exit={toastAnim.exit}
+          >
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

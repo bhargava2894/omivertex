@@ -707,7 +707,6 @@ td.actions { text-align: right; white-space: nowrap; }
   font-size: 14px;
   font-weight: 500;
   z-index: 200;
-  animation: pop-in 0.2s var(--ease);
 }
 .toast.error { background: var(--color-destructive); color: #fff; }
 
