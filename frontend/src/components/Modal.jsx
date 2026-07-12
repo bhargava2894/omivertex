@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { modalPop, useMotionVariants } from '../motion.js';
 import Icon from './Icon.jsx';
 
 export default function Modal({ title, onClose, children, footer, size }) {
+  const anim = useMotionVariants(modalPop);
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
@@ -9,9 +12,18 @@ export default function Modal({ title, onClose, children, footer, size }) {
   }, [onClose]);
 
   return (
-    <div className="modal-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div
+    <motion.div
+      className="modal-overlay"
+      initial={anim.overlay.initial}
+      animate={anim.overlay.animate}
+      exit={anim.overlay.exit}
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
         className={`modal ${size === 'lg' ? 'modal-lg' : ''}`}
+        initial={anim.dialog.initial}
+        animate={anim.dialog.animate}
+        exit={anim.dialog.exit}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -24,7 +36,7 @@ export default function Modal({ title, onClose, children, footer, size }) {
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

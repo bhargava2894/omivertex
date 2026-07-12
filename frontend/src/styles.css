@@ -497,7 +497,6 @@ td.actions { text-align: right; white-space: nowrap; }
   max-width: 520px;
   max-height: 90dvh;
   overflow-y: auto;
-  animation: pop-in 0.2s var(--ease);
 }
 .modal.modal-lg {
   max-width: 800px;

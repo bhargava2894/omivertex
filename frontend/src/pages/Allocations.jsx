@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Modal from '../components/Modal.jsx';
@@ -329,33 +330,37 @@ export default function Allocations({ showToast, canEdit }) {
         </div>
       )}
 
-      {editing && (
-        <Modal
-          title={editing.id ? `Edit · ${editing.label}` : 'Assign Associate to Project'}
-          onClose={() => setEditing(null)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={save} disabled={saving}>
-                {saving ? 'Saving…' : editing.id ? 'Save Changes' : 'Assign'}
-              </button>
-            </>
-          }
-        >
-          {errors._general && <div className="form-alert">{errors._general}</div>}
-          <AllocationForm
-            form={editing.form}
-            setField={set}
-            setFields={(partial) => setEditing((e) => ({ ...e, form: { ...e.form, ...partial } }))}
-            errors={errors}
-            projects={projects}
-            searchAssociates={editing.id ? undefined : searchAssociates}
-            showProjectPicker={!editing.id}
-          />
-        </Modal>
-      )}
+      <AnimatePresence>
+        {editing && (
+          <Modal
+            title={editing.id ? `Edit · ${editing.label}` : 'Assign Associate to Project'}
+            onClose={() => setEditing(null)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setEditing(null)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={save} disabled={saving}>
+                  {saving ? 'Saving…' : editing.id ? 'Save Changes' : 'Assign'}
+                </button>
+              </>
+            }
+          >
+            {errors._general && <div className="form-alert">{errors._general}</div>}
+            <AllocationForm
+              form={editing.form}
+              setField={set}
+              setFields={(partial) =>
+                setEditing((e) => ({ ...e, form: { ...e.form, ...partial } }))
+              }
+              errors={errors}
+              projects={projects}
+              searchAssociates={editing.id ? undefined : searchAssociates}
+              showProjectPicker={!editing.id}
+            />
+          </Modal>
+        )}
+      </AnimatePresence>
     </>
   );
 }

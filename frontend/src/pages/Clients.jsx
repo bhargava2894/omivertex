@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import DataTable from '../components/DataTable.jsx';
@@ -103,51 +104,53 @@ export default function Clients({ showToast, canEdit }) {
         ]}
       />
 
-      {editing && (
-        <Modal
-          title={editing.id ? 'Edit Client' : 'New Client'}
-          onClose={() => setEditing(null)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={save} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Client'}
-              </button>
-            </>
-          }
-        >
-          {errors._general && <div className="form-alert">{errors._general}</div>}
-          <div className="form-grid">
-            <Field label="Name" required error={errors.name} full>
-              <input
-                value={editing.form.name}
-                onChange={(e) => set('name', e.target.value)}
-                className={errors.name ? 'invalid' : ''}
-              />
-            </Field>
-            <Field label="Industry" error={errors.industry}>
-              <input
-                value={editing.form.industry}
-                onChange={(e) => set('industry', e.target.value)}
-              />
-            </Field>
-            <Field label="Location" error={errors.location}>
-              <input
-                value={editing.form.location}
-                onChange={(e) => set('location', e.target.value)}
-              />
-            </Field>
-            <Field label="Status">
-              <select value={editing.form.status} onChange={(e) => set('status', e.target.value)}>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </select>
-            </Field>
-          </div>
-        </Modal>
-      )}
+      <AnimatePresence>
+        {editing && (
+          <Modal
+            title={editing.id ? 'Edit Client' : 'New Client'}
+            onClose={() => setEditing(null)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setEditing(null)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={save} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save Client'}
+                </button>
+              </>
+            }
+          >
+            {errors._general && <div className="form-alert">{errors._general}</div>}
+            <div className="form-grid">
+              <Field label="Name" required error={errors.name} full>
+                <input
+                  value={editing.form.name}
+                  onChange={(e) => set('name', e.target.value)}
+                  className={errors.name ? 'invalid' : ''}
+                />
+              </Field>
+              <Field label="Industry" error={errors.industry}>
+                <input
+                  value={editing.form.industry}
+                  onChange={(e) => set('industry', e.target.value)}
+                />
+              </Field>
+              <Field label="Location" error={errors.location}>
+                <input
+                  value={editing.form.location}
+                  onChange={(e) => set('location', e.target.value)}
+                />
+              </Field>
+              <Field label="Status">
+                <select value={editing.form.status} onChange={(e) => set('status', e.target.value)}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </Field>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
     </>
   );
 }

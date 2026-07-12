@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Modal from '../components/Modal.jsx';
@@ -759,160 +760,170 @@ export default function Profile({ id, showToast, canEdit }) {
       </div>
 
       {/* Manage Skills Modal */}
-      {managingSkills && (
-        <Modal
-          title="Manage Skills"
-          onClose={() => setManagingSkills(false)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setManagingSkills(false)}>
-                Cancel
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSaveSkills}
-                disabled={savingSkills}
-              >
-                {savingSkills ? 'Saving…' : 'Save Skills'}
-              </button>
-            </>
-          }
-        >
-          <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '8px' }}>
-            <SkillEditor
-              taxonomy={taxonomy}
-              value={selectedSkills}
-              onChange={setSelectedSkills}
-              onTaxonomyChange={reloadTaxonomy}
-              showToast={showToast}
-            />
-          </div>
-        </Modal>
-      )}
+      <AnimatePresence>
+        {managingSkills && (
+          <Modal
+            title="Manage Skills"
+            onClose={() => setManagingSkills(false)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setManagingSkills(false)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSaveSkills}
+                  disabled={savingSkills}
+                >
+                  {savingSkills ? 'Saving…' : 'Save Skills'}
+                </button>
+              </>
+            }
+          >
+            <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: '8px' }}>
+              <SkillEditor
+                taxonomy={taxonomy}
+                value={selectedSkills}
+                onChange={setSelectedSkills}
+                onTaxonomyChange={reloadTaxonomy}
+                showToast={showToast}
+              />
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
 
       {/* Add Certification Modal */}
-      {addingCert && (
-        <Modal
-          title="Add Certification"
-          onClose={() => setAddingCert(false)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setAddingCert(false)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={handleAddCert} disabled={savingCert}>
-                {savingCert ? 'Saving…' : 'Add Certification'}
-              </button>
-            </>
-          }
-        >
-          {certErrors._general && <div className="form-alert">{certErrors._general}</div>}
-          <div className="form-grid">
-            <Field label="Certification Name" required error={certErrors.name} full>
-              <input
-                value={certForm.name}
-                onChange={(e) => setCertForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g. AWS Certified Solutions Architect"
-                className={certErrors.name ? 'invalid' : ''}
-              />
-            </Field>
-            <Field label="Issuing Authority" error={certErrors.authority}>
-              <input
-                value={certForm.authority}
-                onChange={(e) => setCertForm((prev) => ({ ...prev, authority: e.target.value }))}
-                placeholder="e.g. Amazon Web Services"
-              />
-            </Field>
-            <Field label="Credential ID" error={certErrors.credentialId}>
-              <input
-                value={certForm.credentialId}
-                onChange={(e) => setCertForm((prev) => ({ ...prev, credentialId: e.target.value }))}
-                placeholder="e.g. AWS-ASA-12345"
-              />
-            </Field>
-            <Field label="Issued Date" error={certErrors.issuedDate}>
-              <input
-                type="date"
-                value={certForm.issuedDate}
-                onChange={(e) => setCertForm((prev) => ({ ...prev, issuedDate: e.target.value }))}
-              />
-            </Field>
-            <Field label="Expiry Date" error={certErrors.expiryDate}>
-              <input
-                type="date"
-                value={certForm.expiryDate}
-                onChange={(e) => setCertForm((prev) => ({ ...prev, expiryDate: e.target.value }))}
-              />
-            </Field>
-          </div>
-        </Modal>
-      )}
+      <AnimatePresence>
+        {addingCert && (
+          <Modal
+            title="Add Certification"
+            onClose={() => setAddingCert(false)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setAddingCert(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={handleAddCert} disabled={savingCert}>
+                  {savingCert ? 'Saving…' : 'Add Certification'}
+                </button>
+              </>
+            }
+          >
+            {certErrors._general && <div className="form-alert">{certErrors._general}</div>}
+            <div className="form-grid">
+              <Field label="Certification Name" required error={certErrors.name} full>
+                <input
+                  value={certForm.name}
+                  onChange={(e) => setCertForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. AWS Certified Solutions Architect"
+                  className={certErrors.name ? 'invalid' : ''}
+                />
+              </Field>
+              <Field label="Issuing Authority" error={certErrors.authority}>
+                <input
+                  value={certForm.authority}
+                  onChange={(e) => setCertForm((prev) => ({ ...prev, authority: e.target.value }))}
+                  placeholder="e.g. Amazon Web Services"
+                />
+              </Field>
+              <Field label="Credential ID" error={certErrors.credentialId}>
+                <input
+                  value={certForm.credentialId}
+                  onChange={(e) =>
+                    setCertForm((prev) => ({ ...prev, credentialId: e.target.value }))
+                  }
+                  placeholder="e.g. AWS-ASA-12345"
+                />
+              </Field>
+              <Field label="Issued Date" error={certErrors.issuedDate}>
+                <input
+                  type="date"
+                  value={certForm.issuedDate}
+                  onChange={(e) => setCertForm((prev) => ({ ...prev, issuedDate: e.target.value }))}
+                />
+              </Field>
+              <Field label="Expiry Date" error={certErrors.expiryDate}>
+                <input
+                  type="date"
+                  value={certForm.expiryDate}
+                  onChange={(e) => setCertForm((prev) => ({ ...prev, expiryDate: e.target.value }))}
+                />
+              </Field>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
 
       {/* End Allocation Modal */}
-      {ending && (
-        <Modal
-          title={`End allocation · ${ending.row.projectName}`}
-          onClose={() => setEnding(null)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setEnding(null)}>
-                Cancel
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleEndAllocation}
-                disabled={savingAlloc}
-              >
-                {savingAlloc ? 'Ending…' : 'End allocation'}
-              </button>
-            </>
-          }
-        >
-          {allocErrors._general && <div className="form-alert">{allocErrors._general}</div>}
-          <p className="cell-sub" style={{ marginTop: 0 }}>
-            The allocation stays in the history as “Ended” — nothing is deleted. Capacity frees up
-            the day after the end date, so a same-day replacement should start the next day.
-          </p>
-          <div className="form-grid">
-            <Field label="End date" required error={allocErrors.endDate}>
-              <input
-                type="date"
-                min={ending.row.startDate}
-                value={ending.endDate}
-                onChange={(e) => setEnding((s) => ({ ...s, endDate: e.target.value }))}
-                className={allocErrors.endDate ? 'invalid' : ''}
-              />
-            </Field>
-          </div>
-        </Modal>
-      )}
+      <AnimatePresence>
+        {ending && (
+          <Modal
+            title={`End allocation · ${ending.row.projectName}`}
+            onClose={() => setEnding(null)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setEnding(null)}>
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleEndAllocation}
+                  disabled={savingAlloc}
+                >
+                  {savingAlloc ? 'Ending…' : 'End allocation'}
+                </button>
+              </>
+            }
+          >
+            {allocErrors._general && <div className="form-alert">{allocErrors._general}</div>}
+            <p className="cell-sub" style={{ marginTop: 0 }}>
+              The allocation stays in the history as “Ended” — nothing is deleted. Capacity frees up
+              the day after the end date, so a same-day replacement should start the next day.
+            </p>
+            <div className="form-grid">
+              <Field label="End date" required error={allocErrors.endDate}>
+                <input
+                  type="date"
+                  min={ending.row.startDate}
+                  value={ending.endDate}
+                  onChange={(e) => setEnding((s) => ({ ...s, endDate: e.target.value }))}
+                  className={allocErrors.endDate ? 'invalid' : ''}
+                />
+              </Field>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
 
       {/* Assign to Project Modal */}
-      {assigning && assignForm && (
-        <Modal
-          title={`Assign ${associate.name} to a project`}
-          onClose={() => setAssigning(false)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setAssigning(false)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={handleAssign} disabled={savingAlloc}>
-                {savingAlloc ? 'Assigning…' : 'Assign'}
-              </button>
-            </>
-          }
-        >
-          {allocErrors._general && <div className="form-alert">{allocErrors._general}</div>}
-          <AllocationForm
-            form={assignForm}
-            setField={(k, v) => setAssignForm((f) => ({ ...f, [k]: v }))}
-            setFields={(partial) => setAssignForm((f) => ({ ...f, ...partial }))}
-            errors={allocErrors}
-            projects={projects}
-          />
-        </Modal>
-      )}
+      <AnimatePresence>
+        {assigning && assignForm && (
+          <Modal
+            title={`Assign ${associate.name} to a project`}
+            onClose={() => setAssigning(false)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setAssigning(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={handleAssign} disabled={savingAlloc}>
+                  {savingAlloc ? 'Assigning…' : 'Assign'}
+                </button>
+              </>
+            }
+          >
+            {allocErrors._general && <div className="form-alert">{allocErrors._general}</div>}
+            <AllocationForm
+              form={assignForm}
+              setField={(k, v) => setAssignForm((f) => ({ ...f, [k]: v }))}
+              setFields={(partial) => setAssignForm((f) => ({ ...f, ...partial }))}
+              errors={allocErrors}
+              projects={projects}
+            />
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

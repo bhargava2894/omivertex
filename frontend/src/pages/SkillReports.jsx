@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Icon from '../components/Icon.jsx';
@@ -319,36 +320,38 @@ export default function SkillReports() {
         ))
       )}
 
-      {drill && (
-        <Modal
-          title={`${drill.skill} — ${PROF_LABELS[drill.prof]} (${drill.people.length})`}
-          onClose={() => setDrill(null)}
-          footer={
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn btn-primary" onClick={handleShowInRoster}>
-                Show in Roster
-              </button>
-              <button className="btn btn-ghost" onClick={() => setDrill(null)}>
-                Close
-              </button>
-            </div>
-          }
-        >
-          {drill.people.map((p) => (
-            <div className="radar-row" key={p.associateId}>
-              <a
-                href={`#/associates/${p.associateId}`}
-                className="cell-main"
-                style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
-                onClick={() => setDrill(null)}
-              >
-                {p.name}
-              </a>
-              <Badge tone={PROF_TONES[drill.prof]} label={PROF_LABELS[drill.prof]} />
-            </div>
-          ))}
-        </Modal>
-      )}
+      <AnimatePresence>
+        {drill && (
+          <Modal
+            title={`${drill.skill} — ${PROF_LABELS[drill.prof]} (${drill.people.length})`}
+            onClose={() => setDrill(null)}
+            footer={
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-primary" onClick={handleShowInRoster}>
+                  Show in Roster
+                </button>
+                <button className="btn btn-ghost" onClick={() => setDrill(null)}>
+                  Close
+                </button>
+              </div>
+            }
+          >
+            {drill.people.map((p) => (
+              <div className="radar-row" key={p.associateId}>
+                <a
+                  href={`#/associates/${p.associateId}`}
+                  className="cell-main"
+                  style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
+                  onClick={() => setDrill(null)}
+                >
+                  {p.name}
+                </a>
+                <Badge tone={PROF_TONES[drill.prof]} label={PROF_LABELS[drill.prof]} />
+              </div>
+            ))}
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

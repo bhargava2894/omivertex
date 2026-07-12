@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import DataTable from '../components/DataTable.jsx';
@@ -426,200 +427,202 @@ export default function Associates({ showToast, canEdit }) {
         ]}
       />
 
-      {editing && (
-        <Modal
-          title={editing.id ? 'Edit Associate' : 'New Associate'}
-          size="lg"
-          onClose={() => setEditing(null)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={save} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Associate'}
-              </button>
-            </>
-          }
-        >
-          {errors._general && <div className="form-alert">{errors._general}</div>}
-          <div className="form-grid">
-            <Field label="Full name" required error={errors.name} full>
-              <input
-                value={editing.form.name}
-                onChange={(e) => set('name', e.target.value)}
-                className={errors.name ? 'invalid' : ''}
-              />
-            </Field>
-            <Field label="Email" required error={errors.email} full>
-              <input
-                type="email"
-                value={editing.form.email}
-                onChange={(e) => set('email', e.target.value)}
-                className={errors.email ? 'invalid' : ''}
-              />
-            </Field>
-            <Field label="Company" required error={errors.company}>
-              <input
-                value={editing.form.company}
-                onChange={(e) => set('company', e.target.value)}
-                className={errors.company ? 'invalid' : ''}
-              />
-            </Field>
-            <Field label="Designation" error={errors.designation}>
-              <input
-                value={editing.form.designation}
-                onChange={(e) => set('designation', e.target.value)}
-              />
-            </Field>
-            <Field label="Joined date" error={errors.joinedDate}>
-              <input
-                type="date"
-                value={editing.form.joinedDate}
-                onChange={(e) => set('joinedDate', e.target.value)}
-              />
-            </Field>
-            <Field label="Location" error={errors.location}>
-              <input
-                value={editing.form.location}
-                onChange={(e) => set('location', e.target.value)}
-              />
-            </Field>
-            <Field label="Work mode" required error={errors.workMode}>
-              <select
-                value={editing.form.workMode}
-                onChange={(e) => set('workMode', e.target.value)}
-              >
-                <option value="ONSHORE">Onshore</option>
-                <option value="OFFSHORE">Offshore</option>
-              </select>
-            </Field>
-            <Field label="Status">
-              <select value={editing.form.status} onChange={(e) => set('status', e.target.value)}>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </select>
-            </Field>
-            <Field label="Exit reason" error={errors.exitReason}>
-              <select
-                value={editing.form.exitReason}
-                onChange={(e) => set('exitReason', e.target.value)}
-              >
-                <option value="">— still employed —</option>
-                <option value="RESIGNED">Resigned</option>
-                <option value="TERMINATED">Terminated</option>
-                <option value="CONTRACT_ENDED">Contract ended</option>
-                <option value="RETIRED">Retired</option>
-                <option value="OTHER">Other</option>
-              </select>
-            </Field>
-            <Field label="Resignation date" error={errors.resignationDate}>
-              <input
-                type="date"
-                value={editing.form.resignationDate}
-                onChange={(e) => set('resignationDate', e.target.value)}
-              />
-            </Field>
-            <Field label="Last working day" error={errors.lastWorkingDay}>
-              <input
-                type="date"
-                value={editing.form.lastWorkingDay}
-                onChange={(e) => set('lastWorkingDay', e.target.value)}
-              />
-            </Field>
-            {!editing.id && (
-              <Field label="Résumé (PDF/Word)" error={errors.resume} full>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label
-                    className={`dropzone ${drag ? 'drag' : ''}`}
-                    style={{
-                      padding: '24px 16px',
-                      border: '2px dashed var(--color-border)',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      backgroundColor: 'var(--color-bg-card)',
-                      transition: 'all 0.2s ease',
-                      display: 'block',
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setDrag(true);
-                    }}
-                    onDragLeave={() => setDrag(false)}
-                    onDrop={async (e) => {
-                      e.preventDefault();
-                      setDrag(false);
-                      handleResumeSelect(e.dataTransfer.files[0]);
-                    }}
-                  >
-                    <Icon
-                      name="upload"
-                      size={24}
-                      style={{ marginBottom: '8px', color: 'var(--color-primary)' }}
-                    />
-                    <div style={{ fontSize: '14px', color: 'var(--color-foreground)' }}>
-                      {parsingResume ? (
-                        <strong>Parsing résumé...</strong>
-                      ) : resumeFile ? (
-                        <strong>Selected: {resumeFile.name}</strong>
-                      ) : (
-                        <strong>Click to select a résumé</strong>
-                      )}
-                      {!parsingResume && !resumeFile && ' or drag a PDF/Word file here'}
-                    </div>
-                    <input
-                      type="file"
-                      accept=".pdf,.docx"
-                      style={{ display: 'none' }}
-                      onChange={async (e) => {
-                        if (e.target.files[0]) {
-                          handleResumeSelect(e.target.files[0]);
-                        }
-                      }}
-                    />
-                  </label>
-                  {resumeNotice && (
-                    <div
+      <AnimatePresence>
+        {editing && (
+          <Modal
+            title={editing.id ? 'Edit Associate' : 'New Associate'}
+            size="lg"
+            onClose={() => setEditing(null)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setEditing(null)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={save} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save Associate'}
+                </button>
+              </>
+            }
+          >
+            {errors._general && <div className="form-alert">{errors._general}</div>}
+            <div className="form-grid">
+              <Field label="Full name" required error={errors.name} full>
+                <input
+                  value={editing.form.name}
+                  onChange={(e) => set('name', e.target.value)}
+                  className={errors.name ? 'invalid' : ''}
+                />
+              </Field>
+              <Field label="Email" required error={errors.email} full>
+                <input
+                  type="email"
+                  value={editing.form.email}
+                  onChange={(e) => set('email', e.target.value)}
+                  className={errors.email ? 'invalid' : ''}
+                />
+              </Field>
+              <Field label="Company" required error={errors.company}>
+                <input
+                  value={editing.form.company}
+                  onChange={(e) => set('company', e.target.value)}
+                  className={errors.company ? 'invalid' : ''}
+                />
+              </Field>
+              <Field label="Designation" error={errors.designation}>
+                <input
+                  value={editing.form.designation}
+                  onChange={(e) => set('designation', e.target.value)}
+                />
+              </Field>
+              <Field label="Joined date" error={errors.joinedDate}>
+                <input
+                  type="date"
+                  value={editing.form.joinedDate}
+                  onChange={(e) => set('joinedDate', e.target.value)}
+                />
+              </Field>
+              <Field label="Location" error={errors.location}>
+                <input
+                  value={editing.form.location}
+                  onChange={(e) => set('location', e.target.value)}
+                />
+              </Field>
+              <Field label="Work mode" required error={errors.workMode}>
+                <select
+                  value={editing.form.workMode}
+                  onChange={(e) => set('workMode', e.target.value)}
+                >
+                  <option value="ONSHORE">Onshore</option>
+                  <option value="OFFSHORE">Offshore</option>
+                </select>
+              </Field>
+              <Field label="Status">
+                <select value={editing.form.status} onChange={(e) => set('status', e.target.value)}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </Field>
+              <Field label="Exit reason" error={errors.exitReason}>
+                <select
+                  value={editing.form.exitReason}
+                  onChange={(e) => set('exitReason', e.target.value)}
+                >
+                  <option value="">— still employed —</option>
+                  <option value="RESIGNED">Resigned</option>
+                  <option value="TERMINATED">Terminated</option>
+                  <option value="CONTRACT_ENDED">Contract ended</option>
+                  <option value="RETIRED">Retired</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </Field>
+              <Field label="Resignation date" error={errors.resignationDate}>
+                <input
+                  type="date"
+                  value={editing.form.resignationDate}
+                  onChange={(e) => set('resignationDate', e.target.value)}
+                />
+              </Field>
+              <Field label="Last working day" error={errors.lastWorkingDay}>
+                <input
+                  type="date"
+                  value={editing.form.lastWorkingDay}
+                  onChange={(e) => set('lastWorkingDay', e.target.value)}
+                />
+              </Field>
+              {!editing.id && (
+                <Field label="Résumé (PDF/Word)" error={errors.resume} full>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label
+                      className={`dropzone ${drag ? 'drag' : ''}`}
                       style={{
-                        fontSize: '13px',
-                        color: 'var(--color-info-fg, #0284c7)',
-                        backgroundColor: 'var(--color-info-bg, #f0f9ff)',
-                        padding: '10px 14px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--color-info-border, #e0f2fe)',
-                        lineHeight: '1.4',
+                        padding: '24px 16px',
+                        border: '2px dashed var(--color-border)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        backgroundColor: 'var(--color-bg-card)',
+                        transition: 'all 0.2s ease',
+                        display: 'block',
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDrag(true);
+                      }}
+                      onDragLeave={() => setDrag(false)}
+                      onDrop={async (e) => {
+                        e.preventDefault();
+                        setDrag(false);
+                        handleResumeSelect(e.dataTransfer.files[0]);
                       }}
                     >
-                      {resumeNotice}
-                    </div>
-                  )}
+                      <Icon
+                        name="upload"
+                        size={24}
+                        style={{ marginBottom: '8px', color: 'var(--color-primary)' }}
+                      />
+                      <div style={{ fontSize: '14px', color: 'var(--color-foreground)' }}>
+                        {parsingResume ? (
+                          <strong>Parsing résumé...</strong>
+                        ) : resumeFile ? (
+                          <strong>Selected: {resumeFile.name}</strong>
+                        ) : (
+                          <strong>Click to select a résumé</strong>
+                        )}
+                        {!parsingResume && !resumeFile && ' or drag a PDF/Word file here'}
+                      </div>
+                      <input
+                        type="file"
+                        accept=".pdf,.docx"
+                        style={{ display: 'none' }}
+                        onChange={async (e) => {
+                          if (e.target.files[0]) {
+                            handleResumeSelect(e.target.files[0]);
+                          }
+                        }}
+                      />
+                    </label>
+                    {resumeNotice && (
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color: 'var(--color-info-fg, #0284c7)',
+                          backgroundColor: 'var(--color-info-bg, #f0f9ff)',
+                          padding: '10px 14px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--color-info-border, #e0f2fe)',
+                          lineHeight: '1.4',
+                        }}
+                      >
+                        {resumeNotice}
+                      </div>
+                    )}
+                  </div>
+                </Field>
+              )}
+              <Field label="Skills (★ marks the primary skill)" full>
+                <div
+                  style={{
+                    maxHeight: '40vh',
+                    overflowY: 'auto',
+                    paddingRight: '8px',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    padding: '12px',
+                  }}
+                >
+                  <SkillEditor
+                    taxonomy={taxonomy}
+                    value={editing.form.skills}
+                    onChange={(v) => set('skills', v)}
+                    onTaxonomyChange={reloadTaxonomy}
+                    showToast={showToast}
+                  />
                 </div>
               </Field>
-            )}
-            <Field label="Skills (★ marks the primary skill)" full>
-              <div
-                style={{
-                  maxHeight: '40vh',
-                  overflowY: 'auto',
-                  paddingRight: '8px',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '8px',
-                  padding: '12px',
-                }}
-              >
-                <SkillEditor
-                  taxonomy={taxonomy}
-                  value={editing.form.skills}
-                  onChange={(v) => set('skills', v)}
-                  onTaxonomyChange={reloadTaxonomy}
-                  showToast={showToast}
-                />
-              </div>
-            </Field>
-          </div>
-        </Modal>
-      )}
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
     </>
   );
 }

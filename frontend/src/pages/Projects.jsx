@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Modal from '../components/Modal.jsx';
@@ -221,73 +222,75 @@ export default function Projects({ showToast, canEdit }) {
         </div>
       )}
 
-      {editing && (
-        <Modal
-          title={editing.id ? 'Edit Project' : 'New Project'}
-          onClose={() => setEditing(null)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={save} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Project'}
-              </button>
-            </>
-          }
-        >
-          {errors._general && <div className="form-alert">{errors._general}</div>}
-          <div className="form-grid">
-            <Field label="Code" required error={errors.code}>
-              <input
-                value={editing.form.code}
-                onChange={(e) => set('code', e.target.value)}
-                placeholder="e.g. MER-101"
-                className={errors.code ? 'invalid' : ''}
-              />
-            </Field>
-            <Field label="Client" required error={errors.clientId}>
-              <SearchSelect
-                options={clientOptions}
-                value={editing.form.clientId}
-                onChange={(v) => set('clientId', v)}
-                onCreate={createClient}
-                placeholder="Search or add a client…"
-                invalid={!!errors.clientId}
-              />
-            </Field>
-            <Field label="Name" required error={errors.name} full>
-              <input
-                value={editing.form.name}
-                onChange={(e) => set('name', e.target.value)}
-                className={errors.name ? 'invalid' : ''}
-              />
-            </Field>
-            <Field label="Status">
-              <select value={editing.form.status} onChange={(e) => set('status', e.target.value)}>
-                <option value="ACTIVE">Active</option>
-                <option value="ON_HOLD">On hold</option>
-                <option value="COMPLETED">Completed</option>
-              </select>
-            </Field>
-            <div />
-            <Field label="Start date" error={errors.startDate}>
-              <input
-                type="date"
-                value={editing.form.startDate}
-                onChange={(e) => set('startDate', e.target.value)}
-              />
-            </Field>
-            <Field label="End date" error={errors.endDate}>
-              <input
-                type="date"
-                value={editing.form.endDate}
-                onChange={(e) => set('endDate', e.target.value)}
-              />
-            </Field>
-          </div>
-        </Modal>
-      )}
+      <AnimatePresence>
+        {editing && (
+          <Modal
+            title={editing.id ? 'Edit Project' : 'New Project'}
+            onClose={() => setEditing(null)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setEditing(null)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={save} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save Project'}
+                </button>
+              </>
+            }
+          >
+            {errors._general && <div className="form-alert">{errors._general}</div>}
+            <div className="form-grid">
+              <Field label="Code" required error={errors.code}>
+                <input
+                  value={editing.form.code}
+                  onChange={(e) => set('code', e.target.value)}
+                  placeholder="e.g. MER-101"
+                  className={errors.code ? 'invalid' : ''}
+                />
+              </Field>
+              <Field label="Client" required error={errors.clientId}>
+                <SearchSelect
+                  options={clientOptions}
+                  value={editing.form.clientId}
+                  onChange={(v) => set('clientId', v)}
+                  onCreate={createClient}
+                  placeholder="Search or add a client…"
+                  invalid={!!errors.clientId}
+                />
+              </Field>
+              <Field label="Name" required error={errors.name} full>
+                <input
+                  value={editing.form.name}
+                  onChange={(e) => set('name', e.target.value)}
+                  className={errors.name ? 'invalid' : ''}
+                />
+              </Field>
+              <Field label="Status">
+                <select value={editing.form.status} onChange={(e) => set('status', e.target.value)}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="ON_HOLD">On hold</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
+              </Field>
+              <div />
+              <Field label="Start date" error={errors.startDate}>
+                <input
+                  type="date"
+                  value={editing.form.startDate}
+                  onChange={(e) => set('startDate', e.target.value)}
+                />
+              </Field>
+              <Field label="End date" error={errors.endDate}>
+                <input
+                  type="date"
+                  value={editing.form.endDate}
+                  onChange={(e) => set('endDate', e.target.value)}
+                />
+              </Field>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
     </>
   );
 }

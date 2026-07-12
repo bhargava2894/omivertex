@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import DataTable from '../components/DataTable.jsx';
@@ -202,46 +203,48 @@ export default function ProfileChanges({ showToast }) {
         ]}
       />
 
-      {rejecting && (
-        <Modal
-          title="Reject Profile Change Request"
-          onClose={() => {
-            setRejecting(null);
-            setRejectNote('');
-          }}
-          footer={
-            <>
-              <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  setRejecting(null);
-                  setRejectNote('');
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn btn-danger"
-                disabled={processing !== null}
-                onClick={handleReject}
-              >
-                Reject Request
-              </button>
-            </>
-          }
-        >
-          <Field label="Rejection Note (shown to the associate)">
-            <textarea
-              className="input"
-              rows={4}
-              value={rejectNote}
-              onChange={(e) => setRejectNote(e.target.value)}
-              placeholder="e.g. Please add a certification for this level, or upload a more recent PDF resume"
-              style={{ width: '100%', resize: 'vertical' }}
-            />
-          </Field>
-        </Modal>
-      )}
+      <AnimatePresence>
+        {rejecting && (
+          <Modal
+            title="Reject Profile Change Request"
+            onClose={() => {
+              setRejecting(null);
+              setRejectNote('');
+            }}
+            footer={
+              <>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setRejecting(null);
+                    setRejectNote('');
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-danger"
+                  disabled={processing !== null}
+                  onClick={handleReject}
+                >
+                  Reject Request
+                </button>
+              </>
+            }
+          >
+            <Field label="Rejection Note (shown to the associate)">
+              <textarea
+                className="input"
+                rows={4}
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                placeholder="e.g. Please add a certification for this level, or upload a more recent PDF resume"
+                style={{ width: '100%', resize: 'vertical' }}
+              />
+            </Field>
+          </Modal>
+        )}
+      </AnimatePresence>
     </>
   );
 }

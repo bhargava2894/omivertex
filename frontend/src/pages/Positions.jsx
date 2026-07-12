@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import DataTable from '../components/DataTable.jsx';
@@ -245,235 +246,248 @@ export default function Positions({ showToast, canEdit }) {
         ]}
       />
 
-      {editing && (
-        <Modal
-          title={editing.id ? 'Edit Position' : 'Open Position'}
-          onClose={() => setEditing(null)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setEditing(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={save} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Position'}
-              </button>
-            </>
-          }
-        >
-          {errors._general && <div className="form-alert">{errors._general}</div>}
-          <div className="form-grid">
-            <Field label="Title" required error={errors.title} full>
-              <input
-                value={editing.form.title}
-                onChange={(e) => set('title', e.target.value)}
-                placeholder="e.g. Senior Java Developer"
-                className={errors.title ? 'invalid' : ''}
-              />
-            </Field>
-            <Field label="Project" required error={errors.projectId} full>
-              <SearchSelect
-                options={(projects || []).map((p) => ({
-                  value: p.id,
-                  label: `${p.clientName} · ${p.name}`,
-                }))}
-                value={editing.form.projectId}
-                onChange={(v) => set('projectId', v)}
-                placeholder="Search company or project…"
-                invalid={!!errors.projectId}
-              />
-            </Field>
-            <Field label="Skill requirements" error={errors.skills} full>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {editing.form.skills.map((row, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <div style={{ flex: 2 }}>
-                      <SearchSelect
-                        options={(taxonomy || []).flatMap((cat) =>
-                          (cat.skills || []).map((s) => ({
-                            value: s.id,
-                            label: `${cat.name} · ${s.name}`,
-                          }))
-                        )}
-                        value={row.skillId}
-                        onChange={(v) => setSkillRow(i, { ...row, skillId: v })}
-                        placeholder="Search skill…"
-                      />
-                    </div>
-                    <select
-                      style={{ flex: 1 }}
-                      value={row.minProficiency}
-                      onChange={(e) => setSkillRow(i, { ...row, minProficiency: e.target.value })}
-                    >
-                      <option value="">Any level</option>
-                      {PROFICIENCIES.map((p) => (
-                        <option key={p.value} value={p.value}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      style={{ flex: 1 }}
-                      value={row.required ? 'must' : 'nice'}
-                      onChange={(e) =>
-                        setSkillRow(i, { ...row, required: e.target.value === 'must' })
-                      }
-                    >
-                      <option value="must">Must-have</option>
-                      <option value="nice">Nice-to-have</option>
-                    </select>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => removeSkillRow(i)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  style={{ alignSelf: 'flex-start' }}
-                  onClick={() =>
-                    set('skills', [
-                      ...editing.form.skills,
-                      { skillId: '', minProficiency: '', required: true },
-                    ])
-                  }
-                >
-                  + Add requirement
+      <AnimatePresence>
+        {editing && (
+          <Modal
+            title={editing.id ? 'Edit Position' : 'Open Position'}
+            onClose={() => setEditing(null)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setEditing(null)}>
+                  Cancel
                 </button>
-              </div>
-            </Field>
-            <Field label="Work mode">
-              <select
-                value={editing.form.workMode}
-                onChange={(e) => set('workMode', e.target.value)}
-              >
-                <option value="">Any</option>
-                <option value="ONSHORE">Onshore</option>
-                <option value="OFFSHORE">Offshore</option>
-              </select>
-            </Field>
-            <Field label="Legacy Required Skill (Text fallback)" error={errors.requiredSkill} full>
-              <input
-                value={editing.form.requiredSkill}
-                onChange={(e) => set('requiredSkill', e.target.value)}
-                placeholder="e.g. Java, Python (legacy search fallback)"
-              />
-            </Field>
-            <Field label="Allocation %" error={errors.allocationPercent}>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={editing.form.allocationPercent}
-                onChange={(e) => set('allocationPercent', e.target.value)}
-              />
-            </Field>
-            <Field label="Start date" error={errors.startDate}>
-              <input
-                type="date"
-                value={editing.form.startDate}
-                onChange={(e) => set('startDate', e.target.value)}
-              />
-            </Field>
-            <Field label="End date" error={errors.endDate}>
-              <input
-                type="date"
-                value={editing.form.endDate}
-                onChange={(e) => set('endDate', e.target.value)}
-              />
-            </Field>
-            {editing.id ? (
-              <Field label="Status">
-                <select value={editing.form.status} onChange={(e) => set('status', e.target.value)}>
-                  <option value="OPEN">Open</option>
-                  <option value="FILLED">Filled</option>
-                  <option value="CANCELLED">Cancelled</option>
-                </select>
+                <button className="btn btn-primary" onClick={save} disabled={saving}>
+                  {saving ? 'Saving…' : 'Save Position'}
+                </button>
+              </>
+            }
+          >
+            {errors._general && <div className="form-alert">{errors._general}</div>}
+            <div className="form-grid">
+              <Field label="Title" required error={errors.title} full>
+                <input
+                  value={editing.form.title}
+                  onChange={(e) => set('title', e.target.value)}
+                  placeholder="e.g. Senior Java Developer"
+                  className={errors.title ? 'invalid' : ''}
+                />
               </Field>
-            ) : (
-              <div />
-            )}
-            <div className="checkbox-field">
-              <input
-                id="pos-billable"
-                type="checkbox"
-                checked={editing.form.billable}
-                onChange={(e) => set('billable', e.target.checked)}
-              />
-              <label htmlFor="pos-billable">Billable seat</label>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {matching && (
-        <Modal
-          title={`Candidates — ${matching.position.title}`}
-          onClose={() => setMatching(null)}
-          footer={
-            <button className="btn btn-ghost" onClick={() => setMatching(null)}>
-              Close
-            </button>
-          }
-        >
-          <p className="cell-sub" style={{ marginTop: 0 }}>
-            {matching.position.skills && matching.position.skills.length
-              ? `needs ${matching.position.skills
-                  .map((s) => `${s.skillName}${s.required ? '' : ' (nice)'}`)
-                  .join(', ')}`
-              : matching.position.requiredSkill
-                ? `needs ${matching.position.requiredSkill}`
-                : ''}
-            {matching.position.workMode ? ` · ${matching.position.workMode.toLowerCase()}` : ''} ·{' '}
-            {matching.position.allocationPercent}%
-          </p>
-          {matching.candidates == null ? (
-            <div className="skeleton-row" />
-          ) : matching.candidates.length === 0 ? (
-            <p className="stat-hint">No one has enough free capacity for this position.</p>
-          ) : (
-            matching.candidates.map((c) => (
-              <div className="radar-row" key={c.associateId}>
-                <div>
-                  <div className="cell-main">
-                    {c.name}{' '}
-                    {c.fullMatch ? (
-                      <Badge tone="green" label="full match" />
-                    ) : (
-                      <Badge tone="amber" label="partial" />
-                    )}
-                  </div>
-                  <div className="cell-sub">
-                    {c.fullMatch
-                      ? [c.designation, (c.matchedSkills || []).join(', ')]
-                          .filter(Boolean)
-                          .join(' · ') || '—'
-                      : `missing: ${(c.missingRequirements || []).join(', ') || '—'}`}
-                  </div>
-                </div>
-                <div className="radar-right">
-                  <Badge
-                    tone={c.benchDays != null ? 'red' : 'blue'}
-                    label={
-                      c.benchDays != null ? `bench ${c.benchDays}d` : `${c.availablePercent}% free`
-                    }
-                  />
+              <Field label="Project" required error={errors.projectId} full>
+                <SearchSelect
+                  options={(projects || []).map((p) => ({
+                    value: p.id,
+                    label: `${p.clientName} · ${p.name}`,
+                  }))}
+                  value={editing.form.projectId}
+                  onChange={(v) => set('projectId', v)}
+                  placeholder="Search company or project…"
+                  invalid={!!errors.projectId}
+                />
+              </Field>
+              <Field label="Skill requirements" error={errors.skills} full>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {editing.form.skills.map((row, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <div style={{ flex: 2 }}>
+                        <SearchSelect
+                          options={(taxonomy || []).flatMap((cat) =>
+                            (cat.skills || []).map((s) => ({
+                              value: s.id,
+                              label: `${cat.name} · ${s.name}`,
+                            }))
+                          )}
+                          value={row.skillId}
+                          onChange={(v) => setSkillRow(i, { ...row, skillId: v })}
+                          placeholder="Search skill…"
+                        />
+                      </div>
+                      <select
+                        style={{ flex: 1 }}
+                        value={row.minProficiency}
+                        onChange={(e) => setSkillRow(i, { ...row, minProficiency: e.target.value })}
+                      >
+                        <option value="">Any level</option>
+                        {PROFICIENCIES.map((p) => (
+                          <option key={p.value} value={p.value}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        style={{ flex: 1 }}
+                        value={row.required ? 'must' : 'nice'}
+                        onChange={(e) =>
+                          setSkillRow(i, { ...row, required: e.target.value === 'must' })
+                        }
+                      >
+                        <option value="must">Must-have</option>
+                        <option value="nice">Nice-to-have</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => removeSkillRow(i)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
                   <button
-                    className="btn btn-primary btn-sm"
-                    disabled={matching.filling != null}
-                    onClick={() => fill(c)}
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    style={{ alignSelf: 'flex-start' }}
+                    onClick={() =>
+                      set('skills', [
+                        ...editing.form.skills,
+                        { skillId: '', minProficiency: '', required: true },
+                      ])
+                    }
                   >
-                    {matching.filling === c.associateId ? 'Allocating…' : 'Allocate'}
+                    + Add requirement
                   </button>
                 </div>
+              </Field>
+              <Field label="Work mode">
+                <select
+                  value={editing.form.workMode}
+                  onChange={(e) => set('workMode', e.target.value)}
+                >
+                  <option value="">Any</option>
+                  <option value="ONSHORE">Onshore</option>
+                  <option value="OFFSHORE">Offshore</option>
+                </select>
+              </Field>
+              <Field
+                label="Legacy Required Skill (Text fallback)"
+                error={errors.requiredSkill}
+                full
+              >
+                <input
+                  value={editing.form.requiredSkill}
+                  onChange={(e) => set('requiredSkill', e.target.value)}
+                  placeholder="e.g. Java, Python (legacy search fallback)"
+                />
+              </Field>
+              <Field label="Allocation %" error={errors.allocationPercent}>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={editing.form.allocationPercent}
+                  onChange={(e) => set('allocationPercent', e.target.value)}
+                />
+              </Field>
+              <Field label="Start date" error={errors.startDate}>
+                <input
+                  type="date"
+                  value={editing.form.startDate}
+                  onChange={(e) => set('startDate', e.target.value)}
+                />
+              </Field>
+              <Field label="End date" error={errors.endDate}>
+                <input
+                  type="date"
+                  value={editing.form.endDate}
+                  onChange={(e) => set('endDate', e.target.value)}
+                />
+              </Field>
+              {editing.id ? (
+                <Field label="Status">
+                  <select
+                    value={editing.form.status}
+                    onChange={(e) => set('status', e.target.value)}
+                  >
+                    <option value="OPEN">Open</option>
+                    <option value="FILLED">Filled</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
+                </Field>
+              ) : (
+                <div />
+              )}
+              <div className="checkbox-field">
+                <input
+                  id="pos-billable"
+                  type="checkbox"
+                  checked={editing.form.billable}
+                  onChange={(e) => set('billable', e.target.checked)}
+                />
+                <label htmlFor="pos-billable">Billable seat</label>
               </div>
-            ))
-          )}
-        </Modal>
-      )}
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {matching && (
+          <Modal
+            title={`Candidates — ${matching.position.title}`}
+            onClose={() => setMatching(null)}
+            footer={
+              <button className="btn btn-ghost" onClick={() => setMatching(null)}>
+                Close
+              </button>
+            }
+          >
+            <p className="cell-sub" style={{ marginTop: 0 }}>
+              {matching.position.skills && matching.position.skills.length
+                ? `needs ${matching.position.skills
+                    .map((s) => `${s.skillName}${s.required ? '' : ' (nice)'}`)
+                    .join(', ')}`
+                : matching.position.requiredSkill
+                  ? `needs ${matching.position.requiredSkill}`
+                  : ''}
+              {matching.position.workMode ? ` · ${matching.position.workMode.toLowerCase()}` : ''} ·{' '}
+              {matching.position.allocationPercent}%
+            </p>
+            {matching.candidates == null ? (
+              <div className="skeleton-row" />
+            ) : matching.candidates.length === 0 ? (
+              <p className="stat-hint">No one has enough free capacity for this position.</p>
+            ) : (
+              matching.candidates.map((c) => (
+                <div className="radar-row" key={c.associateId}>
+                  <div>
+                    <div className="cell-main">
+                      {c.name}{' '}
+                      {c.fullMatch ? (
+                        <Badge tone="green" label="full match" />
+                      ) : (
+                        <Badge tone="amber" label="partial" />
+                      )}
+                    </div>
+                    <div className="cell-sub">
+                      {c.fullMatch
+                        ? [c.designation, (c.matchedSkills || []).join(', ')]
+                            .filter(Boolean)
+                            .join(' · ') || '—'
+                        : `missing: ${(c.missingRequirements || []).join(', ') || '—'}`}
+                    </div>
+                  </div>
+                  <div className="radar-right">
+                    <Badge
+                      tone={c.benchDays != null ? 'red' : 'blue'}
+                      label={
+                        c.benchDays != null
+                          ? `bench ${c.benchDays}d`
+                          : `${c.availablePercent}% free`
+                      }
+                    />
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={matching.filling != null}
+                      onClick={() => fill(c)}
+                    >
+                      {matching.filling === c.associateId ? 'Allocating…' : 'Allocate'}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </Modal>
+        )}
+      </AnimatePresence>
     </>
   );
 }

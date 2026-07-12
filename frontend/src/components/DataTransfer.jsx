@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import Icon from './Icon.jsx';
 import Modal from './Modal.jsx';
@@ -150,152 +151,163 @@ export function ImportButton({ onImported, showToast }) {
       <button className="btn btn-ghost" onClick={() => setOpen(true)}>
         <Icon name="upload" size={16} /> Import
       </button>
-      {open && (
-        <Modal
-          title="Import Roster"
-          onClose={close}
-          footer={
-            isPreview ? (
-              <>
-                <button className="btn btn-ghost" onClick={close}>
-                  Cancel
+      <AnimatePresence>
+        {open && (
+          <Modal
+            title="Import Roster"
+            onClose={close}
+            footer={
+              isPreview ? (
+                <>
+                  <button className="btn btn-ghost" onClick={close}>
+                    Cancel
+                  </button>
+                  <button className="btn btn-primary" onClick={confirm} disabled={busy}>
+                    {busy ? 'Importing…' : 'Looks right — import now'}
+                  </button>
+                </>
+              ) : (
+                <button className="btn btn-primary" onClick={close}>
+                  Done
                 </button>
-                <button className="btn btn-primary" onClick={confirm} disabled={busy}>
-                  {busy ? 'Importing…' : 'Looks right — import now'}
-                </button>
-              </>
-            ) : (
-              <button className="btn btn-primary" onClick={close}>
-                Done
-              </button>
-            )
-          }
-        >
-          {error && <div className="form-alert">{error}</div>}
+              )
+            }
+          >
+            {error && <div className="form-alert">{error}</div>}
 
-          {!summary && (
-            <>
-              <div
-                style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}
-              >
-                <input
-                  type="checkbox"
-                  id="ignore-novice"
-                  checked={ignoreNovice}
-                  onChange={(e) => setIgnoreNovice(e.target.checked)}
-                  disabled={busy}
-                />
-                <label
-                  htmlFor="ignore-novice"
+            {!summary && (
+              <>
+                <div
                   style={{
-                    fontSize: '13.5px',
-                    color: 'var(--color-foreground)',
-                    cursor: 'pointer',
+                    marginBottom: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
                   }}
                 >
-                  Ignore novice level skills (EmployeeSkills sheet only)
-                </label>
-              </div>
-              <label
-                className={`dropzone ${drag ? 'drag' : ''}`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDrag(true);
-                }}
-                onDragLeave={() => setDrag(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDrag(false);
-                  preview(e.dataTransfer.files[0]);
-                }}
-              >
-                <Icon name="upload" size={30} />
-                <div>
-                  <strong>{busy ? 'Analyzing…' : 'Click to choose a file'}</strong> or drag it here
+                  <input
+                    type="checkbox"
+                    id="ignore-novice"
+                    checked={ignoreNovice}
+                    onChange={(e) => setIgnoreNovice(e.target.checked)}
+                    disabled={busy}
+                  />
+                  <label
+                    htmlFor="ignore-novice"
+                    style={{
+                      fontSize: '13.5px',
+                      color: 'var(--color-foreground)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Ignore novice level skills (EmployeeSkills sheet only)
+                  </label>
                 </div>
-                <div className="hint">
-                  .xlsx or .csv. Only ASSOCIATE NAME is required — add CUSTOMER + PROJECT to also
-                  place someone on a project, or leave them blank for new/bench joiners. (Or a
-                  SkillCloud workbook: 'employees', 'employeeskills', 'certifications' sheets.)
-                  You'll see a preview before anything is saved.
-                </div>
-                <input
-                  type="file"
-                  accept=".xlsx,.csv"
-                  disabled={busy}
-                  onChange={(e) => preview(e.target.files[0])}
-                />
-              </label>
-              <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--color-muted-fg)' }}>
-                Not sure about the columns? Download a template:{' '}
-                <button type="button" className="link-btn" onClick={() => getTemplate('roster')}>
-                  Roster (CSV)
-                </button>{' '}
-                ·{' '}
-                <button
-                  type="button"
-                  className="link-btn"
-                  onClick={() => getTemplate('skillcloud')}
+                <label
+                  className={`dropzone ${drag ? 'drag' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDrag(true);
+                  }}
+                  onDragLeave={() => setDrag(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDrag(false);
+                    preview(e.dataTransfer.files[0]);
+                  }}
                 >
-                  SkillCloud (Excel)
-                </button>
-              </div>
-            </>
-          )}
+                  <Icon name="upload" size={30} />
+                  <div>
+                    <strong>{busy ? 'Analyzing…' : 'Click to choose a file'}</strong> or drag it
+                    here
+                  </div>
+                  <div className="hint">
+                    .xlsx or .csv. Only ASSOCIATE NAME is required — add CUSTOMER + PROJECT to also
+                    place someone on a project, or leave them blank for new/bench joiners. (Or a
+                    SkillCloud workbook: 'employees', 'employeeskills', 'certifications' sheets.)
+                    You'll see a preview before anything is saved.
+                  </div>
+                  <input
+                    type="file"
+                    accept=".xlsx,.csv"
+                    disabled={busy}
+                    onChange={(e) => preview(e.target.files[0])}
+                  />
+                </label>
+                <div
+                  style={{ marginTop: '12px', fontSize: '13px', color: 'var(--color-muted-fg)' }}
+                >
+                  Not sure about the columns? Download a template:{' '}
+                  <button type="button" className="link-btn" onClick={() => getTemplate('roster')}>
+                    Roster (CSV)
+                  </button>{' '}
+                  ·{' '}
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => getTemplate('skillcloud')}
+                  >
+                    SkillCloud (Excel)
+                  </button>
+                </div>
+              </>
+            )}
 
-          {summary && (
-            <>
-              <p className="cell-sub" style={{ marginTop: 0 }}>
-                {isPreview
-                  ? 'Preview — nothing has been saved yet. This is what importing will do:'
-                  : 'Import complete.'}
-              </p>
-              <div className="import-summary">
-                <div className="import-stat">
-                  <strong>{summary.rowsProcessed}</strong> rows processed
-                </div>
-                <div className="import-stat">
-                  <strong>{summary.associatesCreated}</strong> associates{' '}
-                  {isPreview ? 'to add' : 'added'}
-                </div>
-                <div className="import-stat">
-                  <strong>{summary.clientsCreated}</strong> clients {isPreview ? 'to add' : 'added'}
-                </div>
-                <div className="import-stat">
-                  <strong>{summary.projectsCreated}</strong> projects{' '}
-                  {isPreview ? 'to add' : 'added'}
-                </div>
-                <div className="import-stat">
-                  <strong>{summary.allocationsCreated}</strong> allocations{' '}
-                  {isPreview ? 'to create' : 'created'}
-                </div>
-                {summary.skillsImported > 0 && (
+            {summary && (
+              <>
+                <p className="cell-sub" style={{ marginTop: 0 }}>
+                  {isPreview
+                    ? 'Preview — nothing has been saved yet. This is what importing will do:'
+                    : 'Import complete.'}
+                </p>
+                <div className="import-summary">
                   <div className="import-stat">
-                    <strong>{summary.skillsImported}</strong> skills{' '}
-                    {isPreview ? 'to import' : 'imported'}
+                    <strong>{summary.rowsProcessed}</strong> rows processed
                   </div>
-                )}
-                {summary.certificationsImported > 0 && (
                   <div className="import-stat">
-                    <strong>{summary.certificationsImported}</strong> certifications{' '}
-                    {isPreview ? 'to import' : 'imported'}
+                    <strong>{summary.associatesCreated}</strong> associates{' '}
+                    {isPreview ? 'to add' : 'added'}
                   </div>
-                )}
-                <div className="import-stat">
-                  <strong>{summary.skipped}</strong> skipped
+                  <div className="import-stat">
+                    <strong>{summary.clientsCreated}</strong> clients{' '}
+                    {isPreview ? 'to add' : 'added'}
+                  </div>
+                  <div className="import-stat">
+                    <strong>{summary.projectsCreated}</strong> projects{' '}
+                    {isPreview ? 'to add' : 'added'}
+                  </div>
+                  <div className="import-stat">
+                    <strong>{summary.allocationsCreated}</strong> allocations{' '}
+                    {isPreview ? 'to create' : 'created'}
+                  </div>
+                  {summary.skillsImported > 0 && (
+                    <div className="import-stat">
+                      <strong>{summary.skillsImported}</strong> skills{' '}
+                      {isPreview ? 'to import' : 'imported'}
+                    </div>
+                  )}
+                  {summary.certificationsImported > 0 && (
+                    <div className="import-stat">
+                      <strong>{summary.certificationsImported}</strong> certifications{' '}
+                      {isPreview ? 'to import' : 'imported'}
+                    </div>
+                  )}
+                  <div className="import-stat">
+                    <strong>{summary.skipped}</strong> skipped
+                  </div>
                 </div>
-              </div>
-              {summary.errors.length > 0 && (
-                <ul className="import-errors">
-                  {summary.errors.map((e, i) => (
-                    <li key={i}>{e}</li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-        </Modal>
-      )}
+                {summary.errors.length > 0 && (
+                  <ul className="import-errors">
+                    {summary.errors.map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </Modal>
+        )}
+      </AnimatePresence>
     </>
   );
 }

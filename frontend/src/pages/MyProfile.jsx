@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Badge from '../components/Badge.jsx';
@@ -229,33 +230,35 @@ export default function MyProfile({ showToast }) {
         )}
       </div>
 
-      {editingSkills != null && (
-        <Modal
-          title="Propose Skill Changes"
-          onClose={() => setEditingSkills(null)}
-          footer={
-            <>
-              <button className="btn btn-ghost" onClick={() => setEditingSkills(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-primary" onClick={submitSkills} disabled={submitting}>
-                {submitting ? 'Submitting…' : 'Submit for approval'}
-              </button>
-            </>
-          }
-        >
-          <p className="stat-hint" style={{ marginTop: 0 }}>
-            An admin reviews and approves your changes before they go live.
-          </p>
-          <SkillEditor
-            taxonomy={taxonomy}
-            value={editingSkills}
-            onChange={setEditingSkills}
-            onTaxonomyChange={reloadTaxonomy}
-            showToast={showToast}
-          />
-        </Modal>
-      )}
+      <AnimatePresence>
+        {editingSkills != null && (
+          <Modal
+            title="Propose Skill Changes"
+            onClose={() => setEditingSkills(null)}
+            footer={
+              <>
+                <button className="btn btn-ghost" onClick={() => setEditingSkills(null)}>
+                  Cancel
+                </button>
+                <button className="btn btn-primary" onClick={submitSkills} disabled={submitting}>
+                  {submitting ? 'Submitting…' : 'Submit for approval'}
+                </button>
+              </>
+            }
+          >
+            <p className="stat-hint" style={{ marginTop: 0 }}>
+              An admin reviews and approves your changes before they go live.
+            </p>
+            <SkillEditor
+              taxonomy={taxonomy}
+              value={editingSkills}
+              onChange={setEditingSkills}
+              onTaxonomyChange={reloadTaxonomy}
+              showToast={showToast}
+            />
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
