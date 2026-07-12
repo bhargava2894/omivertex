@@ -192,6 +192,16 @@ dashboard through caches/proxies).
   flag (Flyway `V2`). CSV import still populates the text fields in bulk (unchanged).
   See `docs/superpowers/specs/2026-07-07-unify-associate-skills-entry-design.md`.
 
+- **Allocations page is a grouped drill-down** (2026-07-12): the Allocations page
+  mirrors the Staffing client → project → rows drill-down (collapsible client
+  cards, search auto-expands, "Current only / Including ended" kept, CRUD per
+  row). The project dropdown filter was removed — grouping + search replace it.
+  Grouping is client-side from `GET /allocations` joined to the projects list
+  for `clientId`/`code` (no backend change); the endpoint's `projectId` param
+  remains for API consumers. This is the third copy of the drill-down
+  scaffolding (Staffing, Projects variant, now Allocations) — if a fourth page
+  adopts it, extract a shared component/hook.
+
 ## Done (for reference)
 
 SkillCloud Integration (structured skill taxonomy, associate profile pages with skills & certs tracking, faceted skill search, skill proficiency reports, cert-expiry dashboard radar, multi-sheet v2 imports, and smart demand matching) · Domain model + enforced rules (capacity guard, protective deletes, uniqueness) · 95 HTTP-level TDD tests · Excel/CSV import with dry-run preview + idempotency · xlsx/csv/pdf/docx export · dashboard (utilization, bench aging, roll-off radar, trend, charts) · demand matching (skills, open positions, one-click fill) · role-gated UI with server-side enforcement · audit trail with admin UI · dark/light themes · animated premium UI + login · docs for devs and sales · graphify knowledge graph integration · Vite build relocated out of `src/`.
