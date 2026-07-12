@@ -40,8 +40,8 @@ export default function Associates({ showToast, canEdit }) {
     return searchParams.get(name) || '';
   };
 
-  const [staffing, setStaffing] = useState(''); // '' | billable | nonbillable | bench
-  const [workMode, setWorkMode] = useState('');
+  const [staffing, setStaffing] = useState(() => getParam('staffing')); // '' | billable | nonbillable | bench
+  const [workMode, setWorkMode] = useState(() => getParam('workMode'));
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(0);
@@ -80,10 +80,14 @@ export default function Associates({ showToast, canEdit }) {
       const cat = getParam('categoryId');
       const sk = getParam('skillId');
       const minP = getParam('minProficiency');
+      const staff = getParam('staffing');
+      const mode = getParam('workMode');
 
       setCategoryId(cat);
       setSkillId(sk);
       setMinProficiency(minP);
+      setStaffing(staff);
+      setWorkMode(mode);
 
       if (taxonomy && sk && !cat) {
         const foundCat = (taxonomy || []).find((c) =>

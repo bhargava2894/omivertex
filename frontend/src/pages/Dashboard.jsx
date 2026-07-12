@@ -236,18 +236,35 @@ export default function Dashboard({ showToast, canEdit }) {
           {s.benchAssociates.length === 0 ? (
             <p className="stat-hint">Nobody on the bench — fully deployed.</p>
           ) : (
-            s.benchAssociates.slice(0, 6).map((b) => (
-              <div className="radar-row" key={b.id}>
-                <div>
-                  <div className="cell-main">{b.name}</div>
-                  <div className="cell-sub">{b.designation || '—'}</div>
+            <>
+              {s.benchAssociates.slice(0, 6).map((b) => (
+                <div className="radar-row" key={b.id}>
+                  <div>
+                    <div className="cell-main">{b.name}</div>
+                    <div className="cell-sub">{b.designation || '—'}</div>
+                  </div>
+                  <Badge
+                    tone={b.benchDays > 60 ? 'red' : b.benchDays > 30 ? 'amber' : 'green'}
+                    label={`${b.benchDays}d on bench`}
+                  />
                 </div>
-                <Badge
-                  tone={b.benchDays > 60 ? 'red' : b.benchDays > 30 ? 'amber' : 'green'}
-                  label={`${b.benchDays}d on bench`}
-                />
+              ))}
+              <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => (window.location.hash = '#/associates?staffing=bench')}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  View all {s.benchAssociates.length} bench associates in Roster →
+                </button>
               </div>
-            ))
+            </>
           )}
         </div>
         <div className="card panel">
