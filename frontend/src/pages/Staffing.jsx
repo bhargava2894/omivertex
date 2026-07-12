@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Badge from '../components/Badge.jsx';
 import Icon from '../components/Icon.jsx';
+import CollapsibleCard from '../components/CollapsibleCard.jsx';
 
 const getParam = (name) => {
   const searchPart = window.location.hash.split('?')[1];
@@ -50,84 +51,79 @@ export default function Staffing() {
   return (
     <div style={{ display: 'grid', gap: '16px' }}>
       {clients.map((c) => (
-        <div className="card" key={c.clientId} style={{ padding: 0, overflow: 'hidden' }}>
-          <button
-            type="button"
-            className="staffing-toggle"
-            onClick={() => toggle(c.clientId)}
-            aria-expanded={isOpen(c.clientId)}
-          >
-            <span aria-hidden="true" className="staffing-toggle-arrow">
-              ▸
-            </span>
-            <h3 className="staffing-toggle-title">{c.clientName}</h3>
-            <Badge value="Billable" label={`${c.billable} billable`} tone="green" />
-            <Badge value="Non-billable" label={`${c.nonBillable} non-billable`} tone="amber" />
-          </button>
-
-          {isOpen(c.clientId) && (
-            <div style={{ padding: '0 20px 20px', display: 'grid', gap: '16px' }}>
-              {c.projects.map((p) => (
-                <div key={p.projectId}>
-                  <div
-                    className="cell-sub"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      fontWeight: 600,
-                      margin: '8px 0',
-                    }}
-                  >
-                    <span>
-                      {p.projectName} <span style={{ fontWeight: 400 }}>· {p.projectCode}</span>
-                    </span>
-                    <span style={{ fontWeight: 400 }}>
-                      {p.billable} billable / {p.nonBillable} non-billable
-                    </span>
-                  </div>
-                  <div
-                    className="table-wrap"
-                    style={{
-                      margin: 0,
-                      boxShadow: 'none',
-                      border: '1px solid var(--color-border)',
-                    }}
-                  >
-                    <table style={{ fontSize: '13px' }}>
-                      <thead>
-                        <tr>
-                          <th>Associate</th>
-                          <th>Designation</th>
-                          <th>Allocation</th>
-                          <th>Billing</th>
-                          <th>Since</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {p.associates.map((a) => (
-                          <tr key={`${p.projectId}-${a.associateId}`}>
-                            <td>
-                              <a className="cell-main" href={`#/associates/${a.associateId}`}>
-                                {a.name}
-                              </a>
-                            </td>
-                            <td>{a.designation || '—'}</td>
-                            <td>{a.allocationPercent}%</td>
-                            <td>
-                              <Badge value={a.billable ? 'Billable' : 'Non-billable'} />
-                            </td>
-                            <td>{a.startDate}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+        <CollapsibleCard
+          key={c.clientId}
+          open={isOpen(c.clientId)}
+          onToggle={() => toggle(c.clientId)}
+          header={
+            <>
+              <h3 className="staffing-toggle-title">{c.clientName}</h3>
+              <Badge value="Billable" label={`${c.billable} billable`} tone="green" />
+              <Badge value="Non-billable" label={`${c.nonBillable} non-billable`} tone="amber" />
+            </>
+          }
+        >
+          <div style={{ padding: '0 20px 20px', display: 'grid', gap: '16px' }}>
+            {c.projects.map((p) => (
+              <div key={p.projectId}>
+                <div
+                  className="cell-sub"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontWeight: 600,
+                    margin: '8px 0',
+                  }}
+                >
+                  <span>
+                    {p.projectName} <span style={{ fontWeight: 400 }}>· {p.projectCode}</span>
+                  </span>
+                  <span style={{ fontWeight: 400 }}>
+                    {p.billable} billable / {p.nonBillable} non-billable
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div
+                  className="table-wrap"
+                  style={{
+                    margin: 0,
+                    boxShadow: 'none',
+                    border: '1px solid var(--color-border)',
+                  }}
+                >
+                  <table style={{ fontSize: '13px' }}>
+                    <thead>
+                      <tr>
+                        <th>Associate</th>
+                        <th>Designation</th>
+                        <th>Allocation</th>
+                        <th>Billing</th>
+                        <th>Since</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {p.associates.map((a) => (
+                        <tr key={`${p.projectId}-${a.associateId}`}>
+                          <td>
+                            <a className="cell-main" href={`#/associates/${a.associateId}`}>
+                              {a.name}
+                            </a>
+                          </td>
+                          <td>{a.designation || '—'}</td>
+                          <td>{a.allocationPercent}%</td>
+                          <td>
+                            <Badge value={a.billable ? 'Billable' : 'Non-billable'} />
+                          </td>
+                          <td>{a.startDate}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleCard>
       ))}
     </div>
   );
