@@ -202,6 +202,16 @@ dashboard through caches/proxies).
   scaffolding (Staffing, Projects variant, now Allocations) — if a fourth page
   adopts it, extract a shared component/hook.
 
+- **Drill-down scaffolding extracted; motion via shared tokens** (2026-07-12):
+  the client-card expand/collapse shell (header button, chevron, animated
+  body) now lives in `CollapsibleCard.jsx`, used by Staffing, Projects, and
+  Allocations — this supersedes the "if a fourth page adopts it, extract"
+  note above. All framer-motion animation goes through `frontend/src/motion.js`
+  tokens/variants and its `useMotionVariants` reduced-motion hook (the CSS
+  `prefers-reduced-motion` kill-switch cannot reach framer-motion's inline
+  styles). Route transitions, DataTable row animations, and dashboard tile
+  staggers were deliberately excluded.
+
 ## Done (for reference)
 
 SkillCloud Integration (structured skill taxonomy, associate profile pages with skills & certs tracking, faceted skill search, skill proficiency reports, cert-expiry dashboard radar, multi-sheet v2 imports, and smart demand matching) · Domain model + enforced rules (capacity guard, protective deletes, uniqueness) · 95 HTTP-level TDD tests · Excel/CSV import with dry-run preview + idempotency · xlsx/csv/pdf/docx export · dashboard (utilization, bench aging, roll-off radar, trend, charts) · demand matching (skills, open positions, one-click fill) · role-gated UI with server-side enforcement · audit trail with admin UI · dark/light themes · animated premium UI + login · docs for devs and sales · graphify knowledge graph integration · Vite build relocated out of `src/`.

@@ -68,7 +68,8 @@ omivertex/
 │     ├─ App.jsx                  shell: auth gate, sidebar, topbar, routing
 │     ├─ api.js                   fetch wrapper (401 → global logout event)
 │     ├─ theme.js                 light/dark/system persistence
-│     ├─ components/              Icon, Modal, Badge, DataTable, Field,
+│     ├─ motion.js                shared animation tokens/variants + reduced-motion hook
+│     ├─ components/              Icon, Modal, Badge, DataTable, Field, CollapsibleCard,
 │     │                           DataTransfer (import/export), charts.jsx
 │     └─ pages/                   Login, Dashboard, Associates, Clients,
 │                                 Projects, Allocations, Settings
