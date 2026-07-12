@@ -348,30 +348,6 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .panel h2 svg { color: var(--color-primary); }
 
 /* ---------- Client-grouped project sections ---------- */
-.client-section {
-  padding: 0 !important;
-  border-left: 3px solid var(--color-primary);
-  overflow: hidden;
-}
-.client-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  background: var(--color-primary-soft);
-  border: none;
-  padding: 14px 20px;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.15s var(--ease);
-}
-.client-header:hover { background: var(--color-muted); }
-.client-chevron {
-  display: inline-block;
-  transition: transform 0.15s ease;
-  color: var(--color-primary);
-  font-size: 14px;
-}
 .client-icon { color: var(--color-primary); flex-shrink: 0; }
 .client-name {
   font-weight: 700;

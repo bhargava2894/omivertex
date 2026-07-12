@@ -6,6 +6,7 @@ import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
 import SearchSelect from '../components/SearchSelect.jsx';
+import CollapsibleCard from '../components/CollapsibleCard.jsx';
 
 const EMPTY = { code: '', name: '', clientId: '', status: 'ACTIVE', startDate: '', endDate: '' };
 
@@ -161,34 +162,26 @@ export default function Projects({ showToast, canEdit }) {
       ) : (
         <div style={{ display: 'grid', gap: '16px' }}>
           {sections.map(({ client, rows, total, activeCount }) => (
-            <div className="card client-section" key={client.id}>
-              <button
-                className="client-header"
-                onClick={() => toggle(client.id)}
-                aria-expanded={!isCollapsed(client.id)}
-              >
-                <span
-                  className="client-chevron"
-                  aria-hidden
-                  style={{
-                    transform: isCollapsed(client.id) ? 'none' : 'rotate(90deg)',
-                  }}
-                >
-                  ▸
-                </span>
-                <Icon name="briefcase" size={16} className="client-icon" />
-                <span className="client-name">{client.name}</span>
-                {total === 0 ? (
-                  <span className="cell-sub">No projects yet</span>
-                ) : (
-                  <>
-                    <span className="client-count-pill">{total}</span>
-                    <span className="cell-sub">{activeCount} active</span>
-                  </>
-                )}
-              </button>
-
-              {!isCollapsed(client.id) && rows.length > 0 && (
+            <CollapsibleCard
+              key={client.id}
+              open={!isCollapsed(client.id)}
+              onToggle={() => toggle(client.id)}
+              header={
+                <>
+                  <Icon name="briefcase" size={16} className="client-icon" />
+                  <span className="client-name">{client.name}</span>
+                  {total === 0 ? (
+                    <span className="cell-sub">No projects yet</span>
+                  ) : (
+                    <>
+                      <span className="client-count-pill">{total}</span>
+                      <span className="cell-sub">{activeCount} active</span>
+                    </>
+                  )}
+                </>
+              }
+            >
+              {rows.length > 0 && (
                 <div className="client-projects">
                   {rows.map((r) => (
                     <div className="radar-row" key={r.id}>
@@ -223,7 +216,7 @@ export default function Projects({ showToast, canEdit }) {
                   ))}
                 </div>
               )}
-            </div>
+            </CollapsibleCard>
           ))}
         </div>
       )}
