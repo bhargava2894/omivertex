@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import { useMotionVariants, chatMessage } from '../motion.js';
 import { api } from '../api.js';
 import Icon from './Icon.jsx';
 
@@ -66,6 +68,7 @@ export default function AssistantChat({ showToast, canEdit }) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const logRef = useRef(null);
+  const messageAnim = useMotionVariants(chatMessage);
 
   const ask = async (text) => {
     const question = (text || '').trim();
@@ -149,8 +152,10 @@ export default function AssistantChat({ showToast, canEdit }) {
           }}
         >
           {messages.map((m, i) => (
-            <div
+            <motion.div
               key={i}
+              initial={messageAnim.initial}
+              animate={messageAnim.animate}
               style={{
                 alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
                 maxWidth: '85%',
@@ -212,7 +217,7 @@ export default function AssistantChat({ showToast, canEdit }) {
                   )}
                 </div>
               )}
-            </div>
+            </motion.div>
           ))}
           {busy && <div className="stat-hint">Thinking…</div>}
         </div>

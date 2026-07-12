@@ -31,6 +31,32 @@ export const toastSlide = {
   exit: { opacity: 0, y: 16, transition: { duration: EXIT, ease: EASE } },
 };
 
+export const pageTransition = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: ENTER, ease: EASE } },
+  exit: { opacity: 0, y: -8, transition: { duration: EXIT, ease: EASE } },
+};
+
+export const chatMessage = {
+  initial: { opacity: 0, y: 12, scale: 0.97 },
+  animate: { opacity: 1, y: 0, scale: 1, transition: { duration: ENTER, ease: EASE } },
+};
+
+export const listContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+export const listItem = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { duration: ENTER, ease: EASE } },
+};
+
+export const badgePop = {
+  initial: { scale: 0.85, opacity: 0 },
+  animate: { scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 400, damping: 22 } },
+};
+
 function withZeroDurations(node) {
   if (Array.isArray(node) || node === null || typeof node !== 'object') return node;
   const out = {};

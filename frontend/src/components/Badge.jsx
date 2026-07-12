@@ -1,3 +1,6 @@
+import { motion } from 'framer-motion';
+import { useMotionVariants, badgePop } from '../motion.js';
+
 const tones = {
   ACTIVE: 'badge-green',
   INACTIVE: 'badge-gray',
@@ -14,5 +17,16 @@ const tones = {
 
 export default function Badge({ value, label, tone }) {
   const cls = tone ? `badge-${tone}` : tones[value] || 'badge-gray';
-  return <span className={`badge ${cls}`}>{label || String(value).replace('_', ' ')}</span>;
+  const anim = useMotionVariants(badgePop);
+
+  return (
+    <motion.span
+      className={`badge ${cls}`}
+      initial={anim.initial}
+      animate={anim.animate}
+      style={{ display: 'inline-block' }}
+    >
+      {label || String(value).replace('_', ' ')}
+    </motion.span>
+  );
 }

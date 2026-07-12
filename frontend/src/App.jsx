@@ -19,7 +19,7 @@ import MyProfile from './pages/MyProfile.jsx';
 import ProfileChanges from './pages/ProfileChanges.jsx';
 import { api } from './api.js';
 import { storedTheme, applyTheme, resolveTheme } from './theme.js';
-import { toastSlide, useMotionVariants } from './motion.js';
+import { toastSlide, pageTransition, useMotionVariants } from './motion.js';
 
 const ROUTES = [
   {
@@ -154,6 +154,7 @@ export default function App() {
   const route = useHashRoute();
   const [toast, setToast] = useState(null);
   const toastAnim = useMotionVariants(toastSlide);
+  const pageAnim = useMotionVariants(pageTransition);
   const [theme, setThemeState] = useState(storedTheme);
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
 
@@ -311,12 +312,21 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main className="content">
-          {isProfile ? (
-            <Page id={profileId} showToast={showToast} canEdit={canEdit} />
-          ) : (
-            <Page showToast={showToast} theme={theme} setTheme={setTheme} canEdit={canEdit} />
-          )}
+        <main className="content" style={{ overflowX: 'hidden' }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={isProfile ? `profile-${profileId}` : active.path}
+              initial={pageAnim.initial}
+              animate={pageAnim.animate}
+              exit={pageAnim.exit}
+            >
+              {isProfile ? (
+                <Page id={profileId} showToast={showToast} canEdit={canEdit} />
+              ) : (
+                <Page showToast={showToast} theme={theme} setTheme={setTheme} canEdit={canEdit} />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 

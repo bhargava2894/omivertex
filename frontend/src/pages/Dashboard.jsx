@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
 import Icon from '../components/Icon.jsx';
@@ -7,6 +7,8 @@ import Badge from '../components/Badge.jsx';
 import Modal from '../components/Modal.jsx';
 import { TrendChart, DonutChart, VBarChart } from '../components/charts.jsx';
 import AssistantChat from '../components/AssistantChat.jsx';
+import AnimatedNumber from '../components/AnimatedNumber.jsx';
+import { useMotionVariants, listContainer, listItem } from '../motion.js';
 
 function StatCard({ icon, label, value, hint }) {
   return (
@@ -17,7 +19,9 @@ function StatCard({ icon, label, value, hint }) {
         </span>
         {label}
       </div>
-      <div className="stat-value">{value}</div>
+      <div className="stat-value">
+        <AnimatedNumber value={value} />
+      </div>
       {hint && <div className="stat-hint">{hint}</div>}
     </div>
   );
@@ -57,6 +61,8 @@ export default function Dashboard({ showToast, canEdit }) {
   };
 
   const { data, loading, error } = useLoad(api.dashboard);
+  const listContainerAnim = useMotionVariants(listContainer);
+  const listItemAnim = useMotionVariants(listItem);
 
   if (loading) {
     return (
@@ -175,23 +181,30 @@ export default function Dashboard({ showToast, canEdit }) {
             <p className="stat-hint">No allocations ending in the next 30 days.</p>
           ) : (
             <>
-              {s.upcomingRolloffs.slice(0, 6).map((r) => (
-                <div className="radar-row" key={r.allocationId}>
-                  <div>
-                    <div className="cell-main">{r.associateName}</div>
-                    <div className="cell-sub">
-                      {r.projectName} · {r.clientName}
+              <motion.div
+                variants={listContainerAnim}
+                initial="hidden"
+                animate="show"
+                style={{ display: 'grid', gap: '8px' }}
+              >
+                {s.upcomingRolloffs.slice(0, 6).map((r) => (
+                  <motion.div className="radar-row" key={r.allocationId} variants={listItemAnim}>
+                    <div>
+                      <div className="cell-main">{r.associateName}</div>
+                      <div className="cell-sub">
+                        {r.projectName} · {r.clientName}
+                      </div>
                     </div>
-                  </div>
-                  <div className="radar-right">
-                    <span className="cell-sub">{r.endDate}</span>
-                    <Badge
-                      tone={r.daysLeft <= 7 ? 'red' : r.daysLeft <= 14 ? 'amber' : 'blue'}
-                      label={r.daysLeft <= 0 ? 'today' : `${r.daysLeft}d left`}
-                    />
-                  </div>
-                </div>
-              ))}
+                    <div className="radar-right">
+                      <span className="cell-sub">{r.endDate}</span>
+                      <Badge
+                        tone={r.daysLeft <= 7 ? 'red' : r.daysLeft <= 14 ? 'amber' : 'blue'}
+                        label={r.daysLeft <= 0 ? 'today' : `${r.daysLeft}d left`}
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
               {s.upcomingRolloffs.length > 6 && (
                 <div style={{ marginTop: '16px', textAlign: 'center' }}>
                   <button
@@ -221,21 +234,28 @@ export default function Dashboard({ showToast, canEdit }) {
             <p className="stat-hint">No certifications expiring in the next 90 days.</p>
           ) : (
             <>
-              {s.expiringCertifications.slice(0, 6).map((c) => (
-                <div className="radar-row" key={c.certificationId}>
-                  <div>
-                    <div className="cell-main">{c.associateName}</div>
-                    <div className="cell-sub">{c.name}</div>
-                  </div>
-                  <div className="radar-right">
-                    <span className="cell-sub">{c.expiryDate}</span>
-                    <Badge
-                      tone={c.daysLeft <= 30 ? 'red' : c.daysLeft <= 60 ? 'amber' : 'blue'}
-                      label={c.daysLeft <= 0 ? 'expired' : `${c.daysLeft}d left`}
-                    />
-                  </div>
-                </div>
-              ))}
+              <motion.div
+                variants={listContainerAnim}
+                initial="hidden"
+                animate="show"
+                style={{ display: 'grid', gap: '8px' }}
+              >
+                {s.expiringCertifications.slice(0, 6).map((c) => (
+                  <motion.div className="radar-row" key={c.certificationId} variants={listItemAnim}>
+                    <div>
+                      <div className="cell-main">{c.associateName}</div>
+                      <div className="cell-sub">{c.name}</div>
+                    </div>
+                    <div className="radar-right">
+                      <span className="cell-sub">{c.expiryDate}</span>
+                      <Badge
+                        tone={c.daysLeft <= 30 ? 'red' : c.daysLeft <= 60 ? 'amber' : 'blue'}
+                        label={c.daysLeft <= 0 ? 'expired' : `${c.daysLeft}d left`}
+                      />
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
               {s.expiringCertifications.length > 6 && (
                 <div style={{ marginTop: '16px', textAlign: 'center' }}>
                   <button
@@ -279,18 +299,25 @@ export default function Dashboard({ showToast, canEdit }) {
             <p className="stat-hint">Nobody on the bench — fully deployed.</p>
           ) : (
             <>
-              {s.benchAssociates.slice(0, 6).map((b) => (
-                <div className="radar-row" key={b.id}>
-                  <div>
-                    <div className="cell-main">{b.name}</div>
-                    <div className="cell-sub">{b.designation || '—'}</div>
-                  </div>
-                  <Badge
-                    tone={b.benchDays > 60 ? 'red' : b.benchDays > 30 ? 'amber' : 'green'}
-                    label={`${b.benchDays}d on bench`}
-                  />
-                </div>
-              ))}
+              <motion.div
+                variants={listContainerAnim}
+                initial="hidden"
+                animate="show"
+                style={{ display: 'grid', gap: '8px' }}
+              >
+                {s.benchAssociates.slice(0, 6).map((b) => (
+                  <motion.div className="radar-row" key={b.id} variants={listItemAnim}>
+                    <div>
+                      <div className="cell-main">{b.name}</div>
+                      <div className="cell-sub">{b.designation || '—'}</div>
+                    </div>
+                    <Badge
+                      tone={b.benchDays > 60 ? 'red' : b.benchDays > 30 ? 'amber' : 'green'}
+                      label={`${b.benchDays}d on bench`}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
               <div style={{ marginTop: '16px', textAlign: 'center' }}>
                 <button
                   type="button"
