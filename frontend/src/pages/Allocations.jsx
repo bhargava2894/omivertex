@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { api } from '../api.js';
 import { useLoad } from '../hooks.js';
-import DataTable from '../components/DataTable.jsx';
 import Modal from '../components/Modal.jsx';
 import Badge from '../components/Badge.jsx';
 import Icon from '../components/Icon.jsx';
-import SearchSelect from '../components/SearchSelect.jsx';
 import AllocationForm from '../components/AllocationForm.jsx';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -21,12 +19,14 @@ const EMPTY = {
 };
 
 export default function Allocations({ showToast, canEdit }) {
-  const [projectFilter, setProjectFilter] = useState('');
+  const [search, setSearch] = useState('');
   const [activeOnly, setActiveOnly] = useState(true);
+  // Which client sections are expanded; null = "open the first one" (as on Staffing).
+  const [open, setOpen] = useState(null);
 
   const { data, loading, reload } = useLoad(
-    () => api.list('allocations', { projectId: projectFilter, active: activeOnly ? 'true' : '' }),
-    [projectFilter, activeOnly]
+    () => api.list('allocations', { active: activeOnly ? 'true' : '' }),
+    [activeOnly]
   );
   const { data: projects } = useLoad(() => api.list('projects'));
 
@@ -109,24 +109,82 @@ export default function Allocations({ showToast, canEdit }) {
     }
   };
 
+  // --- client → project grouping (mirrors the Staffing drill-down) ---
+  const q = search.trim().toLowerCase();
+  const projectById = new Map((projects || []).map((p) => [p.id, p]));
+
+  const clientMap = new Map();
+  for (const r of data || []) {
+    const project = projectById.get(r.projectId);
+    // clientId comes from the projects list; fall back to the name while it loads
+    const key = project ? `c${project.clientId}` : `n${r.clientName}`;
+    if (!clientMap.has(key)) {
+      clientMap.set(key, { key, name: r.clientName, byProject: new Map() });
+    }
+    const client = clientMap.get(key);
+    if (!client.byProject.has(r.projectId)) {
+      client.byProject.set(r.projectId, {
+        projectId: r.projectId,
+        name: r.projectName,
+        code: project?.code || '',
+        rows: [],
+      });
+    }
+    client.byProject.get(r.projectId).rows.push(r);
+  }
+
+  // A client-name hit shows everything under that client (like the Projects page).
+  const sections = [...clientMap.values()]
+    .map((client) => {
+      const clientHit = q && client.name.toLowerCase().includes(q);
+      const projectSections = [...client.byProject.values()]
+        .map((p) => {
+          const projectHit =
+            clientHit || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+          const rows = p.rows
+            .filter((r) => !q || projectHit || r.associateName.toLowerCase().includes(q))
+            .sort(
+              (a, b) =>
+                (a.active ? 0 : 1) - (b.active ? 0 : 1) ||
+                a.associateName.localeCompare(b.associateName)
+            );
+          return { ...p, rows };
+        })
+        .filter((p) => p.rows.length > 0)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const rows = projectSections.flatMap((p) => p.rows);
+      const billable = rows.filter((r) => r.billable).length;
+      return {
+        ...client,
+        projects: projectSections,
+        billable,
+        nonBillable: rows.length - billable,
+      };
+    })
+    .filter((c) => c.projects.length > 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Searching auto-expands every visible section.
+  const isOpen = (key) =>
+    !!q || (open === null ? sections.length > 0 && key === sections[0].key : !!open[key]);
+  const toggle = (key) =>
+    setOpen((prev) => {
+      const base = prev === null ? (sections.length > 0 ? { [sections[0].key]: true } : {}) : prev;
+      return { ...base, [key]: !base[key] };
+    });
+
   return (
     <>
       <div className="toolbar">
         <div className="toolbar-filters">
-          <div style={{ minWidth: '220px' }}>
-            <SearchSelect
-              options={[
-                { value: '', label: 'All projects' },
-                ...(projects || []).map((p) => ({
-                  value: p.id,
-                  label: `${p.clientName} · ${p.name}`,
-                })),
-              ]}
-              value={projectFilter}
-              onChange={setProjectFilter}
-              placeholder="All projects"
-            />
-          </div>
+          <input
+            className="filter-select"
+            type="search"
+            placeholder="Search clients, projects, or associates…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search allocations"
+          />
           <select
             className="filter-select"
             value={activeOnly ? 'active' : ''}
@@ -144,47 +202,132 @@ export default function Allocations({ showToast, canEdit }) {
         )}
       </div>
 
-      <DataTable
-        loading={loading}
-        rows={data || []}
-        emptyText="No allocations found. Assign an associate to a project."
-        onEdit={canEdit ? openEdit : undefined}
-        onDelete={canEdit ? remove : undefined}
-        columns={[
-          {
-            key: 'associateName',
-            label: 'Associate',
-            render: (r) => <span className="cell-main">{r.associateName}</span>,
-          },
-          {
-            key: 'projectName',
-            label: 'Project',
-            render: (r) => (
-              <div>
-                <div>{r.projectName}</div>
-                <div className="cell-sub">{r.clientName}</div>
-              </div>
-            ),
-          },
-          {
-            key: 'billable',
-            label: 'Billing',
-            render: (r) => <Badge value={r.billable ? 'Billable' : 'Non-billable'} />,
-          },
-          {
-            key: 'allocationPercent',
-            label: 'Allocation',
-            render: (r) => `${r.allocationPercent}%`,
-          },
-          { key: 'startDate', label: 'Start' },
-          { key: 'endDate', label: 'End', render: (r) => r.endDate || '—' },
-          {
-            key: 'active',
-            label: 'State',
-            render: (r) => <Badge value={r.active ? 'Current' : 'Ended'} />,
-          },
-        ]}
-      />
+      {loading ? (
+        <div>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="skeleton-row" />
+          ))}
+        </div>
+      ) : sections.length === 0 ? (
+        <div className="card">
+          <div className="empty-state">
+            <Icon name="inbox" size={40} />
+            <p>No allocations found. Assign an associate to a project.</p>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: '16px' }}>
+          {sections.map((c) => (
+            <div className="card" key={c.key} style={{ padding: 0, overflow: 'hidden' }}>
+              <button
+                type="button"
+                className="staffing-toggle"
+                onClick={() => toggle(c.key)}
+                aria-expanded={isOpen(c.key)}
+              >
+                <span aria-hidden="true" className="staffing-toggle-arrow">
+                  ▸
+                </span>
+                <h3 className="staffing-toggle-title">{c.name}</h3>
+                <Badge value="Billable" label={`${c.billable} billable`} tone="green" />
+                <Badge value="Non-billable" label={`${c.nonBillable} non-billable`} tone="amber" />
+              </button>
+
+              {isOpen(c.key) && (
+                <div style={{ padding: '0 20px 20px', display: 'grid', gap: '16px' }}>
+                  {c.projects.map((p) => (
+                    <div key={p.projectId}>
+                      <div
+                        className="cell-sub"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          fontWeight: 600,
+                          margin: '8px 0',
+                        }}
+                      >
+                        <span>
+                          {p.name}
+                          {p.code && <span style={{ fontWeight: 400 }}> · {p.code}</span>}
+                        </span>
+                      </div>
+                      <div
+                        className="table-wrap"
+                        style={{
+                          margin: 0,
+                          boxShadow: 'none',
+                          border: '1px solid var(--color-border)',
+                        }}
+                      >
+                        <table style={{ fontSize: '13px' }}>
+                          <thead>
+                            <tr>
+                              <th>Associate</th>
+                              <th>Billing</th>
+                              <th>Allocation</th>
+                              <th>Start</th>
+                              <th>End</th>
+                              <th>State</th>
+                              {canEdit && <th aria-label="Actions" />}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {p.rows.map((r) => (
+                              <tr key={r.id}>
+                                <td>
+                                  <a className="cell-main" href={`#/associates/${r.associateId}`}>
+                                    {r.associateName}
+                                  </a>
+                                </td>
+                                <td>
+                                  <Badge value={r.billable ? 'Billable' : 'Non-billable'} />
+                                </td>
+                                <td>{r.allocationPercent}%</td>
+                                <td>{r.startDate}</td>
+                                <td>{r.endDate || '—'}</td>
+                                <td>
+                                  <Badge value={r.active ? 'Current' : 'Ended'} />
+                                </td>
+                                {canEdit && (
+                                  <td>
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        gap: '8px',
+                                        justifyContent: 'flex-end',
+                                      }}
+                                    >
+                                      <button
+                                        className="btn btn-ghost btn-sm"
+                                        onClick={() => openEdit(r)}
+                                        aria-label={`Edit allocation of ${r.associateName}`}
+                                      >
+                                        <Icon name="edit" size={14} /> Edit
+                                      </button>
+                                      <button
+                                        className="btn btn-danger btn-sm"
+                                        onClick={() => remove(r)}
+                                        aria-label={`Remove allocation of ${r.associateName}`}
+                                      >
+                                        <Icon name="trash" size={14} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {editing && (
         <Modal
