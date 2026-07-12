@@ -17,6 +17,7 @@ export default function CollapsibleCard({ open, onToggle, header, children }) {
             initial={anim.initial}
             animate={anim.animate}
             exit={anim.exit}
+            // clips content as height animates; bodies here don't overflow the card
             style={{ overflow: 'hidden' }}
           >
             {children}

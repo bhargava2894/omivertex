@@ -506,7 +506,7 @@ td.actions { text-align: right; white-space: nowrap; }
   to { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .modal, .menu { animation: none; }
+  .menu { animation: none; }
   * { transition: none !important; }
   .brand-logo { animation: none !important; }
 }
