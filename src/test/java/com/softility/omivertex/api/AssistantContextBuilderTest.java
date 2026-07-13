@@ -160,6 +160,32 @@ class AssistantContextBuilderTest extends ApiTestBase {
     }
 
     @Test
+    void projectDetail_listsCurrentRosterAndExcludesEnded() {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var onIt = associate("Asha Nair", "asha@softility.com", WorkMode.ONSHORE);
+        allocation(onIt, proj, true); // current
+        var rolledOff = associate("Vikram Singh", "vikram@softility.com", WorkMode.OFFSHORE);
+        var ended = allocation(rolledOff, proj, true);
+        ended.setEndDate(LocalDate.now().minusDays(5));
+        allocationRepository.save(ended);
+
+        String detail = builder.projectDetail(proj);
+
+        assertThat(detail).contains("Storefront Revamp").contains("Acme Corp");
+        assertThat(detail).contains("Asha Nair"); // currently allocated
+        assertThat(detail).doesNotContain("Vikram Singh"); // rolled off — not current roster
+    }
+
+    @Test
+    void projectDetail_emptyRosterIsStated() {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-200", "Fresh Start", acme);
+
+        assertThat(builder.projectDetail(proj)).contains("No one is currently allocated");
+    }
+
+    @Test
     void openPositions_listsTitleProjectAndMustHaves() {
         seedWorkforce();
         String result = builder.openPositions();

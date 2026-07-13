@@ -247,6 +247,11 @@ public class AssistantService {
                 yield associate.reply() != null ? associate.reply()
                         : contextBuilder.associateDetail(associate.value());
             }
+            case "get_project_detail" -> {
+                Resolved<Project> project = resolveProject(str(args, "projectName"));
+                yield project.reply() != null ? project.reply()
+                        : contextBuilder.projectDetail(project.value());
+            }
             case "list_rolloffs" -> contextBuilder.rolloffs(intOrDefault(args.get("withinDays"), 30));
             case "list_open_positions" -> contextBuilder.openPositions();
             default -> "Unknown tool: " + name;

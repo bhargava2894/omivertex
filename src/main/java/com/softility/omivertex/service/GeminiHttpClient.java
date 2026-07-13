@@ -62,9 +62,10 @@ public class GeminiHttpClient implements GeminiClient {
 
     /** Tools executed server-side and fed back to the model (write tools return as drafts). */
     static final Set<String> READ_TOOLS = Set.of(READ_TOOL_MATCHES,
-            "search_associates", "get_associate_detail", "list_rolloffs", "list_open_positions");
+            "search_associates", "get_associate_detail", "get_project_detail",
+            "list_rolloffs", "list_open_positions");
 
-    /** The three assistant tools. Write tools are drafts only — the server never executes them. */
+    /** All assistant tools. Write tools are drafts only — the server never executes them. */
     private static final List<Map<String, Object>> FUNCTION_DECLARATIONS = List.of(
             Map.of("name", "propose_allocation",
                     "description", "Draft assigning an associate to a project for the user to confirm."
@@ -117,6 +118,13 @@ public class GeminiHttpClient implements GeminiClient {
                     "parameters", Map.of("type", "object",
                             "properties", Map.of("name", Map.of("type", "string")),
                             "required", List.of("name"))),
+            Map.of("name", "get_project_detail",
+                    "description", "One project's roster: who is currently staffed on it (with"
+                            + " percent and billable), its client and status, and any open seats."
+                            + " Use when asked who is on / working on / staffed on a project.",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of("projectName", Map.of("type", "string")),
+                            "required", List.of("projectName"))),
             Map.of("name", "list_rolloffs",
                     "description", "Current allocations ending soon — who rolls off which project"
                             + " and when.",

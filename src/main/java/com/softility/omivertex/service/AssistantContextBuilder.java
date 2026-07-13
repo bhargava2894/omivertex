@@ -8,6 +8,7 @@ import com.softility.omivertex.domain.EntityStatus;
 import com.softility.omivertex.domain.PositionSkill;
 import com.softility.omivertex.domain.PositionStatus;
 import com.softility.omivertex.domain.Proficiency;
+import com.softility.omivertex.domain.Project;
 import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.AssociateSkillRepository;
@@ -220,6 +221,42 @@ public class AssistantContextBuilder {
                 })
                 .toList();
         return rows.isEmpty() ? "No open positions." : String.join("\n", rows);
+    }
+
+    /** Read tool: one project's picture — who is currently staffed on it, and open seats. */
+    public String projectDetail(Project p) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(p.getName()).append(" · ").append(p.getCode())
+          .append(" @").append(p.getClient().getName())
+          .append(" · ").append(p.getStatus())
+          .append(" · ").append(p.getStartDate() == null ? "?" : p.getStartDate())
+          .append("–").append(p.getEndDate() == null ? "open" : p.getEndDate());
+
+        List<Allocation> roster = allocations.findAllWithDetails().stream()
+                .filter(al -> al.getProject().getId().equals(p.getId()))
+                .filter(Allocation::isCurrent)
+                .sorted(Comparator.comparing(al -> al.getAssociate().getName()))
+                .limit(MAX_TOOL_ROWS)
+                .toList();
+        if (roster.isEmpty()) {
+            sb.append(" · No one is currently allocated.");
+        } else {
+            sb.append(" · roster: ").append(roster.stream()
+                    .map(al -> al.getAssociate().getName() + " (" + al.getAllocationPercent() + "%"
+                            + (al.isBillable() ? ", billable" : ", non-billable") + ")")
+                    .collect(Collectors.joining("; ")));
+        }
+
+        List<String> openSeats = positions.findAllWithDetails().stream()
+                .filter(op -> op.getProject().getId().equals(p.getId()))
+                .filter(op -> op.getStatus() == PositionStatus.OPEN)
+                .limit(MAX_TOOL_ROWS)
+                .map(op -> op.getTitle() + " (" + op.getAllocationPercent() + "%)")
+                .toList();
+        if (!openSeats.isEmpty()) {
+            sb.append(" · open positions: ").append(String.join("; ", openSeats));
+        }
+        return sb.toString();
     }
 
     // ---- shared row fragments ----

@@ -242,6 +242,27 @@ class AssistantApiTest extends ApiTestBase {
     }
 
     @Test
+    void chat_readTool_projectDetail_listsRoster() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var asha = associate("Asha Nair", "asha@softility.com", WorkMode.ONSHORE);
+        allocation(asha, proj, true);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(
+                            ex.execute("get_project_detail", Map.of("projectName", "Storefront Revamp")), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"who is on storefront revamp?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Asha Nair")));
+    }
+
+    @Test
     void chat_readTool_associateDetail_findsFormerEmployee() throws Exception {
         var alum = associate("Nikhil Rao", "nikhil@softility.com", WorkMode.OFFSHORE);
         alum.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
