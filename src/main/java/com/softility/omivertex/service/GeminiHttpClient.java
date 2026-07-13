@@ -111,7 +111,9 @@ public class GeminiHttpClient implements GeminiClient {
                                             "description", "true = only unallocated associates")))),
             Map.of("name", "get_associate_detail",
                     "description", "Full profile of one associate: skills with proficiency, current"
-                            + " allocations, bench days, upcoming exit.",
+                            + " allocation or bench status, past projects, certifications, and exit."
+                            + " Works for former employees too — use it for questions about anyone by"
+                            + " name, including past projects, certifications, or people who have left.",
                     "parameters", Map.of("type", "object",
                             "properties", Map.of("name", Map.of("type", "string")),
                             "required", List.of("name"))),

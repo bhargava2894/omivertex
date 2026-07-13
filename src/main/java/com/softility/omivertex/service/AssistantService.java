@@ -159,19 +159,30 @@ public class AssistantService {
 
     private record Resolved<T>(T value, String reply) {}
 
+    /** Active-only — used by the write drafts; you can't allocate someone who has left. */
     private Resolved<Associate> resolveAssociate(String name) {
+        return resolveAssociate(name, true);
+    }
+
+    /**
+     * Resolve a name to an associate. Read tools pass {@code activeOnly=false} so
+     * questions about former employees still return their record; write drafts keep
+     * {@code activeOnly=true} so an exited person can never be allocated.
+     */
+    private Resolved<Associate> resolveAssociate(String name, boolean activeOnly) {
         if (name == null || name.isBlank()) {
             return new Resolved<>(null, "Which associate did you mean? Please give me a name.");
         }
-        List<Associate> matches = matchByName(
-                associateRepository.findAll().stream()
-                        .filter(a -> a.getStatus() == EntityStatus.ACTIVE).toList(),
-                Associate::getName, name);
+        List<Associate> pool = associateRepository.findAll().stream()
+                .filter(a -> !activeOnly || a.getStatus() == EntityStatus.ACTIVE).toList();
+        List<Associate> matches = matchByName(pool, Associate::getName, name);
         if (matches.size() == 1) {
             return new Resolved<>(matches.get(0), null);
         }
         if (matches.isEmpty()) {
-            return new Resolved<>(null, "I couldn't find an active associate matching \"%s\".".formatted(name));
+            return new Resolved<>(null, activeOnly
+                    ? "I couldn't find an active associate matching \"%s\".".formatted(name)
+                    : "I couldn't find an associate matching \"%s\".".formatted(name));
         }
         return new Resolved<>(null, "I found more than one match for \"%s\": %s — which one did you mean?"
                 .formatted(name, matches.stream().map(Associate::getName).collect(Collectors.joining(", "))));
@@ -232,7 +243,7 @@ public class AssistantService {
                     proficiencyOrNull(str(args, "minProficiency")),
                     boolOrDefault(args.get("benchOnly"), false));
             case "get_associate_detail" -> {
-                Resolved<Associate> associate = resolveAssociate(str(args, "name"));
+                Resolved<Associate> associate = resolveAssociate(str(args, "name"), false);
                 yield associate.reply() != null ? associate.reply()
                         : contextBuilder.associateDetail(associate.value());
             }

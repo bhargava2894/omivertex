@@ -129,6 +129,26 @@ class AssistantContextBuilderTest extends ApiTestBase {
     }
 
     @Test
+    void associateDetail_marksFormerEmployeeAndKeepsHistory() {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var alum = associate("Nikhil Rao", "nikhil@softility.com", WorkMode.OFFSHORE);
+        var ended = allocation(alum, proj, true);
+        ended.setStartDate(LocalDate.now().minusMonths(6));
+        ended.setEndDate(LocalDate.now().minusMonths(2));
+        allocationRepository.save(ended);
+        alum.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
+        alum.setLastWorkingDay(LocalDate.now().minusMonths(2));
+        alum.setExitReason(ExitReason.RESIGNED);
+        associateRepository.save(alum);
+
+        String detail = builder.associateDetail(alum);
+
+        assertThat(detail).contains("FORMER EMPLOYEE");
+        assertThat(detail).contains("Storefront Revamp @Acme Corp"); // history still available
+    }
+
+    @Test
     void rolloffs_listsAllocationsEndingInWindow() {
         seedWorkforce();
         var alloc = allocationRepository.findAll().get(0);

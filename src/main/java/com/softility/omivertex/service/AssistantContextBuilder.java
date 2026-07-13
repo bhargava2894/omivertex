@@ -145,6 +145,13 @@ public class AssistantContextBuilder {
         sb.append(a.getName()).append(" · ")
           .append(a.getDesignation() == null ? "no designation" : a.getDesignation())
           .append(" · ").append(a.getWorkMode());
+        if (a.getStatus() == EntityStatus.INACTIVE) {
+            sb.append(" · FORMER EMPLOYEE");
+            if (a.getLastWorkingDay() != null) {
+                sb.append(" (left ").append(a.getLastWorkingDay())
+                  .append(a.getExitReason() == null ? "" : ", " + a.getExitReason()).append(")");
+            }
+        }
         String skills = associateSkills.findByAssociateId(a.getId()).stream()
                 .map(s -> s.getSkill().getName() + " (" + s.getProficiency() + ")")
                 .collect(Collectors.joining(", "));

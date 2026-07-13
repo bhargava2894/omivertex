@@ -242,6 +242,49 @@ class AssistantApiTest extends ApiTestBase {
     }
 
     @Test
+    void chat_readTool_associateDetail_findsFormerEmployee() throws Exception {
+        var alum = associate("Nikhil Rao", "nikhil@softility.com", WorkMode.OFFSHORE);
+        alum.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
+        alum.setLastWorkingDay(java.time.LocalDate.now().minusMonths(1));
+        alum.setExitReason(com.softility.omivertex.domain.ExitReason.RESIGNED);
+        associateRepository.save(alum);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(
+                            ex.execute("get_associate_detail", Map.of("name", "Nikhil Rao")), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"tell me about nikhil","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("FORMER EMPLOYEE")));
+    }
+
+    @Test
+    void chat_draftAllocation_refusesFormerEmployee() throws Exception {
+        var acme = client("Acme Corp");
+        project("ACM-100", "Storefront Revamp", acme);
+        var alum = associate("Nikhil Rao", "nikhil@softility.com", WorkMode.OFFSHORE);
+        alum.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
+        associateRepository.save(alum);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_allocation",
+                                Map.of("associateName", "Nikhil Rao", "projectName", "Storefront Revamp"))));
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"allocate nikhil to storefront","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction").doesNotExist())
+                .andExpect(jsonPath("$.reply", containsString("couldn't find an active associate")));
+    }
+
+    @Test
     void chat_readTool_associateDetail_ambiguousNameAsksBack() throws Exception {
         associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
         associate("Priya Verma", "priya.v@softility.com", WorkMode.ONSHORE);
