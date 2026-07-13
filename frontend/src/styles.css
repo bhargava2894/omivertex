@@ -1337,6 +1337,10 @@ svg path, svg rect, svg circle { transition: opacity 0.15s var(--ease); }
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  /* A <button> does not inherit page color — without this the tile numbers stay
+     the browser's default black and vanish against the dark theme. */
+  color: var(--color-foreground);
+  font: inherit;
   cursor: pointer;
   transition:
     border-color 0.2s var(--ease),
