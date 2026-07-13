@@ -165,10 +165,12 @@ export default function Profile({ id, showToast, canEdit }) {
       reloadAllocs();
       reloadAssoc(); // bench/billable badges may change
     } catch (err) {
+      const fieldErrors = err.fieldErrors || {};
       setAllocErrors({
-        ...err.fieldErrors,
-        _general: Object.keys(err.fieldErrors || {}).length ? null : err.message,
+        ...fieldErrors,
+        _general: Object.keys(fieldErrors).length ? null : err.message,
       });
+      showToast(err.message, true);
     } finally {
       setSavingAlloc(false);
     }
@@ -219,10 +221,12 @@ export default function Profile({ id, showToast, canEdit }) {
       reloadAllocs();
       reloadAssoc();
     } catch (err) {
+      const fieldErrors = err.fieldErrors || {};
       setAllocErrors({
-        ...err.fieldErrors,
-        _general: Object.keys(err.fieldErrors || {}).length ? null : err.message,
+        ...fieldErrors,
+        _general: Object.keys(fieldErrors).length ? null : err.message,
       });
+      showToast(err.message, true);
     } finally {
       setSavingAlloc(false);
     }
@@ -299,10 +303,12 @@ export default function Profile({ id, showToast, canEdit }) {
       setCertForm({ name: '', authority: '', credentialId: '', issuedDate: '', expiryDate: '' });
       reloadCerts();
     } catch (err) {
+      const fieldErrors = err.fieldErrors || {};
       setCertErrors({
-        ...err.fieldErrors,
-        _general: Object.keys(err.fieldErrors).length ? null : err.message,
+        ...fieldErrors,
+        _general: Object.keys(fieldErrors).length ? null : err.message,
       });
+      showToast(err.message, true);
     } finally {
       setSavingCert(false);
     }

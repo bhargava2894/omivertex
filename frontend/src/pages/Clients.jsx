@@ -47,10 +47,15 @@ export default function Clients({ showToast, canEdit }) {
       setEditing(null);
       reload();
     } catch (err) {
+      const fieldErrors = err.fieldErrors || {};
+      if (!fieldErrors.name && err.message && err.message.toLowerCase().includes('named')) {
+        fieldErrors.name = err.message;
+      }
       setErrors({
-        ...err.fieldErrors,
-        _general: Object.keys(err.fieldErrors).length ? null : err.message,
+        ...fieldErrors,
+        _general: Object.keys(fieldErrors).length ? null : err.message,
       });
+      showToast(err.message, true);
     } finally {
       setSaving(false);
     }

@@ -91,10 +91,12 @@ export default function Allocations({ showToast, canEdit }) {
       setEditing(null);
       reload();
     } catch (err) {
+      const fieldErrors = err.fieldErrors || {};
       setErrors({
-        ...err.fieldErrors,
-        _general: Object.keys(err.fieldErrors).length ? null : err.message,
+        ...fieldErrors,
+        _general: Object.keys(fieldErrors).length ? null : err.message,
       });
+      showToast(err.message, true);
     } finally {
       setSaving(false);
     }
