@@ -122,129 +122,139 @@ export default function AssistantChat({ showToast, canEdit }) {
   };
 
   return (
-    <div className="card panel assistant-card">
-      <h2>
-        <Icon name="sparkles" size={15} /> Ask OmiVertex AI
-      </h2>
-      <p className="stat-hint" style={{ marginTop: 0 }}>
-        Natural-language questions over the live workforce data — bench, projects, demand,
-        roll-offs.
-      </p>
-      {messages.length === 0 && (
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
-          {SUGGESTIONS.map((s) => (
-            <button key={s} className="btn btn-ghost btn-sm" onClick={() => ask(s)}>
-              {s}
-            </button>
-          ))}
+    <div className="card panel mirai-card">
+      <div className="mirai-band">
+        <div className="mirai-brand">
+          <span className="mirai-mark" aria-hidden="true">
+            <Icon name="sparkles" size={18} />
+          </span>
+          <span className="mirai-wordmark">Mirai</span>
         </div>
-      )}
-      {messages.length > 0 && (
-        <div
-          ref={logRef}
-          style={{
-            maxHeight: '320px',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-            marginBottom: '10px',
+        <p className="mirai-tagline">your workforce, answered</p>
+      </div>
+      <div className="mirai-body">
+        {messages.length === 0 && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+            {SUGGESTIONS.map((s) => (
+              <button key={s} className="btn btn-ghost btn-sm" onClick={() => ask(s)}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+        {messages.length > 0 && (
+          <div
+            ref={logRef}
+            style={{
+              maxHeight: '320px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              marginBottom: '10px',
+            }}
+          >
+            {messages.map((m, i) => (
+              <motion.div
+                key={i}
+                initial={messageAnim.initial}
+                animate={messageAnim.animate}
+                style={{
+                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '85%',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  background:
+                    m.role === 'user' ? 'var(--color-primary-soft)' : 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  fontSize: '14px',
+                }}
+              >
+                {m.role === 'model' && <Icon name="sparkles" size={12} />}{' '}
+                <ReplyText text={m.content} />
+                {m.action && (
+                  <div
+                    style={{
+                      marginTop: '8px',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--color-primary)',
+                      background: 'var(--color-primary-soft)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                    }}
+                  >
+                    <strong style={{ fontSize: '13px' }}>{m.action.summary}</strong>
+                    {(m.action.warnings || []).map((w) => (
+                      <div key={w} style={{ fontSize: '12px', color: 'var(--color-warn)' }}>
+                        ⚠ {w}
+                      </div>
+                    ))}
+                    {m.actionDone ? (
+                      <div style={{ fontSize: '12px', color: 'var(--color-accent)' }}>✓ Done</div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {canEdit && (
+                          <button
+                            className="btn btn-primary btn-sm"
+                            disabled={busy}
+                            onClick={() => confirmAction(i)}
+                          >
+                            Confirm
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          disabled={busy}
+                          onClick={() => dismissAction(i)}
+                        >
+                          Dismiss
+                        </button>
+                        {!canEdit && (
+                          <span className="stat-hint" style={{ alignSelf: 'center' }}>
+                            Requires admin to confirm
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            ))}
+            {busy && (
+              <div className="mirai-typing" aria-label="Mirai is thinking">
+                <span />
+                <span />
+                <span />
+              </div>
+            )}
+          </div>
+        )}
+        <form
+          className="assistant-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            ask(input);
           }}
         >
-          {messages.map((m, i) => (
-            <motion.div
-              key={i}
-              initial={messageAnim.initial}
-              animate={messageAnim.animate}
-              style={{
-                alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: '85%',
-                padding: '8px 12px',
-                borderRadius: '10px',
-                background:
-                  m.role === 'user' ? 'var(--color-primary-soft)' : 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                fontSize: '14px',
-              }}
-            >
-              {m.role === 'model' && <Icon name="sparkles" size={12} />}{' '}
-              <ReplyText text={m.content} />
-              {m.action && (
-                <div
-                  style={{
-                    marginTop: '8px',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--color-primary)',
-                    background: 'var(--color-primary-soft)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                  }}
-                >
-                  <strong style={{ fontSize: '13px' }}>{m.action.summary}</strong>
-                  {(m.action.warnings || []).map((w) => (
-                    <div key={w} style={{ fontSize: '12px', color: 'var(--color-warn)' }}>
-                      ⚠ {w}
-                    </div>
-                  ))}
-                  {m.actionDone ? (
-                    <div style={{ fontSize: '12px', color: 'var(--color-accent)' }}>✓ Done</div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      {canEdit && (
-                        <button
-                          className="btn btn-primary btn-sm"
-                          disabled={busy}
-                          onClick={() => confirmAction(i)}
-                        >
-                          Confirm
-                        </button>
-                      )}
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        disabled={busy}
-                        onClick={() => dismissAction(i)}
-                      >
-                        Dismiss
-                      </button>
-                      {!canEdit && (
-                        <span className="stat-hint" style={{ alignSelf: 'center' }}>
-                          Requires admin to confirm
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          ))}
-          {busy && <div className="stat-hint">Thinking…</div>}
-        </div>
-      )}
-      <form
-        className="assistant-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          ask(input);
-        }}
-      >
-        <input
-          className="assistant-input"
-          value={input}
-          maxLength={2000}
-          placeholder="e.g. How many people are on the bench, and what projects are running?"
-          onChange={(e) => setInput(e.target.value)}
-          disabled={busy}
-        />
-        <button
-          className="btn btn-primary assistant-btn"
-          type="submit"
-          disabled={busy || !input.trim()}
-        >
-          {busy ? '…' : 'Ask'}
-        </button>
-      </form>
+          <input
+            className="assistant-input"
+            value={input}
+            maxLength={2000}
+            placeholder="Ask Mirai…"
+            onChange={(e) => setInput(e.target.value)}
+            disabled={busy}
+          />
+          <button
+            className="btn btn-primary assistant-btn"
+            type="submit"
+            disabled={busy || !input.trim()}
+          >
+            {busy ? '…' : <Icon name="send" size={16} />}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
