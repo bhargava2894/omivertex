@@ -466,11 +466,14 @@ export default function Associates({ showToast, canEdit }) {
                 />
               </Field>
               <Field label="Company" required error={errors.company}>
-                <input
+                <select
                   value={editing.form.company}
                   onChange={(e) => set('company', e.target.value)}
                   className={errors.company ? 'invalid' : ''}
-                />
+                >
+                  <option value="Softility">Softility</option>
+                  <option value="Contractor">Contractor</option>
+                </select>
               </Field>
               <Field label="Designation" error={errors.designation}>
                 <input
