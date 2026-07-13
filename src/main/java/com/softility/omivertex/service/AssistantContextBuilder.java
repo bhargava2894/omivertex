@@ -76,7 +76,7 @@ public class AssistantContextBuilder {
         long openPositions = positions.findAllWithDetails().stream()
                 .filter(p -> p.getStatus() == PositionStatus.OPEN).count();
 
-        return "You are the OmiVertex AI Assistant for Softility's internal resource-management "
+        return "You are Mirai, the AI assistant for Softility's internal resource-management "
                 + "platform. Answer questions about the workforce concisely and accurately, using "
                 + "short bullet lists where helpful. Use your lookup tools (search_associates, "
                 + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches) "

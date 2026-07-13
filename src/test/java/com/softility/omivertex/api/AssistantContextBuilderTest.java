@@ -55,6 +55,12 @@ class AssistantContextBuilderTest extends ApiTestBase {
     }
 
     @Test
+    void standingContext_mentionsMirai() {
+        seedWorkforce();
+        assertThat(builder.build()).contains("Mirai");
+    }
+
+    @Test
     void searchAssociates_filtersBySkillAndBench_capsRows() {
         seedWorkforce();
         // bench + Java at INTERMEDIATE+: nobody (Priya is allocated, Rahul unrated)
