@@ -18,6 +18,9 @@ public class SeedDataLoader implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(SeedDataLoader.class);
 
+    /** Presence of this position means the skill-gap demo scenario is already seeded. */
+    private static final String SCENARIO_MARKER = "Platform Engineer";
+
     private final ClientRepository clients;
     private final ProjectRepository projects;
     private final AssociateRepository associates;
@@ -25,11 +28,15 @@ public class SeedDataLoader implements ApplicationRunner {
     private final SkillCategoryRepository skillCategories;
     private final SkillRepository skills;
     private final AssociateSkillRepository associateSkills;
+    private final OpenPositionRepository openPositions;
+    private final PositionSkillRepository positionSkills;
 
     public SeedDataLoader(ClientRepository clients, ProjectRepository projects,
                           AssociateRepository associates, AllocationRepository allocations,
                           SkillCategoryRepository skillCategories, SkillRepository skills,
-                          AssociateSkillRepository associateSkills) {
+                          AssociateSkillRepository associateSkills,
+                          OpenPositionRepository openPositions,
+                          PositionSkillRepository positionSkills) {
         this.clients = clients;
         this.projects = projects;
         this.associates = associates;
@@ -37,6 +44,8 @@ public class SeedDataLoader implements ApplicationRunner {
         this.skillCategories = skillCategories;
         this.skills = skills;
         this.associateSkills = associateSkills;
+        this.openPositions = openPositions;
+        this.positionSkills = positionSkills;
     }
 
     @Override
@@ -45,6 +54,7 @@ public class SeedDataLoader implements ApplicationRunner {
         seedTaxonomy();
         if (clients.count() > 0) {
             seedAssociateSkills();
+            seedSkillGapScenario();
             return;
         }
         log.info("Seeding OmiVertex demo data");
@@ -122,6 +132,90 @@ public class SeedDataLoader implements ApplicationRunner {
         log.info("Seeded {} clients, {} projects, {} associates, {} allocations",
                 clients.count(), projects.count(), associates.count(), allocations.count());
         seedAssociateSkills();
+        seedSkillGapScenario();
+    }
+
+    /**
+     * Demo scenario for the skill-gap report. Without open positions there is no
+     * demand, so every gap row would read "spare" and the report would look broken.
+     * This seeds one skill in each state — Kubernetes short, React tight, Tableau
+     * spare — rated and allocated so that each drill-down group (open demand, bench
+     * supply, rolling off, near miss) has rows to show. Idempotent via the scenario's
+     * own marker position, so it still seeds into a database that already has
+     * hand-created positions, and never overwrites a rating a user entered.
+     */
+    private void seedSkillGapScenario() {
+        if (openPositions.findAll().stream().anyMatch(p -> SCENARIO_MARKER.equals(p.getTitle()))) {
+            return;
+        }
+        java.util.Map<String, Associate> roster = associates.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(Associate::getName, a -> a, (a, b) -> a));
+        java.util.Map<String, Project> byCode = projects.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(Project::getCode, p -> p, (a, b) -> a));
+        Skill kubernetes = skills.findFirstByNameIgnoreCase("Kubernetes").orElse(null);
+        Skill react = skills.findFirstByNameIgnoreCase("React").orElse(null);
+        Skill tableau = skills.findFirstByNameIgnoreCase("Tableau").orElse(null);
+        if (kubernetes == null || react == null || tableau == null || roster.isEmpty() || byCode.isEmpty()) {
+            return;
+        }
+        log.info("Seeding skill-gap demo scenario (short / tight / spare)");
+
+        // SHORT — 3 open seats at INTERMEDIATE+, nobody on the bench holds it.
+        OpenPosition platformEng = position("Platform Engineer", byCode.get("VTX-201"), 2, 30);
+        require(platformEng, kubernetes, Proficiency.ADVANCE);
+        OpenPosition sre = position("Site Reliability Engineer", byCode.get("HEL-401"), 1, 45);
+        require(sre, kubernetes, Proficiency.INTERMEDIATE);
+        rate(roster.get("Arjun Patel"), kubernetes, Proficiency.MASTERY);      // allocated, no end date
+        rate(roster.get("Aditya Joshi"), kubernetes, Proficiency.ADVANCE);     // allocated, no end date
+        rate(roster.get("Tom Wilson"), kubernetes, Proficiency.ADVANCE);       // rolls off in 6 days
+        rate(roster.get("Sanjay Gupta"), kubernetes, Proficiency.INTERMEDIATE); // rolls off in 18 days
+        rate(roster.get("Mark Davis"), kubernetes, Proficiency.FOUNDATIONAL);   // bench, one level short
+        rate(roster.get("Ishaan Malhotra"), kubernetes, Proficiency.FOUNDATIONAL); // bench, one level short
+
+        // TIGHT — 2 open seats, exactly 2 qualified people on the bench.
+        OpenPosition reactDev = position("Senior React Developer", byCode.get("NOV-301"), 2, 21);
+        require(reactDev, react, Proficiency.INTERMEDIATE);
+        rate(roster.get("Sofia Martinez"), react, Proficiency.MASTERY);   // allocated
+        rate(roster.get("Priya Sharma"), react, Proficiency.ADVANCE);     // allocated
+        rate(roster.get("Alex Turner"), react, Proficiency.ADVANCE);      // bench
+        rate(roster.get("Pooja Reddy"), react, Proficiency.INTERMEDIATE); // bench
+
+        // SPARE — no open demand, 3 rated people sitting on the bench.
+        rate(roster.get("David Kim"), tableau, Proficiency.MASTERY);        // allocated
+        rate(roster.get("Mark Davis"), tableau, Proficiency.ADVANCE);       // bench
+        rate(roster.get("Pooja Reddy"), tableau, Proficiency.INTERMEDIATE); // bench
+        rate(roster.get("Ishaan Malhotra"), tableau, Proficiency.INTERMEDIATE); // bench
+    }
+
+    private OpenPosition position(String title, Project project, int headcount, int startsInDays) {
+        OpenPosition position = new OpenPosition();
+        position.setTitle(title);
+        position.setProject(project);
+        position.setHeadcount(headcount);
+        position.setStartDate(LocalDate.now().plusDays(startsInDays));
+        position.setStatus(PositionStatus.OPEN);
+        return openPositions.save(position);
+    }
+
+    private void require(OpenPosition position, Skill skill, Proficiency minProficiency) {
+        PositionSkill required = new PositionSkill();
+        required.setPosition(position);
+        required.setSkill(skill);
+        required.setMinProficiency(minProficiency);
+        required.setRequired(true);
+        positionSkills.save(required);
+    }
+
+    private void rate(Associate associate, Skill skill, Proficiency proficiency) {
+        if (associate == null || associateSkills.findByAssociateId(associate.getId()).stream()
+                .anyMatch(existing -> existing.getSkill().getId().equals(skill.getId()))) {
+            return; // never clobber a rating that is already on record
+        }
+        AssociateSkill rating = new AssociateSkill();
+        rating.setAssociate(associate);
+        rating.setSkill(skill);
+        rating.setProficiency(proficiency);
+        associateSkills.save(rating);
     }
 
     /** Seeds the full skill taxonomy once (independent of the demo-roster guard). */
