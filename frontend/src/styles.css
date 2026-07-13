@@ -162,7 +162,21 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .brand-name { color: #fff; font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
 .brand-sub { font-size: 11px; color: var(--color-sidebar-fg); margin-top: -2px; }
 
-.sidebar-nav { padding: 14px 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.sidebar-nav {
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  font-size: 12px;
+  flex-shrink: 0;
+}
 
 .nav-group { display: flex; flex-direction: column; gap: 2px; }
 .nav-group + .nav-group { margin-top: 12px; }
@@ -207,11 +221,6 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
 
-.sidebar-footer {
-  padding: 16px 20px;
-  border-top: 1px solid rgba(148, 163, 184, 0.15);
-  font-size: 12px;
-}
 .sidebar-credit { font-size: 11px; opacity: 0.55; margin-top: 3px; }
 
 /* ---------- Main area ---------- */
