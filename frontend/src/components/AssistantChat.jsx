@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useMotionVariants, chatMessage } from '../motion.js';
 import { api } from '../api.js';
 import Icon from './Icon.jsx';
@@ -130,7 +130,7 @@ export default function AssistantChat({ showToast, canEdit }) {
           </span>
           <span className="mirai-wordmark">Mirai</span>
         </div>
-        <p className="mirai-tagline">your workforce, answered</p>
+        <p className="mirai-tagline">orchestrate with intelligence</p>
       </div>
       <div className="mirai-body">
         {messages.length === 0 && (
@@ -154,74 +154,78 @@ export default function AssistantChat({ showToast, canEdit }) {
               marginBottom: '10px',
             }}
           >
-            {messages.map((m, i) => (
-              <motion.div
-                key={i}
-                initial={messageAnim.initial}
-                animate={messageAnim.animate}
-                style={{
-                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '85%',
-                  padding: '8px 12px',
-                  borderRadius: '10px',
-                  background:
-                    m.role === 'user' ? 'var(--color-primary-soft)' : 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  fontSize: '14px',
-                }}
-              >
-                {m.role === 'model' && <Icon name="sparkles" size={12} />}{' '}
-                <ReplyText text={m.content} />
-                {m.action && (
-                  <div
-                    style={{
-                      marginTop: '8px',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--color-primary)',
-                      background: 'var(--color-primary-soft)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '6px',
-                    }}
-                  >
-                    <strong style={{ fontSize: '13px' }}>{m.action.summary}</strong>
-                    {(m.action.warnings || []).map((w) => (
-                      <div key={w} style={{ fontSize: '12px', color: 'var(--color-warn)' }}>
-                        ⚠ {w}
-                      </div>
-                    ))}
-                    {m.actionDone ? (
-                      <div style={{ fontSize: '12px', color: 'var(--color-accent)' }}>✓ Done</div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        {canEdit && (
+            <AnimatePresence mode="popLayout">
+              {messages.map((m, i) => (
+                <motion.div
+                  key={i}
+                  layout
+                  initial={messageAnim.initial}
+                  animate={messageAnim.animate}
+                  exit={messageAnim.exit}
+                  style={{
+                    alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background:
+                      m.role === 'user' ? 'var(--color-primary-soft)' : 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    fontSize: '14px',
+                  }}
+                >
+                  {m.role === 'model' && <Icon name="sparkles" size={12} />}{' '}
+                  <ReplyText text={m.content} />
+                  {m.action && (
+                    <div
+                      style={{
+                        marginTop: '8px',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-primary)',
+                        background: 'var(--color-primary-soft)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                      }}
+                    >
+                      <strong style={{ fontSize: '13px' }}>{m.action.summary}</strong>
+                      {(m.action.warnings || []).map((w) => (
+                        <div key={w} style={{ fontSize: '12px', color: 'var(--color-warn)' }}>
+                          ⚠ {w}
+                        </div>
+                      ))}
+                      {m.actionDone ? (
+                        <div style={{ fontSize: '12px', color: 'var(--color-accent)' }}>✓ Done</div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {canEdit && (
+                            <button
+                              className="btn btn-primary btn-sm"
+                              disabled={busy}
+                              onClick={() => confirmAction(i)}
+                            >
+                              Confirm
+                            </button>
+                          )}
                           <button
-                            className="btn btn-primary btn-sm"
+                            className="btn btn-ghost btn-sm"
                             disabled={busy}
-                            onClick={() => confirmAction(i)}
+                            onClick={() => dismissAction(i)}
                           >
-                            Confirm
+                            Dismiss
                           </button>
-                        )}
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          disabled={busy}
-                          onClick={() => dismissAction(i)}
-                        >
-                          Dismiss
-                        </button>
-                        {!canEdit && (
-                          <span className="stat-hint" style={{ alignSelf: 'center' }}>
-                            Requires admin to confirm
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </motion.div>
-            ))}
+                          {!canEdit && (
+                            <span className="stat-hint" style={{ alignSelf: 'center' }}>
+                              Requires admin to confirm
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
             {busy && (
               <div className="mirai-typing" aria-label="Mirai is thinking">
                 <span />

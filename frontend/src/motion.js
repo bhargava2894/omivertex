@@ -40,6 +40,7 @@ export const pageTransition = {
 export const chatMessage = {
   initial: { opacity: 0, y: 12, scale: 0.97 },
   animate: { opacity: 1, y: 0, scale: 1, transition: { duration: ENTER, ease: EASE } },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: EXIT, ease: EASE } },
 };
 
 export const listContainer = {
