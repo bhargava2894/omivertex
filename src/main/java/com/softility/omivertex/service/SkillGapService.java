@@ -4,6 +4,7 @@ import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
 import com.softility.omivertex.domain.AssociateSkill;
 import com.softility.omivertex.domain.EntityStatus;
+import com.softility.omivertex.domain.OpenPosition;
 import com.softility.omivertex.domain.PositionSkill;
 import com.softility.omivertex.domain.PositionStatus;
 import com.softility.omivertex.domain.Proficiency;
@@ -12,10 +13,15 @@ import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.AssociateSkillRepository;
 import com.softility.omivertex.repository.PositionSkillRepository;
+import com.softility.omivertex.repository.SkillRepository;
+import com.softility.omivertex.web.dto.AssociateResponse;
 import com.softility.omivertex.web.dto.DashboardSummaryResponse;
+import com.softility.omivertex.web.dto.SkillGapDetailResponse;
+import com.softility.omivertex.web.error.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,15 +46,18 @@ public class SkillGapService {
     private final AllocationRepository allocationRepository;
     private final PositionSkillRepository positionSkillRepository;
     private final AssociateSkillRepository associateSkillRepository;
+    private final SkillRepository skillRepository;
 
     public SkillGapService(AssociateRepository associateRepository,
                            AllocationRepository allocationRepository,
                            PositionSkillRepository positionSkillRepository,
-                           AssociateSkillRepository associateSkillRepository) {
+                           AssociateSkillRepository associateSkillRepository,
+                           SkillRepository skillRepository) {
         this.associateRepository = associateRepository;
         this.allocationRepository = allocationRepository;
         this.positionSkillRepository = positionSkillRepository;
         this.associateSkillRepository = associateSkillRepository;
+        this.skillRepository = skillRepository;
     }
 
     /** Dashboard panel: demand-only rows, worst gap first, capped. */
@@ -59,6 +68,93 @@ public class SkillGapService {
     /** Full report: also skills with rated supply but no open demand (surplus rows). */
     public List<DashboardSummaryResponse.SkillGap> fullReport() {
         return compute(true);
+    }
+
+    /**
+     * The people and positions behind one gap row. Uses the same threshold rule as
+     * {@link #compute}, so the lists here always add up to the numbers on the row.
+     */
+    public SkillGapDetailResponse detail(Long skillId) {
+        Skill skill = skillRepository.findById(skillId)
+                .orElseThrow(() -> new NotFoundException("Skill", skillId));
+
+        List<PositionSkill> reqs = positionSkillRepository.findAllWithDetails().stream()
+                .filter(PositionSkill::isRequired)
+                .filter(ps -> ps.getPosition().getStatus() == PositionStatus.OPEN)
+                .filter(ps -> ps.getSkill().getId().equals(skillId))
+                .toList();
+        Proficiency threshold = threshold(reqs);
+
+        Map<Long, List<Allocation>> allocationsByAssociate = allocationRepository.findAllWithDetails().stream()
+                .collect(Collectors.groupingBy(a -> a.getAssociate().getId()));
+        List<AssociateSkill> ratings = associateSkillRepository.findAllWithDetails().stream()
+                .filter(as -> as.getSkill().getId().equals(skillId))
+                .filter(as -> as.getAssociate().getStatus() == EntityStatus.ACTIVE)
+                .sorted(Comparator.comparing((AssociateSkill as) -> as.getProficiency().ordinal()).reversed()
+                        .thenComparing(as -> as.getAssociate().getName()))
+                .toList();
+
+        List<SkillGapDetailResponse.DemandPosition> openDemand = reqs.stream()
+                .map(ps -> {
+                    OpenPosition p = ps.getPosition();
+                    return new SkillGapDetailResponse.DemandPosition(p.getId(), p.getTitle(),
+                            p.getProject().getName(), p.getProject().getClient().getName(),
+                            p.getHeadcount(), ps.getMinProficiency(), p.getStartDate());
+                })
+                .sorted(Comparator.comparing(SkillGapDetailResponse.DemandPosition::title))
+                .toList();
+
+        List<SkillGapDetailResponse.BenchHolder> benchSupply = ratings.stream()
+                .filter(as -> qualifies(as, threshold))
+                .filter(as -> !isAllocated(as.getAssociate(), allocationsByAssociate))
+                .map(as -> new SkillGapDetailResponse.BenchHolder(as.getAssociate().getId(),
+                        as.getAssociate().getName(), as.getAssociate().getDesignation(), as.getProficiency(),
+                        AssociateResponse.benchDays(as.getAssociate(),
+                                allocationsByAssociate.getOrDefault(as.getAssociate().getId(), List.of()))))
+                .toList();
+
+        LocalDate horizon = LocalDate.now().plusDays(DashboardService.ROLLOFF_HORIZON_DAYS);
+        List<SkillGapDetailResponse.RollingOffHolder> rollingOff = ratings.stream()
+                .filter(as -> qualifies(as, threshold))
+                .flatMap(as -> allocationsByAssociate.getOrDefault(as.getAssociate().getId(), List.of()).stream()
+                        .filter(Allocation::isCurrent)
+                        .filter(a -> a.getEndDate() != null && !a.getEndDate().isAfter(horizon))
+                        .min(Comparator.comparing(Allocation::getEndDate))
+                        .map(a -> new SkillGapDetailResponse.RollingOffHolder(as.getAssociate().getId(),
+                                as.getAssociate().getName(), as.getAssociate().getDesignation(),
+                                as.getProficiency(), a.getProject().getName(), a.getEndDate()))
+                        .stream())
+                .sorted(Comparator.comparing(SkillGapDetailResponse.RollingOffHolder::endDate))
+                .toList();
+
+        List<SkillGapDetailResponse.NearMissHolder> nearMiss = threshold == Proficiency.NOVICE ? List.of()
+                : ratings.stream()
+                        .filter(as -> as.getProficiency().ordinal() == threshold.ordinal() - 1)
+                        .map(as -> new SkillGapDetailResponse.NearMissHolder(as.getAssociate().getId(),
+                                as.getAssociate().getName(), as.getAssociate().getDesignation(),
+                                as.getProficiency(), threshold,
+                                !isAllocated(as.getAssociate(), allocationsByAssociate)))
+                        .toList();
+
+        return new SkillGapDetailResponse(skill.getId(), skill.getName(), skill.getCategory().getName(),
+                threshold, openDemand, benchSupply, rollingOff, nearMiss);
+    }
+
+    /** Lowest proficiency any open position demands; NOVICE when nothing is open. */
+    private Proficiency threshold(List<PositionSkill> reqs) {
+        return reqs.stream()
+                .map(r -> r.getMinProficiency() == null ? Proficiency.NOVICE : r.getMinProficiency())
+                .min(Comparator.comparingInt(Enum::ordinal))
+                .orElse(Proficiency.NOVICE);
+    }
+
+    private boolean qualifies(AssociateSkill rating, Proficiency threshold) {
+        return rating.getProficiency().ordinal() >= threshold.ordinal();
+    }
+
+    private boolean isAllocated(Associate associate, Map<Long, List<Allocation>> allocationsByAssociate) {
+        return allocationsByAssociate.getOrDefault(associate.getId(), List.of()).stream()
+                .anyMatch(Allocation::isCurrent);
     }
 
     private List<DashboardSummaryResponse.SkillGap> compute(boolean includeSurplus) {
@@ -89,9 +185,7 @@ public class SkillGapService {
                 .map(skill -> {
                     List<PositionSkill> reqs = demandBySkill.getOrDefault(skill.getId(), List.of());
                     long demand = reqs.stream().mapToLong(ps -> ps.getPosition().getHeadcount()).sum();
-                    Proficiency threshold = reqs.stream()
-                            .map(r -> r.getMinProficiency() == null ? Proficiency.NOVICE : r.getMinProficiency())
-                            .min(Comparator.comparingInt(Enum::ordinal)).orElse(Proficiency.NOVICE);
+                    Proficiency threshold = threshold(reqs);
                     Set<Long> holders = ratedSkills.stream()
                             .filter(s -> s.getSkill().getId().equals(skill.getId()))
                             .filter(s -> s.getProficiency().ordinal() >= threshold.ordinal())

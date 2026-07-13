@@ -2,7 +2,9 @@ package com.softility.omivertex.web;
 
 import com.softility.omivertex.service.SkillGapService;
 import com.softility.omivertex.web.dto.DashboardSummaryResponse.SkillGap;
+import com.softility.omivertex.web.dto.SkillGapDetailResponse;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,5 +24,11 @@ public class SkillGapController {
     @GetMapping
     public List<SkillGap> report() {
         return skillGapService.fullReport();
+    }
+
+    /** The people and positions behind one gap row. Admin + viewer (GET). */
+    @GetMapping("/{skillId}")
+    public SkillGapDetailResponse detail(@PathVariable Long skillId) {
+        return skillGapService.detail(skillId);
     }
 }

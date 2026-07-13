@@ -8,15 +8,213 @@ import Badge from '../components/Badge.jsx';
 import CollapsibleCard from '../components/CollapsibleCard.jsx';
 import { HBarChart } from '../components/charts.jsx';
 import { PROF_COLORS, PROF_LABELS, PROF_TONES } from '../proficiency.js';
+import { gapBadge, gapSummary } from '../skillGap.js';
+
+/** A person's name, linking to their profile — every drill-down row is a launchpad. */
+function PersonLink({ id, name }) {
+  return (
+    <a
+      href={`#/associates/${id}`}
+      className="cell-main"
+      style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
+    >
+      {name}
+    </a>
+  );
+}
+
+/**
+ * One group of the drill-down. An empty group renders its reason rather than
+ * disappearing — "nobody is within one level of Advanced" is itself the answer.
+ */
+function DetailGroup({ title, count, hint, emptyText, children }) {
+  return (
+    <div style={{ marginTop: '18px' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: '8px',
+          borderBottom: '1px solid var(--color-border)',
+          paddingBottom: '6px',
+        }}
+      >
+        <span
+          style={{
+            fontSize: '11px',
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}
+        >
+          {title}
+        </span>
+        <span style={{ fontSize: '11px', color: 'var(--color-muted-fg)' }}>
+          {count} · {hint}
+        </span>
+      </div>
+      {count === 0 ? (
+        <p className="stat-hint" style={{ margin: '8px 0 0' }}>
+          {emptyText}
+        </p>
+      ) : (
+        children
+      )}
+    </div>
+  );
+}
+
+/** Who is asking, who is free, who is coming free, and who could learn it. */
+function GapDetail({ detail }) {
+  const required = PROF_LABELS[detail.threshold];
+
+  return (
+    <div style={{ padding: '4px 0 16px 12px', borderLeft: '2px solid var(--color-border)' }}>
+      <DetailGroup
+        title="Open demand"
+        count={detail.openDemand.length}
+        hint={`positions requiring ${required} or above`}
+        emptyText="No open position requires this skill — the supply below is uncommitted."
+      >
+        {detail.openDemand.map((p) => (
+          <div className="radar-row" key={p.positionId}>
+            <div>
+              <a
+                href="#/positions"
+                className="cell-main"
+                style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
+              >
+                {p.title}
+              </a>
+              <div className="cell-sub">
+                {p.clientName} · {p.projectName}
+                {p.startDate ? ` · starts ${p.startDate}` : ''}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <Badge tone="gray" label={`${p.headcount} seat${p.headcount === 1 ? '' : 's'}`} />
+              <Badge
+                tone={PROF_TONES[p.minProficiency]}
+                label={PROF_LABELS[p.minProficiency] || 'any level'}
+              />
+            </div>
+          </div>
+        ))}
+      </DetailGroup>
+
+      <DetailGroup
+        title="Available now"
+        count={detail.benchSupply.length}
+        hint="on the bench, qualified"
+        emptyText="Nobody qualified is on the bench — every holder is already allocated."
+      >
+        {detail.benchSupply.map((p) => (
+          <div className="radar-row" key={p.associateId}>
+            <div>
+              <PersonLink id={p.associateId} name={p.name} />
+              <div className="cell-sub">
+                {p.designation}
+                {p.benchDays != null ? ` · ${p.benchDays} days on bench` : ''}
+              </div>
+            </div>
+            <Badge tone={PROF_TONES[p.proficiency]} label={PROF_LABELS[p.proficiency]} />
+          </div>
+        ))}
+      </DetailGroup>
+
+      <DetailGroup
+        title="Coming free"
+        count={detail.rollingOff.length}
+        hint="qualified, rolling off within 30 days"
+        emptyText="No qualified holder rolls off in the next 30 days."
+      >
+        {detail.rollingOff.map((p) => (
+          <div className="radar-row" key={p.associateId}>
+            <div>
+              <PersonLink id={p.associateId} name={p.name} />
+              <div className="cell-sub">
+                {p.projectName} · frees up {p.endDate}
+              </div>
+            </div>
+            <Badge tone={PROF_TONES[p.proficiency]} label={PROF_LABELS[p.proficiency]} />
+          </div>
+        ))}
+      </DetailGroup>
+
+      <DetailGroup
+        title="Could get there"
+        count={detail.nearMiss.length}
+        hint={`one level below ${required} — train instead of hire`}
+        emptyText={
+          detail.threshold === 'NOVICE'
+            ? 'No proficiency bar to fall short of.'
+            : `Nobody is within one level of ${required}.`
+        }
+      >
+        {detail.nearMiss.map((p) => (
+          <div className="radar-row" key={p.associateId}>
+            <div>
+              <PersonLink id={p.associateId} name={p.name} />
+              <div className="cell-sub">
+                {PROF_LABELS[p.proficiency]} today · needs {PROF_LABELS[p.requiredProficiency]} ·{' '}
+                {p.onBench ? 'on bench' : 'allocated'}
+              </div>
+            </div>
+            <Badge tone={PROF_TONES[p.proficiency]} label={PROF_LABELS[p.proficiency]} />
+          </div>
+        ))}
+      </DetailGroup>
+    </div>
+  );
+}
+
+/** A gap row that opens into the people and positions behind its number. */
+function GapRow({ gap, detail, loading, expanded, onToggle }) {
+  const badge = gapBadge(gap.gap, gap.demand);
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--color-border)' }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="radar-row"
+        style={{
+          width: '100%',
+          background: 'none',
+          border: 'none',
+          textAlign: 'left',
+          cursor: 'pointer',
+          font: 'inherit',
+          color: 'inherit',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            aria-hidden="true"
+            className="staffing-toggle-arrow"
+            style={{ transform: expanded ? 'rotate(90deg)' : 'none' }}
+          >
+            ▸
+          </span>
+          <div>
+            <div className="cell-main">{gap.skillName}</div>
+            <div className="cell-sub">{gapSummary(gap)}</div>
+          </div>
+        </div>
+        <Badge tone={badge.tone} label={badge.label} />
+      </button>
+      {expanded &&
+        (loading || !detail ? (
+          <div className="skeleton-row" style={{ margin: '8px 0' }} />
+        ) : (
+          <GapDetail detail={detail} />
+        ))}
+    </div>
+  );
+}
 
 const MAX_TOOLTIP_NAMES = 8;
-
-/** Mirrors the Dashboard panel's gap tones — keep the two views consistent. */
-function gapBadge(gap) {
-  if (gap > 0) return { tone: 'red', label: `short ${gap}` };
-  if (gap === 0) return { tone: 'amber', label: 'tight' };
-  return { tone: 'green', label: `+${-gap} spare` };
-}
 
 function SkillBar({ skillName, counts, people, onDrillDown }) {
   const [hover, setHover] = useState(null); // { prof, leftPct }
@@ -217,8 +415,28 @@ export default function SkillReports() {
   const { data: gaps } = useLoad(() => api.list('reports/skill-gaps'), []);
   const [drill, setDrill] = useState(null); // { skill, prof, people }
   const [gapsOpen, setGapsOpen] = useState(true);
+  const [expandedSkill, setExpandedSkill] = useState(null);
+  const [gapDetails, setGapDetails] = useState({}); // skillId -> detail, cached per session
+  const [loadingSkill, setLoadingSkill] = useState(null);
 
   const onDrillDown = (skill, prof, people) => setDrill({ skill, prof, people });
+
+  // Details are fetched only on first expand, so the summary list stays light.
+  const toggleGap = async (skillId) => {
+    if (expandedSkill === skillId) {
+      setExpandedSkill(null);
+      return;
+    }
+    setExpandedSkill(skillId);
+    if (gapDetails[skillId]) return;
+    setLoadingSkill(skillId);
+    try {
+      const detail = await api.get('reports/skill-gaps', skillId);
+      setGapDetails((prev) => ({ ...prev, [skillId]: detail }));
+    } finally {
+      setLoadingSkill(null);
+    }
+  };
 
   const findTaxonomyIds = (skillName) => {
     if (!taxonomy) return {};
@@ -279,7 +497,8 @@ export default function SkillReports() {
           <div style={{ padding: '0 24px 24px' }}>
             <p className="stat-hint" style={{ marginTop: 0 }}>
               Every skill with open demand or rated associates. Gap = open seats minus bench supply
-              at the required proficiency.
+              at the required proficiency. Open a row to see who is asking, who is free, who is
+              coming free, and who could get there with training.
             </p>
             {gaps.filter((g) => g.gap > 0).length > 0 && (
               <HBarChart
@@ -291,21 +510,16 @@ export default function SkillReports() {
               />
             )}
             <div style={{ marginTop: '12px' }}>
-              {gaps.map((g) => {
-                const badge = gapBadge(g.gap);
-                return (
-                  <div className="radar-row" key={g.skillId}>
-                    <div>
-                      <div className="cell-main">{g.skillName}</div>
-                      <div className="cell-sub">
-                        {g.category} · {g.demand} open · {g.benchSupply} on bench · {g.totalSupply}{' '}
-                        total
-                      </div>
-                    </div>
-                    <Badge tone={badge.tone} label={badge.label} />
-                  </div>
-                );
-              })}
+              {gaps.map((g) => (
+                <GapRow
+                  key={g.skillId}
+                  gap={g}
+                  detail={gapDetails[g.skillId]}
+                  loading={loadingSkill === g.skillId}
+                  expanded={expandedSkill === g.skillId}
+                  onToggle={() => toggleGap(g.skillId)}
+                />
+              ))}
             </div>
           </div>
         </CollapsibleCard>

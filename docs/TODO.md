@@ -91,6 +91,14 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **A zero gap with zero demand reads "fully deployed", not "tight"** (2026-07-13):
+  `gap = demand - benchSupply`, so a skill nobody is hiring for and nobody is free for
+  scores 0 — identical to a skill whose demand is exactly met. Both views used to badge
+  that as `tight`, which told managers a skill was at knife's edge when nothing was open.
+  The rule now branches on demand, and lives in one shared module (`frontend/src/skillGap.js`)
+  because the Dashboard panel and the Skill Reports rows had already drifted: the Dashboard
+  inlined the logic while the report kept a private copy.
+
 - **Assistant `get_associate_detail` includes past projects + certifications**
   (2026-07-13): the per-associate detail tool now lists ended allocations as
   "past projects" (most-recently-ended first) and the associate's certifications

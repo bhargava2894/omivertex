@@ -9,6 +9,7 @@ import { TrendChart, DonutChart, VBarChart } from '../components/charts.jsx';
 import AssistantChat from '../components/AssistantChat.jsx';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import { useMotionVariants, listContainer, listItem } from '../motion.js';
+import { gapBadge, gapSummary } from '../skillGap.js';
 
 function StatCard({ icon, label, value, hint }) {
   return (
@@ -519,21 +520,18 @@ export default function Dashboard({ showToast, canEdit }) {
           {(s.skillGaps || []).length === 0 ? (
             <p className="stat-hint">No open positions demanding skills right now.</p>
           ) : (
-            (s.skillGaps || []).map((g) => (
-              <div className="radar-row" key={g.skillId}>
-                <div>
-                  <div className="cell-main">{g.skillName}</div>
-                  <div className="cell-sub">
-                    {g.category} · {g.demand} open · {g.benchSupply} on bench · {g.totalSupply}{' '}
-                    total
+            (s.skillGaps || []).map((g) => {
+              const badge = gapBadge(g.gap, g.demand);
+              return (
+                <div className="radar-row" key={g.skillId}>
+                  <div>
+                    <div className="cell-main">{g.skillName}</div>
+                    <div className="cell-sub">{gapSummary(g)}</div>
                   </div>
+                  <Badge tone={badge.tone} label={badge.label} />
                 </div>
-                <Badge
-                  tone={g.gap > 0 ? 'red' : g.gap === 0 ? 'amber' : 'green'}
-                  label={g.gap > 0 ? `short ${g.gap}` : g.gap === 0 ? 'tight' : `+${-g.gap} spare`}
-                />
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
