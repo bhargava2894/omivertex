@@ -91,6 +91,13 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **Assistant `get_associate_detail` includes past projects** (2026-07-13): the
+  per-associate detail tool now lists ended allocations as "past projects"
+  (most-recently-ended first, capped at `MAX_TOOL_ROWS`), so the assistant stops
+  wrongly reporting "no previous project history" for people who have ended
+  allocations. Kept out of the shared `appendStaffing` fragment so the compact
+  `search_associates` rows stay short — history is detail-view only.
+
 - **AI bulkhead + timeouts** (2026-07-11): all Gemini calls run on a dedicated
   4-thread executor (queue 8; saturation → fast 503) behind async controllers,
   with 5s connect / 30s read timeouts. Sized small deliberately — the upstream

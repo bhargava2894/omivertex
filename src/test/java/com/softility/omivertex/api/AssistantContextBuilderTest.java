@@ -82,6 +82,23 @@ class AssistantContextBuilderTest extends ApiTestBase {
     }
 
     @Test
+    void associateDetail_showsPastProjects() {
+        var acme = client("Acme Corp");
+        var oldProj = project("ACM-050", "Legacy Migration", acme);
+        var alum = associate("Pavan Sista", "pavan@softility.com", WorkMode.OFFSHORE);
+        var ended = allocation(alum, oldProj, true);
+        ended.setStartDate(LocalDate.now().minusMonths(6));
+        ended.setEndDate(LocalDate.now().minusMonths(1)); // ended last month
+        allocationRepository.save(ended);
+
+        String detail = builder.associateDetail(alum);
+
+        // the ended allocation is this associate's project history — it must surface
+        assertThat(detail).contains("past projects");
+        assertThat(detail).contains("Legacy Migration @Acme Corp");
+    }
+
+    @Test
     void rolloffs_listsAllocationsEndingInWindow() {
         seedWorkforce();
         var alloc = allocationRepository.findAll().get(0);

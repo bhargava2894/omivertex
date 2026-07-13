@@ -148,6 +148,7 @@ public class AssistantContextBuilder {
             sb.append(" · skills: ").append(skills);
         }
         appendStaffing(sb, a, all);
+        appendPastProjects(sb, all);
         appendUpcomingExit(sb, a);
         return sb.toString();
     }
@@ -222,6 +223,28 @@ public class AssistantContextBuilder {
                             + " (" + al.getAllocationPercent() + "%"
                             + (al.isBillable() ? ", billable" : ", non-billable")
                             + (al.getEndDate() == null ? "" : ", ends " + al.getEndDate()) + ")")
+                    .collect(Collectors.joining("; ")));
+        }
+    }
+
+    /**
+     * Detail-view only (not the compact search rows): an associate's ended
+     * allocations are their project history, most-recently-ended first. Without
+     * this the assistant only ever sees current staffing and wrongly reports that
+     * a person has no previous projects.
+     */
+    private void appendPastProjects(StringBuilder sb, List<Allocation> allOfTheirs) {
+        LocalDate today = LocalDate.now();
+        List<Allocation> past = allOfTheirs.stream()
+                .filter(al -> al.getEndDate() != null && al.getEndDate().isBefore(today))
+                .sorted(Comparator.comparing(Allocation::getEndDate).reversed())
+                .limit(MAX_TOOL_ROWS)
+                .toList();
+        if (!past.isEmpty()) {
+            sb.append(" · past projects: ").append(past.stream()
+                    .map(al -> al.getProject().getName() + " @" + al.getProject().getClient().getName()
+                            + " (" + al.getStartDate() + "–" + al.getEndDate()
+                            + (al.isBillable() ? ", billable" : ", non-billable") + ")")
                     .collect(Collectors.joining("; ")));
         }
     }
