@@ -3,6 +3,7 @@ package com.softility.omivertex.service;
 import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
 import com.softility.omivertex.domain.AssociateSkill;
+import com.softility.omivertex.domain.Certification;
 import com.softility.omivertex.domain.EntityStatus;
 import com.softility.omivertex.domain.PositionSkill;
 import com.softility.omivertex.domain.PositionStatus;
@@ -10,6 +11,7 @@ import com.softility.omivertex.domain.Proficiency;
 import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.AssociateSkillRepository;
+import com.softility.omivertex.repository.CertificationRepository;
 import com.softility.omivertex.repository.ClientRepository;
 import com.softility.omivertex.repository.OpenPositionRepository;
 import com.softility.omivertex.repository.PositionSkillRepository;
@@ -42,18 +44,20 @@ public class AssistantContextBuilder {
     private final AssociateRepository associates;
     private final AllocationRepository allocations;
     private final AssociateSkillRepository associateSkills;
+    private final CertificationRepository certifications;
     private final OpenPositionRepository positions;
     private final PositionSkillRepository positionSkills;
     private final ClientRepository clients;
     private final ProjectRepository projects;
 
     public AssistantContextBuilder(AssociateRepository associates, AllocationRepository allocations,
-                                   AssociateSkillRepository associateSkills, OpenPositionRepository positions,
-                                   PositionSkillRepository positionSkills, ClientRepository clients,
-                                   ProjectRepository projects) {
+                                   AssociateSkillRepository associateSkills, CertificationRepository certifications,
+                                   OpenPositionRepository positions, PositionSkillRepository positionSkills,
+                                   ClientRepository clients, ProjectRepository projects) {
         this.associates = associates;
         this.allocations = allocations;
         this.associateSkills = associateSkills;
+        this.certifications = certifications;
         this.positions = positions;
         this.positionSkills = positionSkills;
         this.clients = clients;
@@ -149,6 +153,7 @@ public class AssistantContextBuilder {
         }
         appendStaffing(sb, a, all);
         appendPastProjects(sb, all);
+        appendCertifications(sb, a);
         appendUpcomingExit(sb, a);
         return sb.toString();
     }
@@ -245,6 +250,27 @@ public class AssistantContextBuilder {
                     .map(al -> al.getProject().getName() + " @" + al.getProject().getClient().getName()
                             + " (" + al.getStartDate() + "–" + al.getEndDate()
                             + (al.isBillable() ? ", billable" : ", non-billable") + ")")
+                    .collect(Collectors.joining("; ")));
+        }
+    }
+
+    /**
+     * Detail-view only: certifications the associate holds, soonest-expiring first,
+     * each flagged valid or expired. Without this the assistant cannot answer
+     * "is X certified in …" and wrongly implies they hold none.
+     */
+    private void appendCertifications(StringBuilder sb, Associate a) {
+        LocalDate today = LocalDate.now();
+        List<Certification> certs = certifications.findByAssociateIdOrderByExpiryDateAsc(a.getId());
+        if (!certs.isEmpty()) {
+            sb.append(" · certifications: ").append(certs.stream()
+                    .limit(MAX_TOOL_ROWS)
+                    .map(c -> c.getName()
+                            + (c.getAuthority() == null || c.getAuthority().isBlank()
+                                    ? "" : " (" + c.getAuthority() + ")")
+                            + (c.getExpiryDate() == null ? ""
+                                    : c.getExpiryDate().isBefore(today) ? ", expired " + c.getExpiryDate()
+                                    : ", valid to " + c.getExpiryDate()))
                     .collect(Collectors.joining("; ")));
         }
     }

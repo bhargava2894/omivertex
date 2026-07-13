@@ -91,12 +91,17 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
-- **Assistant `get_associate_detail` includes past projects** (2026-07-13): the
-  per-associate detail tool now lists ended allocations as "past projects"
-  (most-recently-ended first, capped at `MAX_TOOL_ROWS`), so the assistant stops
-  wrongly reporting "no previous project history" for people who have ended
-  allocations. Kept out of the shared `appendStaffing` fragment so the compact
-  `search_associates` rows stay short — history is detail-view only.
+- **Assistant `get_associate_detail` includes past projects + certifications**
+  (2026-07-13): the per-associate detail tool now lists ended allocations as
+  "past projects" (most-recently-ended first) and the associate's certifications
+  (soonest-expiring first, each flagged valid/expired), both capped at
+  `MAX_TOOL_ROWS`. Before this the assistant wrongly reported "no previous
+  project history" and could not answer "is X certified in …" — it only ever saw
+  current staffing. Both are kept out of the shared `appendStaffing` fragment so
+  the compact `search_associates` rows stay short — detail-view only. Verified
+  end-to-end against live Gemini (Pavan Sista's past project, Rohan Gupta's AWS
+  cert, no hallucination on unknown names). Principle: the detail tool must carry
+  whatever a user would ask about a person; audit it when adding person-level data.
 
 - **AI bulkhead + timeouts** (2026-07-11): all Gemini calls run on a dedicated
   4-thread executor (queue 8; saturation → fast 503) behind async controllers,

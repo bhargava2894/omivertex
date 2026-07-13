@@ -99,6 +99,36 @@ class AssistantContextBuilderTest extends ApiTestBase {
     }
 
     @Test
+    void associateDetail_showsCertifications() {
+        var holder = associate("Ravi Kumar", "ravi@softility.com", WorkMode.OFFSHORE);
+        var cert = new com.softility.omivertex.domain.Certification();
+        cert.setAssociate(holder);
+        cert.setName("AWS Solutions Architect");
+        cert.setAuthority("Amazon");
+        cert.setExpiryDate(LocalDate.now().plusYears(1));
+        certificationRepository.save(cert);
+
+        String detail = builder.associateDetail(holder);
+
+        // certifications are first-class data — the assistant must be able to report them
+        assertThat(detail).contains("certifications");
+        assertThat(detail).contains("AWS Solutions Architect (Amazon)");
+    }
+
+    @Test
+    void associateDetail_currentAllocationNotListedAsPastProject() {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var neha = associate("Neha Gupta", "neha@softility.com", WorkMode.ONSHORE);
+        allocation(neha, proj, true); // current: started 3mo ago, no end date
+
+        String detail = builder.associateDetail(neha);
+
+        assertThat(detail).contains("allocated: Storefront Revamp");
+        assertThat(detail).doesNotContain("past projects"); // a current allocation is not history
+    }
+
+    @Test
     void rolloffs_listsAllocationsEndingInWindow() {
         seedWorkforce();
         var alloc = allocationRepository.findAll().get(0);
