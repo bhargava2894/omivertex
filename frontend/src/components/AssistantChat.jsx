@@ -126,7 +126,7 @@ export default function AssistantChat({ showToast, canEdit }) {
       <div className="mirai-band">
         <div className="mirai-brand">
           <span className="mirai-mark" aria-hidden="true">
-            <Icon name="sparkles" size={18} />
+            <Icon name="sparkles" size={14} />
           </span>
           <span className="mirai-wordmark">Mirai</span>
         </div>
