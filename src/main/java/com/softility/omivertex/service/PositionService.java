@@ -244,6 +244,7 @@ public class PositionService {
         position.setWorkMode(request.workMode());
         position.setBillable(request.billable() == null || request.billable());
         position.setAllocationPercent(request.allocationPercent() == null ? 100 : request.allocationPercent());
+        position.setHeadcount(request.headcount() == null ? 1 : request.headcount());
         if (request.startDate() != null && request.endDate() != null
                 && request.endDate().isBefore(request.startDate())) {
             throw new BadRequestException("End date cannot be before start date");

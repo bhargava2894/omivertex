@@ -21,6 +21,7 @@ public record PositionResponse(
         List<SkillLine> skills,
         boolean billable,
         int allocationPercent,
+        int headcount,
         LocalDate startDate,
         LocalDate endDate,
         PositionStatus status) {
@@ -42,7 +43,9 @@ public record PositionResponse(
                 position.getProject().getClient().getName(),
                 position.getRequiredSkill(), position.getWorkMode(), skills,
                 position.isBillable(),
-                position.getAllocationPercent(), position.getStartDate(), position.getEndDate(),
+                position.getAllocationPercent(),
+                position.getHeadcount(),
+                position.getStartDate(), position.getEndDate(),
                 position.getStatus());
     }
 }

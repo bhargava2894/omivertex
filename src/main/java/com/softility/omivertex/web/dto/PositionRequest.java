@@ -22,6 +22,8 @@ public record PositionRequest(
         @Min(value = 1, message = "Allocation must be at least 1%")
         @Max(value = 100, message = "Allocation cannot exceed 100%")
         Integer allocationPercent,
+        @Min(value = 1, message = "Headcount must be at least 1")
+        Integer headcount,
         LocalDate startDate,
         LocalDate endDate,
         PositionStatus status) {

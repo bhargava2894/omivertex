@@ -56,6 +56,36 @@ class PositionApiTest extends ApiTestBase {
     }
 
     @Test
+    void createPosition_withHeadcount_savesAndReturnsIt() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+
+        mockMvc.perform(post("/api/v1/positions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Senior Java Developer","projectId":%d,"requiredSkill":"Java",
+                                 "billable":true,"allocationPercent":100,"headcount":3,"startDate":"%s"}"""
+                                .formatted(proj.getId(), LocalDate.now())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.headcount").value(3));
+    }
+
+    @Test
+    void createPosition_invalidHeadcount_returns400() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+
+        mockMvc.perform(post("/api/v1/positions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Senior Java Developer","projectId":%d,"requiredSkill":"Java",
+                                 "billable":true,"allocationPercent":100,"headcount":0,"startDate":"%s"}"""
+                                .formatted(proj.getId(), LocalDate.now())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.headcount").exists());
+    }
+
+    @Test
     void listPositions_filtersByStatus() throws Exception {
         var acme = client("Acme Corp");
         var proj = project("ACM-100", "Storefront Revamp", acme);

@@ -18,6 +18,7 @@ const EMPTY = {
   skills: [], // rows of { skillId, minProficiency, required }
   billable: true,
   allocationPercent: 100,
+  headcount: 1,
   startDate: '',
   endDate: '',
   status: 'OPEN',
@@ -57,6 +58,7 @@ export default function Positions({ showToast, canEdit }) {
         })),
         billable: row.billable,
         allocationPercent: row.allocationPercent,
+        headcount: row.headcount || 1,
         startDate: row.startDate || '',
         endDate: row.endDate || '',
         status: row.status,
@@ -91,6 +93,7 @@ export default function Positions({ showToast, canEdit }) {
           required: !!s.required,
         })),
       allocationPercent: Number(f.allocationPercent),
+      headcount: Number(f.headcount || 1),
       startDate: f.startDate || null,
       endDate: f.endDate || null,
     };
@@ -225,6 +228,11 @@ export default function Positions({ showToast, canEdit }) {
             key: 'allocationPercent',
             label: 'Allocation',
             render: (r) => `${r.allocationPercent}%`,
+          },
+          {
+            key: 'headcount',
+            label: 'Seats',
+            render: (r) => r.headcount,
           },
           { key: 'startDate', label: 'Start', render: (r) => r.startDate || '—' },
           { key: 'endDate', label: 'End', render: (r) => r.endDate || '—' },
@@ -377,6 +385,14 @@ export default function Positions({ showToast, canEdit }) {
                   max="100"
                   value={editing.form.allocationPercent}
                   onChange={(e) => set('allocationPercent', e.target.value)}
+                />
+              </Field>
+              <Field label="Headcount" error={errors.headcount}>
+                <input
+                  type="number"
+                  min="1"
+                  value={editing.form.headcount}
+                  onChange={(e) => set('headcount', e.target.value)}
                 />
               </Field>
               <Field label="Start date" error={errors.startDate}>

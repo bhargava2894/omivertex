@@ -88,6 +88,7 @@ public class SkillGapService {
         return skillsById.values().stream()
                 .map(skill -> {
                     List<PositionSkill> reqs = demandBySkill.getOrDefault(skill.getId(), List.of());
+                    long demand = reqs.stream().mapToLong(ps -> ps.getPosition().getHeadcount()).sum();
                     Proficiency threshold = reqs.stream()
                             .map(r -> r.getMinProficiency() == null ? Proficiency.NOVICE : r.getMinProficiency())
                             .min(Comparator.comparingInt(Enum::ordinal)).orElse(Proficiency.NOVICE);
@@ -99,8 +100,8 @@ public class SkillGapService {
                             .collect(Collectors.toSet());
                     long benchSupply = holders.stream().filter(h -> !allocatedIds.contains(h)).count();
                     return new DashboardSummaryResponse.SkillGap(skill.getId(), skill.getName(),
-                            skill.getCategory().getName(), reqs.size(), benchSupply, holders.size(),
-                            reqs.size() - benchSupply);
+                            skill.getCategory().getName(), demand, benchSupply, holders.size(),
+                            demand - benchSupply);
                 })
                 .sorted(Comparator.comparingLong(DashboardSummaryResponse.SkillGap::gap).reversed()
                         .thenComparing(DashboardSummaryResponse.SkillGap::skillName))
