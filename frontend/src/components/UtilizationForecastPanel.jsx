@@ -52,6 +52,22 @@ function summary(point) {
   return null;
 }
 
+/**
+ * Tolerate a forecast point that predates the drivers field. A server running an older
+ * build (or a stale cached bundle) must not blank the whole dashboard: React unmounts the
+ * entire tree on a render throw, so one missing field would cost the user every panel.
+ */
+function normalize(point) {
+  return {
+    label: point.label,
+    percent: point.percent ?? 0,
+    deltaPoints: point.deltaPoints ?? 0,
+    drivers: point.drivers ?? [],
+    omittedDrivers: point.omittedDrivers ?? 0,
+    explained: Array.isArray(point.drivers),
+  };
+}
+
 export default function UtilizationForecastPanel({ points, viewMode }) {
   const [expanded, setExpanded] = useState(null);
   const anim = useMotionVariants(collapse);
@@ -72,20 +88,21 @@ export default function UtilizationForecastPanel({ points, viewMode }) {
           series={[{ key: 'percent', label: 'Utilization %', color: 'var(--chart-2)' }]}
         />
       ) : (
-        forecast.map((p) => {
-          const isToday = p.deltaPoints === 0 && p.drivers.length === 0 && p.label === 'Today';
+        forecast.map((raw) => {
+          const p = normalize(raw);
           const isOpen = expanded === p.label;
           const badge = deltaBadge(p.deltaPoints);
           const note = summary(p);
 
           // "Today" is the baseline the others are measured against — nothing to explain.
-          if (isToday) {
+          // An unexplained point (older server) falls back to the same plain row.
+          if (p.label === 'Today' || !p.explained) {
             return (
               <div className="radar-row" key={p.label}>
                 <div className="cell-main">{p.label}</div>
                 <div className="radar-right">
                   <span className="forecast-pct">{p.percent}%</span>
-                  <span className="gap-row-meta">baseline</span>
+                  {p.label === 'Today' && <span className="gap-row-meta">baseline</span>}
                 </div>
               </div>
             );
