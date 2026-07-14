@@ -1387,6 +1387,18 @@ svg path, svg rect, svg circle { transition: opacity 0.15s var(--ease); }
 .gap-row:hover { background: var(--color-surface-hover); }
 .gap-row + .gap-detail { padding: 4px 10px 20px 38px; }
 
+/* A gap row is a way in to the drill-down, so it has to look and behave like one. */
+.radar-row-link {
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  margin: 0 -8px;
+  padding-inline: 8px;
+  transition: background 0.15s var(--ease);
+}
+.radar-row-link:hover { background: var(--color-surface-hover); }
+.radar-row-link:hover .staffing-toggle-arrow { transform: translateX(2px); }
+
 /* Utilization forecast: the delta is always visible, the drivers behind it expand. */
 .forecast-row {
   display: grid;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../api.js';
 import { collapse, useMotionVariants } from '../motion.js';
@@ -181,13 +181,46 @@ function GapDetail({ detail }) {
   );
 }
 
-export default function SkillGapPanel({ gaps }) {
+/**
+ * `focusSkillId` arrives from the #/skill-reports/<id> deep link on the dashboard's gap
+ * rows. It seeds the filter and the expanded row directly rather than opening them in an
+ * effect: the default bucket is `short`, so a focused skill that is merely `tight` would
+ * otherwise expand a row that is not in the visible list — a link that silently does
+ * nothing. Landing on `all` guarantees the target row is there whatever its bucket.
+ */
+export default function SkillGapPanel({ gaps, focusSkillId }) {
   const [open, setOpen] = useState(true);
-  const [filter, setFilter] = useState(null); // null = pick the most urgent non-empty bucket
-  const [expanded, setExpanded] = useState(null);
+  const [filter, setFilter] = useState(focusSkillId ? 'all' : null); // null = most urgent bucket
+  const [expanded, setExpanded] = useState(focusSkillId ?? null);
   const [details, setDetails] = useState({}); // skillId -> detail, cached for the session
   const [loading, setLoading] = useState(null);
   const anim = useMotionVariants(collapse);
+  const focusRef = useRef(null);
+
+  // Fetching the focused row's detail is inherently async, so it cannot be seeded above.
+  useEffect(() => {
+    if (!focusSkillId) return;
+    let cancelled = false;
+    setLoading(focusSkillId);
+    api
+      .get('reports/skill-gaps', focusSkillId)
+      .then((detail) => {
+        if (!cancelled) setDetails((prev) => ({ ...prev, [focusSkillId]: detail }));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [focusSkillId]);
+
+  // Arriving from the dashboard, the panel may be well below the fold.
+  useEffect(() => {
+    if (focusSkillId && focusRef.current) {
+      focusRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [focusSkillId]);
 
   const counts = useMemo(
     () => Object.fromEntries(FILTERS.map((f) => [f.key, gaps.filter(f.match).length])),
@@ -261,7 +294,7 @@ export default function SkillGapPanel({ gaps }) {
             const badge = gapBadge(g.gap, g.demand);
             const isOpen = expanded === g.skillId;
             return (
-              <div key={g.skillId}>
+              <div key={g.skillId} ref={g.skillId === focusSkillId ? focusRef : null}>
                 <button
                   type="button"
                   className="gap-row"

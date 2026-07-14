@@ -310,7 +310,12 @@ docx (POI XWPF). Returned as `attachment` with correct MIME type.
 ## 9. Frontend architecture
 
 - **No router library**: `useHashRoute()` in `App.jsx` maps `#/path` → page
-  component from a `ROUTES` table. Deep links work.
+  component from a `ROUTES` table. Deep links work: `#/associates/<id>` opens a profile,
+  and `#/skill-reports/<skillId>` opens Skill Reports with that skill's gap row already
+  expanded (the dashboard's gap rows link here — the dashboard triages, Skill Reports
+  explains). A deep-linked skill also forces the gap panel's triage filter to `all`,
+  because the panel otherwise defaults to the `short` bucket and a `tight` skill would
+  expand a row that is not in the visible list.
 - **Auth gate**: `App` calls `/auth/me` on mount; `undefined` = checking (renders
   nothing), `null` = login page, object = shell. Logout and global 401s reset it.
 - **Theming**: CSS custom properties on `:root` and `[data-theme='dark']`

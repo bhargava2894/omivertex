@@ -210,10 +210,16 @@ export default function App() {
   let active = visibleRoutes.find((r) => r.path === baseRoute);
   let isProfile = false;
   let profileId = null;
+  let focusSkillId = null;
   if (!active && baseRoute.startsWith('associates/')) {
     active = visibleRoutes.find((r) => r.path === 'associates');
     isProfile = true;
     profileId = Number(baseRoute.split('/')[1]);
+  }
+  // skill-reports/<id>: the dashboard's gap rows link straight to the skill's drill-down.
+  if (!active && baseRoute.startsWith('skill-reports/')) {
+    active = visibleRoutes.find((r) => r.path === 'skill-reports');
+    focusSkillId = Number(baseRoute.split('/')[1]) || null;
   }
   if (!active) {
     active = visibleRoutes[0];
@@ -315,7 +321,14 @@ export default function App() {
         <main className="content" style={{ overflowX: 'hidden' }}>
           <AnimatePresence mode="wait">
             <motion.div
-              key={isProfile ? `profile-${profileId}` : active.path}
+              key={
+                isProfile
+                  ? `profile-${profileId}`
+                  : // remount on a new deep link, so the focused skill re-seeds panel state
+                    focusSkillId
+                    ? `${active.path}-${focusSkillId}`
+                    : active.path
+              }
               initial={pageAnim.initial}
               animate={pageAnim.animate}
               exit={pageAnim.exit}
@@ -323,7 +336,13 @@ export default function App() {
               {isProfile ? (
                 <Page id={profileId} showToast={showToast} canEdit={canEdit} />
               ) : (
-                <Page showToast={showToast} theme={theme} setTheme={setTheme} canEdit={canEdit} />
+                <Page
+                  showToast={showToast}
+                  theme={theme}
+                  setTheme={setTheme}
+                  canEdit={canEdit}
+                  focusSkillId={focusSkillId}
+                />
               )}
             </motion.div>
           </AnimatePresence>

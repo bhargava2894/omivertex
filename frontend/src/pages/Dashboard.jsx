@@ -497,14 +497,26 @@ export default function Dashboard({ showToast, canEdit }) {
           ) : (
             (s.skillGaps || []).map((g) => {
               const badge = gapBadge(g.gap, g.demand);
+              // The people and open positions behind this gap already exist on Skill
+              // Reports — link into that drill-down rather than restating it here.
               return (
-                <div className="radar-row" key={g.skillId}>
+                <a
+                  className="radar-row radar-row-link"
+                  key={g.skillId}
+                  href={`#/skill-reports/${g.skillId}`}
+                  title={`See the people and open positions behind the ${g.skillName} gap`}
+                >
                   <div>
                     <div className="cell-main">{g.skillName}</div>
                     <div className="cell-sub">{gapSummary(g)}</div>
                   </div>
-                  <Badge tone={badge.tone} label={badge.label} />
-                </div>
+                  <div className="radar-right">
+                    <Badge tone={badge.tone} label={badge.label} />
+                    <span aria-hidden="true" className="staffing-toggle-arrow">
+                      ▸
+                    </span>
+                  </div>
+                </a>
               );
             })
           )}

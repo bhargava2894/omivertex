@@ -203,7 +203,7 @@ function CategoryPanel({ category, skills, onDrillDown }) {
   );
 }
 
-export default function SkillReports() {
+export default function SkillReports({ focusSkillId }) {
   const { data: reports, loading } = useLoad(() => api.list('reports/skills'), []);
   const { data: taxonomy } = useLoad(() => api.list('taxonomy'), []);
   const { data: gaps } = useLoad(() => api.list('reports/skill-gaps'), []);
@@ -249,7 +249,7 @@ export default function SkillReports() {
 
   return (
     <div style={{ display: 'grid', gap: '24px' }}>
-      {gaps && gaps.length > 0 && <SkillGapPanel gaps={gaps} />}
+      {gaps && gaps.length > 0 && <SkillGapPanel gaps={gaps} focusSkillId={focusSkillId} />}
 
       {!reports || reports.length === 0 ? (
         <div className="card">
