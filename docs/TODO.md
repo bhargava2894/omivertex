@@ -91,6 +91,18 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **Assistant can enumerate clients and projects; the list always reconciles with the
+  count** (2026-07-15): Mirai could answer "how many clients?" (the standing context
+  carries the counts) but not "which ones?" — no read tool could enumerate, so it could
+  only name clients that happened to appear on an open position, and correctly refused to
+  guess the rest. Added `list_clients` and `list_projects` (spec:
+  `docs/superpowers/specs/2026-07-15-assistant-client-project-listing-design.md`). Both
+  list **every** row rather than filtering to ACTIVE, marking non-active rows inline: the
+  standing context's `Clients:`/`Projects:` numbers come from `count()` (all rows), so an
+  active-only list would contradict the number Mirai had just quoted. Names still leave the
+  server only on request and still under the 25-row cap, so this extends rather than
+  reverses the 2026-07-11 aggregates-only privacy decision.
+
 - **A zero gap with zero demand reads "fully deployed", not "tight"** (2026-07-13):
   `gap = demand - benchSupply`, so a skill nobody is hiring for and nobody is free for
   scores 0 — identical to a skill whose demand is exactly met. Both views used to badge

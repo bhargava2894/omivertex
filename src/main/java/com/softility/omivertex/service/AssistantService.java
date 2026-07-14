@@ -254,6 +254,8 @@ public class AssistantService {
             }
             case "list_rolloffs" -> contextBuilder.rolloffs(intOrDefault(args.get("withinDays"), 30));
             case "list_open_positions" -> contextBuilder.openPositions();
+            case "list_clients" -> contextBuilder.listClients();
+            case "list_projects" -> contextBuilder.listProjects(str(args, "clientName"));
             default -> "Unknown tool: " + name;
         };
     }

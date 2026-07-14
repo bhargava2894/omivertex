@@ -63,7 +63,7 @@ public class GeminiHttpClient implements GeminiClient {
     /** Tools executed server-side and fed back to the model (write tools return as drafts). */
     static final Set<String> READ_TOOLS = Set.of(READ_TOOL_MATCHES,
             "search_associates", "get_associate_detail", "get_project_detail",
-            "list_rolloffs", "list_open_positions");
+            "list_rolloffs", "list_open_positions", "list_clients", "list_projects");
 
     /** All assistant tools. Write tools are drafts only — the server never executes them. */
     private static final List<Map<String, Object>> FUNCTION_DECLARATIONS = List.of(
@@ -133,7 +133,19 @@ public class GeminiHttpClient implements GeminiClient {
                                     "description", "look-ahead window in days; default 30")))),
             Map.of("name", "list_open_positions",
                     "description", "All open positions with project, client, and required skills.",
-                    "parameters", Map.of("type", "object", "properties", Map.of())));
+                    "parameters", Map.of("type", "object", "properties", Map.of())),
+            Map.of("name", "list_clients",
+                    "description", "Every client we have, with industry, location, and how many"
+                            + " projects each runs. Use whenever asked who our clients are, to name"
+                            + " or list them, or about a client that has no open position.",
+                    "parameters", Map.of("type", "object", "properties", Map.of())),
+            Map.of("name", "list_projects",
+                    "description", "Every project with its code, client, status, and dates."
+                            + " Optionally narrowed to one client. Use when asked what projects we"
+                            + " run, to list or name them, or what a given client is running.",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of("clientName", Map.of("type", "string",
+                                    "description", "optional: only this client's projects")))));
 
     @Override
     public AssistantReply replyWithTools(String workforceContext, List<Turn> history,

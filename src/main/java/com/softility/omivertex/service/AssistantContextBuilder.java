@@ -4,6 +4,7 @@ import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
 import com.softility.omivertex.domain.AssociateSkill;
 import com.softility.omivertex.domain.Certification;
+import com.softility.omivertex.domain.Client;
 import com.softility.omivertex.domain.EntityStatus;
 import com.softility.omivertex.domain.PositionSkill;
 import com.softility.omivertex.domain.PositionStatus;
@@ -79,7 +80,8 @@ public class AssistantContextBuilder {
         return "You are Mirai, the AI assistant for Softility's internal resource-management "
                 + "platform. Answer questions about the workforce concisely and accurately, using "
                 + "short bullet lists where helpful. Use your lookup tools (search_associates, "
-                + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches) "
+                + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches, "
+                + "list_clients, list_projects) "
                 + "to fetch specifics before answering. If the tools cannot answer the question, "
                 + "say so — never invent people, projects, or numbers.\n\n"
                 + "## Key numbers (today: " + LocalDate.now() + ")\n"
@@ -132,10 +134,7 @@ public class AssistantContextBuilder {
             appendUpcomingExit(sb, a);
             sb.append("\n");
         }
-        if (matches.size() > MAX_TOOL_ROWS) {
-            sb.append("…and ").append(matches.size() - MAX_TOOL_ROWS)
-              .append(" more — refine the search.\n");
-        }
+        appendOverflow(sb, matches.size());
         return sb.toString();
     }
 
@@ -223,6 +222,71 @@ public class AssistantContextBuilder {
         return rows.isEmpty() ? "No open positions." : String.join("\n", rows);
     }
 
+    /**
+     * Read tool: every client, with how many projects each one runs. The standing
+     * context only carries the client <em>count</em>, and a client with no open
+     * position appears in no other tool's output — without this the assistant knows
+     * how many clients exist but cannot name them.
+     */
+    public String listClients() {
+        Map<Long, Long> projectCounts = projects.findAll().stream()
+                .collect(Collectors.groupingBy(p -> p.getClient().getId(), Collectors.counting()));
+        List<Client> all = clients.findAll().stream()
+                .sorted(Comparator.comparing(Client::getName))
+                .toList();
+        if (all.isEmpty()) {
+            return "No clients.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (Client c : all.stream().limit(MAX_TOOL_ROWS).toList()) {
+            sb.append("- ").append(c.getName());
+            if (c.getIndustry() != null && !c.getIndustry().isBlank()) {
+                sb.append(" · ").append(c.getIndustry());
+            }
+            if (c.getLocation() != null && !c.getLocation().isBlank()) {
+                sb.append(" · ").append(c.getLocation());
+            }
+            long count = projectCounts.getOrDefault(c.getId(), 0L);
+            sb.append(" · ").append(count == 0 ? "no projects"
+                    : count == 1 ? "1 project" : count + " projects");
+            if (c.getStatus() != EntityStatus.ACTIVE) {
+                sb.append(" · ").append(c.getStatus());
+            }
+            sb.append("\n");
+        }
+        appendOverflow(sb, all.size());
+        return sb.toString();
+    }
+
+    /**
+     * Read tool: every project, optionally only one client's. Like {@link #listClients()}
+     * this exists so the assistant can discover names it has never been told; {@code
+     * projectDetail} can only drill into a project whose name it already knows.
+     */
+    public String listProjects(String clientName) {
+        List<Project> matches = projects.findAllByOrderByNameAsc().stream()
+                .filter(p -> clientName == null || clientName.isBlank()
+                        || p.getClient().getName().toLowerCase()
+                                .contains(clientName.trim().toLowerCase()))
+                .toList();
+        if (matches.isEmpty()) {
+            return "No matching projects.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (Project p : matches.stream().limit(MAX_TOOL_ROWS).toList()) {
+            sb.append("- ").append(p.getName()).append(" · ").append(p.getCode())
+              .append(" @").append(p.getClient().getName())
+              .append(" · ").append(p.getStatus())
+              .append(" · ").append(p.getStartDate() == null ? "?" : p.getStartDate())
+              .append("–").append(p.getEndDate() == null ? "open" : p.getEndDate())
+              .append("\n");
+        }
+        appendOverflow(sb, matches.size());
+        return sb.toString();
+    }
+
     /** Read tool: one project's picture — who is currently staffed on it, and open seats. */
     public String projectDetail(Project p) {
         StringBuilder sb = new StringBuilder();
@@ -260,6 +324,14 @@ public class AssistantContextBuilder {
     }
 
     // ---- shared row fragments ----
+
+    /** The one place the row-cap overflow line is worded, for every capped tool. */
+    private void appendOverflow(StringBuilder sb, int totalMatches) {
+        if (totalMatches > MAX_TOOL_ROWS) {
+            sb.append("…and ").append(totalMatches - MAX_TOOL_ROWS)
+              .append(" more — refine the search.\n");
+        }
+    }
 
     private void appendStaffing(StringBuilder sb, Associate a, List<Allocation> allOfTheirs) {
         List<Allocation> current = allOfTheirs.stream().filter(Allocation::isCurrent).toList();

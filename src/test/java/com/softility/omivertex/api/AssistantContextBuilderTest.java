@@ -198,4 +198,60 @@ class AssistantContextBuilderTest extends ApiTestBase {
         assertThat(result).contains("Java Dev");
         assertThat(result).contains("must-have: Java (min INTERMEDIATE)");
     }
+
+    @Test
+    void standingContext_advertisesTheClientAndProjectTools() {
+        seedWorkforce();
+        // an unnamed tool is an under-called tool — the prompt lists what Mirai can reach
+        assertThat(builder.build()).contains("list_clients").contains("list_projects");
+    }
+
+    @Test
+    void listClients_namesEveryClient_notJustOnesWithOpenPositions() {
+        seedWorkforce(); // Acme Corp — has a project and an open position
+        var quiet = client("Quiet Holdings"); // no projects, no positions, no allocations
+        quiet.setIndustry("Finance");
+        quiet.setLocation("Zurich");
+        clientRepository.save(quiet);
+
+        String result = builder.listClients();
+
+        // the whole point: a client reachable through no other tool still gets named
+        assertThat(result).contains("Quiet Holdings");
+        assertThat(result).contains("Finance").contains("Zurich");
+        assertThat(result).contains("Acme Corp");
+        assertThat(result).contains("1 project"); // Acme's project count
+        assertThat(result).contains("no projects"); // Quiet Holdings'
+    }
+
+    @Test
+    void listClients_marksInactiveSoTheListReconcilesWithTheCount() {
+        var gone = client("Former Client");
+        gone.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
+        clientRepository.save(gone);
+
+        // build()'s "Clients:" count is every row, so the list must be every row too
+        assertThat(builder.listClients()).contains("Former Client").contains("INACTIVE");
+    }
+
+    @Test
+    void listProjects_listsCodeClientAndStatus_andFiltersByClient() {
+        seedWorkforce(); // Storefront Revamp @Acme Corp
+        var other = client("Helios Energy");
+        project("HEL-100", "Grid Analytics", other);
+
+        String all = builder.listProjects(null);
+        assertThat(all).contains("Storefront Revamp").contains("ACM-100").contains("Acme Corp");
+        assertThat(all).contains("Grid Analytics");
+
+        String helios = builder.listProjects("helios"); // partial, case-insensitive
+        assertThat(helios).contains("Grid Analytics");
+        assertThat(helios).doesNotContain("Storefront Revamp");
+    }
+
+    @Test
+    void listProjects_unknownClientIsStated() {
+        seedWorkforce();
+        assertThat(builder.listProjects("Nonexistent Inc")).contains("No matching projects");
+    }
 }

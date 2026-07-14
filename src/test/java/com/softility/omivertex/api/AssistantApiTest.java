@@ -14,6 +14,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -239,6 +240,48 @@ class AssistantApiTest extends ApiTestBase {
                                 {"message":"who on the bench knows java?","history":[]}"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reply", containsString("Priya Sharma")));
+    }
+
+    @Test
+    void chat_readTool_listClients_namesClientsWithNoOpenPositions() throws Exception {
+        client("Acme Corp");
+        client("Quiet Holdings"); // reachable through no other read tool
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(
+                            ex.execute("list_clients", Map.of()), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"who are our clients?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Quiet Holdings")))
+                .andExpect(jsonPath("$.reply", containsString("Acme Corp")));
+    }
+
+    @Test
+    void chat_readTool_listProjects_filtersByClient() throws Exception {
+        var acme = client("Acme Corp");
+        project("ACM-100", "Storefront Revamp", acme);
+        var helios = client("Helios Energy");
+        project("HEL-100", "Grid Analytics", helios);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(
+                            ex.execute("list_projects", Map.of("clientName", "Helios")), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"what is helios running?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Grid Analytics")))
+                .andExpect(jsonPath("$.reply", not(containsString("Storefront Revamp"))));
     }
 
     @Test

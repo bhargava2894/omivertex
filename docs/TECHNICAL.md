@@ -142,10 +142,16 @@ introduce Flyway before making breaking changes.
    PENDING (live data untouched) until an admin approves (applied through the existing
    services, so validation + audit fire) or rejects with a note. One pending change per
    (associate, type) → 409. Approving as ASSOCIATE requires a roster email match → 400.
-10. **AI assistant** (2026-07-10) — `AssistantService` compiles a FULL-detail workforce
-    context per request (`AssistantContextBuilder`: names, emails, skills, allocations,
-    exits, open demand; resume file contents never included — user decision, see
-    docs/TODO.md) and calls the vendor-neutral `GeminiClient` boundary; the HTTP
+10. **AI assistant** (2026-07-10; context narrowed 2026-07-11, enumeration tools added
+    2026-07-15) — `AssistantService` sends a standing context of **aggregate counts only**
+    (`AssistantContextBuilder.build()`: active/bench/open-position/client/project counts —
+    no names, emails, or roster rows) and fetches specifics per question through
+    server-side read tools, each capped at `MAX_TOOL_ROWS` (25) with an explicit overflow
+    line. `list_clients` and `list_projects` let it *enumerate* clients and projects it has
+    never been told the names of — without them it knew how many clients existed but could
+    only name the ones that happened to have an open position. Resume file contents are
+    never included — user decision, see docs/TODO.md. It calls the vendor-neutral
+    `GeminiClient` boundary; the HTTP
     implementation (`GeminiHttpClient`) is config-gated by
     `omivertex.assistant.gemini.api-key` / `.model` (default `gemini-2.5-flash`) and
     fails closed with 400 "not configured" when the key is unset. Message ≤ 2,000
@@ -184,7 +190,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/data/export` | GET | `?format=xlsx|csv|pdf|docx` |
 | `/auth` | POST `/login`, POST `/google`, POST `/logout`, GET `/me` | — |
 | `/admin/access-requests` | GET, POST `/{id}/approve`, POST `/{id}/reject` (ADMIN) | — |
-| `/assistant/chat` | POST (natural-language Q&A via Gemini; ADMIN+VIEWER; standing context is **aggregate counts only** — specifics are fetched per-question through server-side read tools (`search_associates`, `get_associate_detail`, `list_rolloffs`, `list_open_positions`, `get_position_matches`; ≤25 rows each, ≤3 tool rounds), so only the queried slice of personal data reaches Google; may return `proposedAction {type: CREATE_ALLOCATION\|FILL_POSITION, resolved ids/names, percent, billable, dates, summary, warnings[]}` — the endpoint itself never mutates; the UI confirms via `POST /allocations` or `POST /positions/{id}/fill` under the user's own session) | — |
+| `/assistant/chat` | POST (natural-language Q&A via Gemini; ADMIN+VIEWER; standing context is **aggregate counts only** — specifics are fetched per-question through server-side read tools (`search_associates`, `get_associate_detail`, `get_project_detail`, `list_rolloffs`, `list_open_positions`, `get_position_matches`, `list_clients`, `list_projects`; ≤25 rows each, ≤3 tool rounds), so only the queried slice of personal data reaches Google; may return `proposedAction {type: CREATE_ALLOCATION\|FILL_POSITION, resolved ids/names, percent, billable, dates, summary, warnings[]}` — the endpoint itself never mutates; the UI confirms via `POST /allocations` or `POST /positions/{id}/fill` under the user's own session) | — |
 | `/me/profile` | GET (own profile; ASSOCIATE) | — |
 | `/me/profile-changes` | GET (own change requests list; ASSOCIATE) | — |
 | `/me/profile-changes/skills` | POST (submit proposed skills; ASSOCIATE) | — |
