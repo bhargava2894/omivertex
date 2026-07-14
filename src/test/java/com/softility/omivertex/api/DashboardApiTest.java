@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -194,6 +195,114 @@ class DashboardApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.utilizationForecast[1].percent").value(100)) // +30d
                 .andExpect(jsonPath("$.utilizationForecast[2].percent").value(50)) // +60d
                 .andExpect(jsonPath("$.utilizationForecast[3].percent").value(50)); // +90d
+    }
+
+    @Test
+    void forecast_rollOffIsNamedAsTheDriverOfTheDrop() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var stays = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        allocation(stays, proj, true);
+        var rollsOff = associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE);
+        var ending = allocation(rollsOff, proj, true);
+        ending.setEndDate(LocalDate.now().plusDays(45));
+        allocationRepository.save(ending);
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                // 100% today → 50% once Rahul rolls off; the row must say who and why
+                .andExpect(jsonPath("$.utilizationForecast[0].deltaPoints").value(0))
+                .andExpect(jsonPath("$.utilizationForecast[1].drivers", hasSize(0)))
+                .andExpect(jsonPath("$.utilizationForecast[3].deltaPoints").value(-50))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers", hasSize(1)))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers[0].kind").value("ROLL_OFF"))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers[0].associateName")
+                        .value("Rahul Verma"))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers[0].projectName")
+                        .value("Storefront Revamp"))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers[0].date")
+                        .value(LocalDate.now().plusDays(45).toString()));
+    }
+
+    @Test
+    void forecast_benchExitRaisesUtilization_andIsLabelledAsSuch() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var billable = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        allocation(billable, proj, true);
+        var benched = associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE);
+        benched.setLastWorkingDay(LocalDate.now().plusDays(45));
+        benched.setExitReason(com.softility.omivertex.domain.ExitReason.RESIGNED);
+        associateRepository.save(benched);
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                // 1 of 2 billable = 50% today; once the benched person leaves, 1 of 1 = 100%.
+                // An exit RAISING utilization is the counterintuitive case — label it.
+                .andExpect(jsonPath("$.utilizationForecast[0].percent").value(50))
+                .andExpect(jsonPath("$.utilizationForecast[3].percent").value(100))
+                .andExpect(jsonPath("$.utilizationForecast[3].deltaPoints").value(50))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers[0].kind").value("BENCH_EXIT"))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers[0].associateName")
+                        .value("Rahul Verma"));
+    }
+
+    @Test
+    void forecast_offsettingEventsLookFlatButStillReportTheirDrivers() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        // 2 billable of 3 people = 67% today.
+        var stays = associate("Asha Nair", "asha@softility.com", WorkMode.ONSHORE);
+        allocation(stays, proj, true);
+        var rollsOff = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        var ending = allocation(rollsOff, proj, true);
+        ending.setEndDate(LocalDate.now().plusDays(45));
+        allocationRepository.save(ending);
+        var benchLeaver = associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE);
+        benchLeaver.setLastWorkingDay(LocalDate.now().plusDays(45));
+        benchLeaver.setExitReason(com.softility.omivertex.domain.ExitReason.RESIGNED);
+        associateRepository.save(benchLeaver);
+
+        // +90d: 1 billable of 2 present = 50%... the roll-off drops it, the bench exit
+        // lifts it. The point of the feature: a near-flat number still owes an explanation.
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers", hasSize(2)))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers[*].kind",
+                        containsInAnyOrder("ROLL_OFF", "BENCH_EXIT")));
+    }
+
+    @Test
+    void forecast_quietWindowReportsNoDrivers() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var steady = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        allocation(steady, proj, true); // open-ended, nobody leaving
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                // flat because nothing is scheduled — distinct from flat-because-cancelling
+                .andExpect(jsonPath("$.utilizationForecast[3].deltaPoints").value(0))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers", hasSize(0)));
+    }
+
+    @Test
+    void forecast_futureAllocationRampsUtilizationUp() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var benched = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
+        var future = allocation(benched, proj, true);
+        future.setStartDate(LocalDate.now().plusDays(45)); // starts inside the window
+        allocationRepository.save(future);
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.utilizationForecast[0].percent").value(0))
+                .andExpect(jsonPath("$.utilizationForecast[3].percent").value(100))
+                .andExpect(jsonPath("$.utilizationForecast[3].deltaPoints").value(100))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers[0].kind").value("RAMP_UP"))
+                .andExpect(jsonPath("$.utilizationForecast[3].drivers[0].associateName")
+                        .value("Priya Sharma"));
     }
 
     @Test

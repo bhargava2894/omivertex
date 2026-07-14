@@ -239,8 +239,20 @@ exitsLast12Months             // leavers with lastWorkingDay in the trailing 365
 skillGaps [ { skillId, skillName, category, demand, benchSupply, totalSupply, gap } ]
                               // per must-have skill on OPEN positions; supply counted at the
                               // lowest demanded proficiency; sorted by gap desc, ≤20 rows
-utilizationForecast [ { label, percent } ]   // Today/+30d/+60d/+90d, deterministic from
-                              // known allocation end dates + recorded exits
+utilizationForecast [ { label, percent, deltaPoints, drivers[], omittedDrivers } ]
+                              // Today/+30d/+60d/+90d, deterministic from known allocation
+                              // end dates + recorded exits. deltaPoints and drivers are
+                              // measured against TODAY (not the previous horizon), so each
+                              // row stands alone. drivers[] = { kind, associateId,
+                              // associateName, projectName, date }, ≤5 rows then
+                              // omittedDrivers. kind = ROLL_OFF | RAMP_UP | BENCH_EXIT |
+                              // BILLABLE_EXIT. A BENCH_EXIT RAISES utilization (the leaver
+                              // drops out of the denominator, billable FTE is unchanged) —
+                              // that is why exits are split by kind. Drivers are named but
+                              // never individually scored: utilization is a ratio, so
+                              // per-driver effects do not sum to deltaPoints. An associate
+                              // who exits in the window is reported once, as the exit — the
+                              // allocations ending with them are not also roll-offs.
 ```
 
 ## 7. Security

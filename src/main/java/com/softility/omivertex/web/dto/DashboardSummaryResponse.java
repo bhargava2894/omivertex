@@ -66,7 +66,39 @@ public record DashboardSummaryResponse(
     /**
      * FTE-weighted utilization projected at a future date from known allocation
      * end dates and recorded exits — deterministic, assumes no new assignments.
+     *
+     * <p>{@code deltaPoints} is the change in percentage points from TODAY (not from the
+     * previous horizon), and {@code drivers} are the events between today and this horizon
+     * that caused it. Both are measured against today so each row stands alone.
+     *
+     * <p>Drivers are named but never individually scored: utilization is a ratio, so when
+     * an exit moves the denominator the per-driver effects genuinely do not sum to
+     * {@code deltaPoints}. Publishing a per-driver point value would be arithmetic that
+     * does not add up.
      */
-    public record ForecastPoint(String label, long percent) {
+    public record ForecastPoint(String label, long percent, long deltaPoints,
+                                List<ForecastDriver> drivers, long omittedDrivers) {
+    }
+
+    /**
+     * One scheduled event that moves utilization between today and a forecast horizon.
+     * A {@code BENCH_EXIT} <em>raises</em> utilization — the leaver drops out of the
+     * denominator while billable FTE is unchanged — which is the opposite of what most
+     * readers assume, hence the separate kind.
+     */
+    public record ForecastDriver(DriverKind kind, Long associateId, String associateName,
+                                 String projectName, java.time.LocalDate date) {
+    }
+
+    /** Why a forecast number moved. Direction is a property of the kind. */
+    public enum DriverKind {
+        /** A billable allocation live today has ended by the horizon. Lowers utilization. */
+        ROLL_OFF,
+        /** An allocation starts between today and the horizon. Raises utilization. */
+        RAMP_UP,
+        /** A benched associate leaves: denominator shrinks. Raises utilization. */
+        BENCH_EXIT,
+        /** A billable associate leaves: billable FTE goes with them. Lowers utilization. */
+        BILLABLE_EXIT
     }
 }

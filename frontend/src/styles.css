@@ -1387,6 +1387,35 @@ svg path, svg rect, svg circle { transition: opacity 0.15s var(--ease); }
 .gap-row:hover { background: var(--color-surface-hover); }
 .gap-row + .gap-detail { padding: 4px 10px 20px 38px; }
 
+/* Utilization forecast: the delta is always visible, the drivers behind it expand. */
+.forecast-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 0;
+  min-height: 44px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s var(--ease);
+}
+.forecast-row:hover { background: var(--color-surface-hover); }
+.forecast-pct { font-weight: 700; font-variant-numeric: tabular-nums; }
+.forecast-detail { padding: 4px 10px 16px 26px; }
+.forecast-driver {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 12.5px;
+}
+
 .gap-row-name {
   font-size: 13.5px;
   font-weight: 600;

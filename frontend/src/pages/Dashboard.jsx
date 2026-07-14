@@ -8,6 +8,7 @@ import Modal from '../components/Modal.jsx';
 import { TrendChart, DonutChart, VBarChart } from '../components/charts.jsx';
 import AssistantChat from '../components/AssistantChat.jsx';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
+import UtilizationForecastPanel from '../components/UtilizationForecastPanel.jsx';
 import { useMotionVariants, listContainer, listItem } from '../motion.js';
 import { gapBadge, gapSummary } from '../skillGap.js';
 
@@ -485,33 +486,7 @@ export default function Dashboard({ showToast, canEdit }) {
           )}
         </div>
 
-        <div className="card panel">
-          <h2>
-            <Icon name="activity" size={15} /> Utilization Forecast
-          </h2>
-          <p className="stat-hint" style={{ marginTop: 0 }}>
-            From known end dates and recorded exits — assumes no new assignments.
-          </p>
-          {viewMode === 'charts' ? (
-            <TrendChart
-              points={(s.utilizationForecast || []).map((p) => ({
-                month: p.label,
-                percent: p.percent,
-              }))}
-              series={[{ key: 'percent', label: 'Utilization %', color: 'var(--chart-2)' }]}
-            />
-          ) : (
-            (s.utilizationForecast || []).map((p) => (
-              <div className="radar-row" key={p.label}>
-                <div className="cell-main">{p.label}</div>
-                <Badge
-                  tone={p.percent >= s.utilizationPercent ? 'green' : 'amber'}
-                  label={`${p.percent}%`}
-                />
-              </div>
-            ))
-          )}
-        </div>
+        <UtilizationForecastPanel points={s.utilizationForecast} viewMode={viewMode} />
 
         <div className="card panel">
           <h2>

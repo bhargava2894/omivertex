@@ -43,6 +43,8 @@ public class DashboardService {
     static final int EXIT_WINDOW_DAYS = 365;
     /** Horizons for the deterministic utilization forecast (days from today). */
     static final int[] FORECAST_OFFSET_DAYS = {0, 30, 60, 90};
+    /** Named drivers listed per horizon before the panel falls back to "…and N more". */
+    static final int MAX_FORECAST_DRIVERS = 5;
 
     private final AssociateRepository associateRepository;
     private final ClientRepository clientRepository;
@@ -188,29 +190,100 @@ public class DashboardService {
     /**
      * FTE-weighted utilization evaluated as of each forecast horizon, using only
      * known allocation windows and recorded exits — no new assignments assumed.
+     * Each horizon also reports the events that moved it away from today's number,
+     * because the bare percentages cannot distinguish "flat: nothing is scheduled"
+     * from "flat: a roll-off and an exit are cancelling each other out".
      */
     private List<DashboardSummaryResponse.ForecastPoint> utilizationForecast(
             List<Associate> activeAssociates, List<Allocation> all) {
+        LocalDate today = LocalDate.now();
+        Map<Long, Integer> billableToday = billablePercentAt(all, presentIds(activeAssociates, today), today);
+        long todayPct = percentAt(activeAssociates, all, today);
+
         List<DashboardSummaryResponse.ForecastPoint> points = new ArrayList<>();
         for (int offset : FORECAST_OFFSET_DAYS) {
-            LocalDate at = LocalDate.now().plusDays(offset);
-            List<Associate> present = activeAssociates.stream()
-                    .filter(a -> a.getLastWorkingDay() == null || !a.getLastWorkingDay().isBefore(at))
-                    .toList();
-            Set<Long> presentIds = present.stream().map(Associate::getId).collect(Collectors.toSet());
-            Map<Long, Integer> billablePct = all.stream()
-                    .filter(Allocation::isBillable)
-                    .filter(a -> !a.getStartDate().isAfter(at)
-                            && (a.getEndDate() == null || !a.getEndDate().isBefore(at)))
-                    .filter(a -> presentIds.contains(a.getAssociate().getId()))
-                    .collect(Collectors.groupingBy(a -> a.getAssociate().getId(),
-                            Collectors.summingInt(Allocation::getAllocationPercent)));
-            double fte = billablePct.values().stream().mapToDouble(p -> Math.min(p, 100) / 100.0).sum();
-            long pct = present.isEmpty() ? 0 : Math.round(fte / present.size() * 100);
+            LocalDate at = today.plusDays(offset);
+            long pct = percentAt(activeAssociates, all, at);
+            List<DashboardSummaryResponse.ForecastDriver> drivers = offset == 0 ? List.of()
+                    : forecastDrivers(activeAssociates, all, billableToday, today, at);
             points.add(new DashboardSummaryResponse.ForecastPoint(
-                    offset == 0 ? "Today" : "+" + offset + "d", pct));
+                    offset == 0 ? "Today" : "+" + offset + "d", pct, pct - todayPct,
+                    drivers.stream().limit(MAX_FORECAST_DRIVERS).toList(),
+                    Math.max(0, drivers.size() - MAX_FORECAST_DRIVERS)));
         }
         return points;
+    }
+
+    /**
+     * The scheduled events between {@code today} and {@code at} that move utilization.
+     * An associate who exits in the window is reported once, as an exit — their
+     * allocations ending with them are not also counted as roll-offs.
+     */
+    private List<DashboardSummaryResponse.ForecastDriver> forecastDrivers(
+            List<Associate> activeAssociates, List<Allocation> all,
+            Map<Long, Integer> billableToday, LocalDate today, LocalDate at) {
+        Set<Long> presentAtHorizon = presentIds(activeAssociates, at);
+        List<DashboardSummaryResponse.ForecastDriver> drivers = new ArrayList<>();
+
+        for (Associate a : activeAssociates) {
+            LocalDate lwd = a.getLastWorkingDay();
+            boolean leavesInWindow = lwd != null && !lwd.isBefore(today) && lwd.isBefore(at);
+            if (leavesInWindow) {
+                // A benched leaver LEAVES THE DENOMINATOR ONLY, so utilization goes UP.
+                boolean billable = billableToday.getOrDefault(a.getId(), 0) > 0;
+                drivers.add(new DashboardSummaryResponse.ForecastDriver(
+                        billable ? DashboardSummaryResponse.DriverKind.BILLABLE_EXIT
+                                : DashboardSummaryResponse.DriverKind.BENCH_EXIT,
+                        a.getId(), a.getName(), null, lwd));
+            }
+        }
+
+        for (Allocation al : all) {
+            if (!al.isBillable() || !presentAtHorizon.contains(al.getAssociate().getId())) {
+                continue; // a leaver's allocations are already told as the exit
+            }
+            boolean liveToday = !al.getStartDate().isAfter(today)
+                    && (al.getEndDate() == null || !al.getEndDate().isBefore(today));
+            boolean liveAtHorizon = !al.getStartDate().isAfter(at)
+                    && (al.getEndDate() == null || !al.getEndDate().isBefore(at));
+            if (liveToday && !liveAtHorizon) {
+                drivers.add(new DashboardSummaryResponse.ForecastDriver(
+                        DashboardSummaryResponse.DriverKind.ROLL_OFF,
+                        al.getAssociate().getId(), al.getAssociate().getName(),
+                        al.getProject().getName(), al.getEndDate()));
+            } else if (!liveToday && liveAtHorizon) {
+                drivers.add(new DashboardSummaryResponse.ForecastDriver(
+                        DashboardSummaryResponse.DriverKind.RAMP_UP,
+                        al.getAssociate().getId(), al.getAssociate().getName(),
+                        al.getProject().getName(), al.getStartDate()));
+            }
+        }
+        drivers.sort(Comparator.comparing(DashboardSummaryResponse.ForecastDriver::date));
+        return drivers;
+    }
+
+    /** FTE-weighted billable utilization as of {@code at}, over the people still present then. */
+    private long percentAt(List<Associate> activeAssociates, List<Allocation> all, LocalDate at) {
+        Set<Long> present = presentIds(activeAssociates, at);
+        double fte = billablePercentAt(all, present, at).values().stream()
+                .mapToDouble(p -> Math.min(p, 100) / 100.0).sum();
+        return present.isEmpty() ? 0 : Math.round(fte / present.size() * 100);
+    }
+
+    private Set<Long> presentIds(List<Associate> activeAssociates, LocalDate at) {
+        return activeAssociates.stream()
+                .filter(a -> a.getLastWorkingDay() == null || !a.getLastWorkingDay().isBefore(at))
+                .map(Associate::getId).collect(Collectors.toSet());
+    }
+
+    private Map<Long, Integer> billablePercentAt(List<Allocation> all, Set<Long> present, LocalDate at) {
+        return all.stream()
+                .filter(Allocation::isBillable)
+                .filter(a -> !a.getStartDate().isAfter(at)
+                        && (a.getEndDate() == null || !a.getEndDate().isBefore(at)))
+                .filter(a -> present.contains(a.getAssociate().getId()))
+                .collect(Collectors.groupingBy(a -> a.getAssociate().getId(),
+                        Collectors.summingInt(Allocation::getAllocationPercent)));
     }
 
     /** Distinct allocated / billable associates per month for the trailing six months. */

@@ -91,6 +91,19 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **The Utilization Forecast names the events behind each number; drivers are never
+  individually scored** (2026-07-15): the panel showed four bare percentages and could not
+  say why any of them differed from today (spec:
+  `docs/superpowers/specs/2026-07-15-utilization-forecast-drivers-design.md`). Each horizon
+  now carries a net delta against today and expands to the roll-offs, ramp-ups and exits
+  behind it. Exits are split into `BENCH_EXIT` / `BILLABLE_EXIT` because a benched leaver
+  *raises* utilization (they leave the denominator, billable FTE is unchanged) — the
+  opposite of what readers assume. We publish the net delta only, never a per-driver point
+  value: utilization is a ratio, so once an exit moves the denominator the per-driver
+  effects genuinely do not sum to the net, and shipping numbers that don't add up would be
+  read as a bug. Deltas are measured against Today rather than the previous horizon so each
+  row answers "where do I land versus now" on its own.
+
 - **Assistant can enumerate clients and projects; the list always reconciles with the
   count** (2026-07-15): Mirai could answer "how many clients?" (the standing context
   carries the counts) but not "which ones?" — no read tool could enumerate, so it could
