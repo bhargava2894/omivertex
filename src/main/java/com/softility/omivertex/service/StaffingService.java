@@ -29,12 +29,23 @@ public class StaffingService {
         this.allocationRepository = allocationRepository;
     }
 
+    /** Current allocations only — the default read-only staffing view. */
     public List<StaffedClient> staffing() {
-        List<Allocation> current = allocationRepository.findAllWithDetails().stream()
-                .filter(Allocation::isCurrent)
+        return staffing(false);
+    }
+
+    /**
+     * The staffing tree. When {@code includeEnded} is true, non-current (ended/future)
+     * allocations are shown too, each row marked {@code active=false} — but every
+     * billable/non-billable count still reflects CURRENT allocations only, so the rollup
+     * stays a true "who is staffed now" number regardless of the toggle.
+     */
+    public List<StaffedClient> staffing(boolean includeEnded) {
+        List<Allocation> visible = allocationRepository.findAllWithDetails().stream()
+                .filter(a -> includeEnded || a.isCurrent())
                 .toList();
 
-        Map<Long, List<Allocation>> byClient = current.stream()
+        Map<Long, List<Allocation>> byClient = visible.stream()
                 .collect(Collectors.groupingBy(a -> a.getProject().getClient().getId()));
 
         return byClient.values().stream()
@@ -47,11 +58,13 @@ public class StaffingService {
 
     private StaffedClient toClient(List<Allocation> clientAllocations) {
         var client = clientAllocations.get(0).getProject().getClient();
-        Set<Long> billableHere = clientAllocations.stream()
+        // Counts reflect CURRENT allocations only, even when ended rows are shown.
+        List<Allocation> current = clientAllocations.stream().filter(Allocation::isCurrent).toList();
+        Set<Long> billableHere = current.stream()
                 .filter(Allocation::isBillable)
                 .map(a -> a.getAssociate().getId())
                 .collect(Collectors.toSet());
-        long everyone = clientAllocations.stream()
+        long everyone = current.stream()
                 .map(a -> a.getAssociate().getId()).distinct().count();
 
         List<StaffedProject> projects = clientAllocations.stream()
@@ -70,12 +83,16 @@ public class StaffingService {
         List<StaffedAssociate> associates = projectAllocations.stream()
                 .map(a -> new StaffedAssociate(a.getAssociate().getId(), a.getAssociate().getName(),
                         a.getAssociate().getDesignation(), a.getAllocationPercent(),
-                        a.isBillable(), a.getStartDate()))
+                        a.isBillable(), a.getStartDate(),
+                        a.getId(), a.getEndDate(), a.isCurrent()))
                 .sorted(Comparator.comparing(StaffedAssociate::name))
                 .toList();
-        long billable = associates.stream().filter(StaffedAssociate::billable)
+        // Counts from CURRENT rows only; ended rows are shown but count-neutral.
+        List<StaffedAssociate> current = associates.stream()
+                .filter(StaffedAssociate::active).toList();
+        long billable = current.stream().filter(StaffedAssociate::billable)
                 .map(StaffedAssociate::associateId).distinct().count();
-        long total = associates.stream().map(StaffedAssociate::associateId).distinct().count();
+        long total = current.stream().map(StaffedAssociate::associateId).distinct().count();
         return new StaffedProject(project.getId(), project.getName(), project.getCode(),
                 billable, total - billable, associates);
     }

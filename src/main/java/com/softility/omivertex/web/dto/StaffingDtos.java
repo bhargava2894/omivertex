@@ -10,7 +10,8 @@ public final class StaffingDtos {
     }
 
     public record StaffedAssociate(Long associateId, String name, String designation,
-                                   int allocationPercent, boolean billable, LocalDate startDate) {
+                                   int allocationPercent, boolean billable, LocalDate startDate,
+                                   Long allocationId, LocalDate endDate, boolean active) {
     }
 
     public record StaffedProject(Long projectId, String projectName, String projectCode,

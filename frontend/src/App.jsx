@@ -5,7 +5,6 @@ import Dashboard from './pages/Dashboard.jsx';
 import Associates from './pages/Associates.jsx';
 import Clients from './pages/Clients.jsx';
 import Projects from './pages/Projects.jsx';
-import Allocations from './pages/Allocations.jsx';
 import Positions from './pages/Positions.jsx';
 import Settings from './pages/Settings.jsx';
 import Login from './pages/Login.jsx';
@@ -51,18 +50,11 @@ const ROUTES = [
     sub: 'Master project list by client',
   },
   {
-    path: 'allocations',
-    label: 'Allocations',
-    icon: 'link',
-    component: Allocations,
-    sub: 'Assign associates to projects',
-  },
-  {
     path: 'staffing',
-    label: 'Staffing',
+    label: 'Staffing & Allocations',
     icon: 'users',
     component: Staffing,
-    sub: 'Billable and non-billable staffing by company and project',
+    sub: 'Billable and non-billable staffing by company and project — assign, edit, or roll off inline',
   },
   {
     path: 'demand',
@@ -134,7 +126,7 @@ const routeByPath = Object.fromEntries(ROUTES.map((r) => [r.path, r]));
 const NAV_SECTIONS = [
   { label: null, items: ['my-profile', 'dashboard'] },
   { label: 'Workforce', items: ['associates', 'taxonomy', 'skill-reports'] },
-  { label: 'Delivery', items: ['clients', 'projects', 'allocations', 'staffing', 'demand'] },
+  { label: 'Delivery', items: ['clients', 'projects', 'staffing', 'demand'] },
   { label: 'Admin', items: ['profile-changes', 'access-requests', 'audit'] },
   { label: null, items: ['settings'] },
 ];
@@ -220,6 +212,10 @@ export default function App() {
   if (!active && baseRoute.startsWith('skill-reports/')) {
     active = visibleRoutes.find((r) => r.path === 'skill-reports');
     focusSkillId = Number(baseRoute.split('/')[1]) || null;
+  }
+  // The old Allocations page merged into Staffing; keep its deep links working.
+  if (!active && baseRoute === 'allocations') {
+    active = visibleRoutes.find((r) => r.path === 'staffing');
   }
   if (!active) {
     active = visibleRoutes[0];
