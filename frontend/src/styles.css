@@ -368,6 +368,18 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .panel h2 { margin: 0 0 16px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 .panel h2 svg { color: var(--color-primary); }
 
+/* Read-only label/value grid for the associate's "My Details" block. */
+.detail-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 10px 20px;
+  align-items: baseline;
+  margin-top: 12px;
+}
+.detail-grid .detail-label { font-size: 13px; }
+.detail-grid .detail-value { font-size: 14px; }
+@media (max-width: 560px) { .detail-grid { grid-template-columns: 1fr; gap: 4px 0; } }
+
 /* ---------- Client-grouped project sections ---------- */
 .client-icon { color: var(--color-primary); flex-shrink: 0; }
 .client-name {
@@ -1160,6 +1172,7 @@ svg path, svg rect, svg circle { transition: opacity 0.15s var(--ease); }
   flex: 1;
   padding: 12px 16px;
   font-size: 14.5px;
+  font-style: italic;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -1180,6 +1193,9 @@ svg path, svg rect, svg circle { transition: opacity 0.15s var(--ease); }
 .assistant-input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+.assistant-input::placeholder {
+  font-style: normal;
 }
 .assistant-btn {
   display: inline-flex !important;

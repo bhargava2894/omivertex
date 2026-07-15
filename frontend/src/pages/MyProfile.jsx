@@ -9,6 +9,48 @@ import Modal from '../components/Modal.jsx';
 import SkillEditor from '../components/SkillEditor.jsx';
 import { PROF_LABELS } from '../proficiency.js';
 
+/** One label/value line in the read-only "My Details" grid. */
+function DetailRow({ label, value }) {
+  return (
+    <>
+      <div className="cell-sub detail-label">{label}</div>
+      <div className="cell-main detail-value">{value || '—'}</div>
+    </>
+  );
+}
+
+function workModeLabel(mode) {
+  if (!mode) return null;
+  return mode.charAt(0) + mode.slice(1).toLowerCase(); // ONSHORE -> Onshore
+}
+
+function statusLabel(status) {
+  return workModeLabel(status); // ACTIVE -> Active, same casing rule
+}
+
+/** "12 Mar 2023 · 3 yr 4 mo"; tenure suffix dropped when no joined date. */
+function joinedWithTenure(joinedDate) {
+  if (!joinedDate) return null;
+  const joined = new Date(joinedDate);
+  const dateStr = joined.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const months = Math.max(
+    0,
+    (new Date().getFullYear() - joined.getFullYear()) * 12 +
+      (new Date().getMonth() - joined.getMonth())
+  );
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  const parts = [];
+  if (years > 0) parts.push(`${years} yr`);
+  if (rem > 0) parts.push(`${rem} mo`);
+  if (years === 0 && rem === 0) parts.push('this month');
+  return `${dateStr} · ${parts.join(' ')}`;
+}
+
 /**
  * The ASSOCIATE-role self-service view: your own profile, plus "propose a
  * change" flows for skills and resume. Nothing edits live data — proposals
@@ -147,8 +189,26 @@ export default function MyProfile({ showToast }) {
             {profile.currentProject && <Badge tone="green" label={profile.currentProject} />}
           </div>
           <div className="cell-sub" style={{ marginTop: '4px', fontSize: '14px' }}>
-            <strong>{profile.designation || '—'}</strong> · {profile.email} · {profile.company}
+            <strong>{profile.designation || '—'}</strong>
           </div>
+        </div>
+      </div>
+
+      <div className="card panel">
+        <h2>
+          <Icon name="lock" size={15} /> My Details
+        </h2>
+        <p className="stat-hint" style={{ marginTop: 0 }}>
+          Managed by your admin — contact HR to update these.
+        </p>
+        <div className="detail-grid">
+          <DetailRow label="Email" value={profile.email} />
+          <DetailRow label="Company" value={profile.company} />
+          <DetailRow label="Location" value={profile.location} />
+          <DetailRow label="Work mode" value={workModeLabel(profile.workMode)} />
+          <DetailRow label="Designation" value={profile.designation} />
+          <DetailRow label="Joined" value={joinedWithTenure(profile.joinedDate)} />
+          <DetailRow label="Status" value={statusLabel(profile.status)} />
         </div>
       </div>
 
