@@ -159,4 +159,23 @@ class SelfServiceApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
                 .andExpect(jsonPath("$[0].status").value("PENDING"));
     }
+
+    @Test
+    void adminQueue_survivesUnreadableSkillsPayload() throws Exception {
+        var dev = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        var change = new com.softility.omivertex.domain.ProfileChangeRequest();
+        change.setAssociate(dev);
+        change.setType(com.softility.omivertex.domain.ProfileChangeType.SKILLS);
+        change.setStatus(com.softility.omivertex.domain.ProfileChangeStatus.PENDING);
+        // A legacy / malformed payload: a bare array instead of {"skills":[...]}.
+        // One such row must NOT 409 the entire admin queue — the row still lists.
+        change.setSkillsPayload("[{\"skillId\": 1, \"proficiency\": \"ADVANCE\"}]");
+        profileChangeRequestRepository.save(change);
+
+        mockMvc.perform(get("/api/v1/profile-changes").param("status", "PENDING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].associateName").value("Priya Sharma"))
+                .andExpect(jsonPath("$[0].type").value("SKILLS"));
+    }
 }

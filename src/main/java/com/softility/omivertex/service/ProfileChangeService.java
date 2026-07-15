@@ -161,10 +161,30 @@ public class ProfileChangeService {
         }
     }
 
+    /**
+     * Tolerant read for the list/preview path: returns {@code null} for a non-SKILLS
+     * change or an unreadable payload instead of throwing, so one bad row can never
+     * 409 the entire admin queue. Approval still uses the strict {@link #parseSkills}.
+     */
+    private SkillAssignmentRequest readSkillsQuietly(ProfileChangeRequest change) {
+        if (change.getType() != ProfileChangeType.SKILLS || change.getSkillsPayload() == null) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(change.getSkillsPayload(), SkillAssignmentRequest.class);
+        } catch (JsonProcessingException e) {
+            return null;
+        }
+    }
+
     private ProfileChangeResponse toResponse(ProfileChangeRequest change) {
         List<ProfileChangeResponse.ProposedSkill> proposed = List.of();
-        if (change.getType() == ProfileChangeType.SKILLS && change.getSkillsPayload() != null) {
-            proposed = parseSkills(change).skills().stream()
+        // Read tolerantly: a single legacy/malformed payload must degrade to an empty
+        // preview, never throw and blank the whole admin queue. Approval stays strict
+        // (parseSkills) so a genuinely corrupt change still cannot be silently applied.
+        SkillAssignmentRequest skills = readSkillsQuietly(change);
+        if (skills != null) {
+            proposed = skills.skills().stream()
                     .map(entry -> new ProfileChangeResponse.ProposedSkill(
                             skillRepository.findById(entry.skillId())
                                     .map(s -> s.getName()).orElse("skill #" + entry.skillId()),
