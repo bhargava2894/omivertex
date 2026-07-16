@@ -33,7 +33,7 @@ public record DashboardSummaryResponse(
     }
 
     /** Distinct allocated / billable associates during one calendar month. */
-    public record TrendPoint(String month, long total, long billable) {
+    public record TrendPoint(String month, long total, long billable, List<ForecastDriver> drivers) {
     }
 
     /** Bench population bucketed by how long they have been unallocated. */

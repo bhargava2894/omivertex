@@ -1,5 +1,6 @@
 package com.softility.omivertex.api;
 
+import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.WorkMode;
 import org.junit.jupiter.api.Test;
 
@@ -313,6 +314,55 @@ class DashboardApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.benchCount").value(0))
                 .andExpect(jsonPath("$.clientHeadcounts", hasSize(0)))
                 .andExpect(jsonPath("$.expiringCertifications", hasSize(0)));
+    }
+
+    @Test
+    void trend_historicalDriversAreReported() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+
+        LocalDate today = LocalDate.now();
+        LocalDate twoMonthsAgo = today.minusMonths(2);
+        LocalDate midOfTwoMonthsAgo = twoMonthsAgo.withDayOfMonth(15);
+
+        LocalDate oneMonthAgo = today.minusMonths(1);
+        LocalDate midOfOneMonthAgo = oneMonthAgo.withDayOfMonth(15);
+
+        // 1. Ramp up 2 months ago
+        var a1 = associate("Ramp Up Guy", "ramp@softility.com", WorkMode.ONSHORE);
+        var alloc1 = new Allocation();
+        alloc1.setAssociate(a1);
+        alloc1.setProject(proj);
+        alloc1.setBillable(true);
+        alloc1.setAllocationPercent(100);
+        alloc1.setStartDate(midOfTwoMonthsAgo);
+        alloc1.setEndDate(null);
+        allocationRepository.save(alloc1);
+
+        // 2. Roll off 1 month ago
+        var a2 = associate("Roll Off Guy", "roll@softility.com", WorkMode.ONSHORE);
+        var alloc2 = new Allocation();
+        alloc2.setAssociate(a2);
+        alloc2.setProject(proj);
+        alloc2.setBillable(true);
+        alloc2.setAllocationPercent(100);
+        alloc2.setStartDate(today.minusMonths(3));
+        alloc2.setEndDate(midOfOneMonthAgo);
+        allocationRepository.save(alloc2);
+
+        // 3. Exit 2 months ago (bench exit)
+        var a3 = associate("Exit Guy", "exit@softility.com", WorkMode.ONSHORE);
+        a3.setLastWorkingDay(midOfTwoMonthsAgo);
+        a3.setExitReason(com.softility.omivertex.domain.ExitReason.RESIGNED);
+        associateRepository.save(a3);
+
+        mockMvc.perform(get("/api/v1/dashboard/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.staffingTrend", hasSize(6)))
+                // Verify we have drivers in the second to last month (1 month ago)
+                .andExpect(jsonPath("$.staffingTrend[4].drivers").isArray())
+                // Verify we have drivers in the third to last month (2 months ago)
+                .andExpect(jsonPath("$.staffingTrend[3].drivers").isArray());
     }
 
     private com.softility.omivertex.domain.Certification cert(

@@ -370,6 +370,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 .stat-card { padding: 20px; display: flex; flex-direction: column; gap: 6px; }
 .stat-card:hover { box-shadow: var(--shadow-md); }
+.trend-card-interactive { cursor: pointer; }
+.trend-card-interactive:hover { background: var(--color-surface-hover) !important; box-shadow: var(--shadow-md); }
 .stat-label { font-size: 13px; font-weight: 600; color: var(--color-muted-fg); display: flex; align-items: center; gap: 8px; }
 .stat-icon {
   display: grid;

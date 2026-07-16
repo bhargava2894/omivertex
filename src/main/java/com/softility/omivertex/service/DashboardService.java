@@ -302,6 +302,7 @@ public class DashboardService {
     /** Distinct allocated / billable associates per month for the trailing six months. */
     private List<DashboardSummaryResponse.TrendPoint> staffingTrend() {
         List<Allocation> all = allocationRepository.findAllWithDetails();
+        List<Associate> allAssociates = associateRepository.findAll();
         DateTimeFormatter monthLabel = DateTimeFormatter.ofPattern("MMM");
         List<DashboardSummaryResponse.TrendPoint> points = new ArrayList<>();
         YearMonth current = YearMonth.now();
@@ -316,7 +317,55 @@ public class DashboardService {
             long total = active.stream().map(a -> a.getAssociate().getId()).distinct().count();
             long billable = active.stream().filter(Allocation::isBillable)
                     .map(a -> a.getAssociate().getId()).distinct().count();
-            points.add(new DashboardSummaryResponse.TrendPoint(monthLabel.format(start), total, billable));
+
+            List<DashboardSummaryResponse.ForecastDriver> drivers = new ArrayList<>();
+
+            // 1. Exits in this month
+            List<Associate> exits = allAssociates.stream()
+                    .filter(a -> a.getLastWorkingDay() != null
+                            && !a.getLastWorkingDay().isBefore(start)
+                            && !a.getLastWorkingDay().isAfter(end))
+                    .toList();
+
+            Set<Long> exitedIds = exits.stream().map(Associate::getId).collect(Collectors.toSet());
+
+            for (Associate a : exits) {
+                boolean wasBillableThisMonth = all.stream()
+                        .filter(al -> al.getAssociate().getId().equals(a.getId()))
+                        .filter(Allocation::isBillable)
+                        .anyMatch(al -> !al.getStartDate().isAfter(end)
+                                && (al.getEndDate() == null || !al.getEndDate().isBefore(start)));
+
+                drivers.add(new DashboardSummaryResponse.ForecastDriver(
+                        wasBillableThisMonth ? DashboardSummaryResponse.DriverKind.BILLABLE_EXIT
+                                : DashboardSummaryResponse.DriverKind.BENCH_EXIT,
+                        a.getId(), a.getName(), null, a.getLastWorkingDay()));
+            }
+
+            // 2. Ramp ups and Roll offs in this month (excluding exited associates to avoid double-counting)
+            for (Allocation al : all) {
+                if (!al.isBillable() || exitedIds.contains(al.getAssociate().getId())) {
+                    continue;
+                }
+                // Ramp up: start date in month
+                if (!al.getStartDate().isBefore(start) && !al.getStartDate().isAfter(end)) {
+                    drivers.add(new DashboardSummaryResponse.ForecastDriver(
+                            DashboardSummaryResponse.DriverKind.RAMP_UP,
+                            al.getAssociate().getId(), al.getAssociate().getName(),
+                            al.getProject().getName(), al.getStartDate()));
+                }
+                // Roll off: end date in month
+                if (al.getEndDate() != null && !al.getEndDate().isBefore(start) && !al.getEndDate().isAfter(end)) {
+                    drivers.add(new DashboardSummaryResponse.ForecastDriver(
+                            DashboardSummaryResponse.DriverKind.ROLL_OFF,
+                            al.getAssociate().getId(), al.getAssociate().getName(),
+                            al.getProject().getName(), al.getEndDate()));
+                }
+            }
+
+            drivers.sort(Comparator.comparing(DashboardSummaryResponse.ForecastDriver::date));
+
+            points.add(new DashboardSummaryResponse.TrendPoint(monthLabel.format(start), total, billable, drivers));
         }
         return points;
     }

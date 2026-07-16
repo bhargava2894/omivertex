@@ -9,7 +9,7 @@ import { TrendChart, DonutChart, VBarChart } from '../components/charts.jsx';
 import AssistantChat from '../components/AssistantChat.jsx';
 import AnimatedNumber from '../components/AnimatedNumber.jsx';
 import UtilizationForecastPanel from '../components/UtilizationForecastPanel.jsx';
-import { useMotionVariants, listContainer, listItem } from '../motion.js';
+import { useMotionVariants, listContainer, listItem, collapse } from '../motion.js';
 import { gapBadge, gapSummary } from '../skillGap.js';
 
 function StatCard({ icon, label, value, hint }) {
@@ -50,12 +50,49 @@ function SplitBar({ label, value, total, color }) {
   );
 }
 
+const DRIVER_TONE = {
+  ROLL_OFF: 'amber',
+  RAMP_UP: 'green',
+  BENCH_EXIT: 'green',
+  BILLABLE_EXIT: 'amber',
+};
+
+function trendDriverText(d) {
+  switch (d.kind) {
+    case 'ROLL_OFF':
+      return `${d.associateName} rolled off ${d.projectName}`;
+    case 'RAMP_UP':
+      return `${d.associateName} started on ${d.projectName}`;
+    case 'BENCH_EXIT':
+      return `${d.associateName} exited (was on the bench)`;
+    case 'BILLABLE_EXIT':
+      return `${d.associateName} exited (was billable)`;
+    default:
+      return d.associateName;
+  }
+}
+
+function formatTrendDate(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // 0-indexed month
+    const day = parseInt(parts[2], 10);
+    const date = new Date(year, month, day);
+    return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  }
+  return dateStr;
+}
+
 export default function Dashboard({ showToast, canEdit }) {
   const [viewMode, setViewMode] = useState(
     () => localStorage.getItem('ov-dashboard-view') || 'charts'
   );
   const [showRolloffsModal, setShowRolloffsModal] = useState(false);
   const [showExpiriesModal, setShowExpiriesModal] = useState(false);
+  const [expandedMonth, setExpandedMonth] = useState(null);
+  const anim = useMotionVariants(collapse);
 
   const toggleViewMode = (mode) => {
     setViewMode(mode);
@@ -428,60 +465,146 @@ export default function Dashboard({ showToast, canEdit }) {
                 marginTop: '16px',
               }}
             >
-              {(s.staffingTrend || []).map((p) => (
-                <div
-                  key={p.month}
-                  style={{
-                    background: 'var(--color-muted)',
-                    padding: '16px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--color-border)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: '12px',
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        fontSize: '11px',
-                        textTransform: 'uppercase',
-                        fontWeight: '700',
-                        letterSpacing: '0.05em',
-                        color: 'var(--color-muted-fg)',
-                      }}
-                    >
-                      {p.month}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '20px',
-                        fontWeight: '800',
-                        color: 'var(--color-foreground)',
-                        marginTop: '4px',
-                      }}
-                    >
-                      {p.total}{' '}
-                      <span
+              {(s.staffingTrend || []).map((p) => {
+                const isExpanded = expandedMonth === p.month;
+                const hasDrivers = p.drivers && p.drivers.length > 0;
+                return (
+                  <div
+                    key={p.month}
+                    className={hasDrivers ? 'trend-card-interactive card' : 'card'}
+                    onClick={() => {
+                      if (hasDrivers) {
+                        setExpandedMonth(isExpanded ? null : p.month);
+                      }
+                    }}
+                    style={{
+                      background: 'var(--color-muted)',
+                      padding: '16px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--color-border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                    }}
+                  >
+                    <div>
+                      <div
                         style={{
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          color: 'var(--color-muted-fg)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
                         }}
                       >
-                        allocated
-                      </span>
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            textTransform: 'uppercase',
+                            fontWeight: '700',
+                            letterSpacing: '0.05em',
+                            color: 'var(--color-muted-fg)',
+                          }}
+                        >
+                          {p.month}
+                        </div>
+                        {hasDrivers && (
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              transform: isExpanded ? 'rotate(90deg)' : 'none',
+                              transition: 'transform 0.2s',
+                              color: 'var(--color-muted-fg)',
+                              fontSize: '11px',
+                              userSelect: 'none',
+                            }}
+                          >
+                            ▸
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '20px',
+                          fontWeight: '800',
+                          color: 'var(--color-foreground)',
+                          marginTop: '4px',
+                        }}
+                      >
+                        {p.total}{' '}
+                        <span
+                          style={{
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: 'var(--color-muted-fg)',
+                          }}
+                        >
+                          allocated
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        <Badge tone="green" label={`${p.billable} billable`} />
+                        {p.total - p.billable > 0 && (
+                          <Badge tone="amber" label={`${p.total - p.billable} non-billable`} />
+                        )}
+                      </div>
+
+                      <AnimatePresence initial={false}>
+                        {isExpanded && hasDrivers && (
+                          <motion.div
+                            initial={anim.initial}
+                            animate={anim.animate}
+                            exit={anim.exit}
+                            style={{ overflow: 'hidden' }}
+                          >
+                            <div
+                              style={{
+                                marginTop: '12px',
+                                paddingTop: '12px',
+                                borderTop: '1px solid var(--color-border)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {p.drivers.map((d, i) => (
+                                <div
+                                  key={`${d.kind}-${d.associateId}-${i}`}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    fontSize: '11px',
+                                    color: 'var(--color-foreground)',
+                                  }}
+                                >
+                                  <Badge
+                                    tone={DRIVER_TONE[d.kind] || 'gray'}
+                                    label={formatTrendDate(d.date)}
+                                  />
+                                  <span
+                                    style={{
+                                      flex: 1,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                    title={trendDriverText(d)}
+                                  >
+                                    {trendDriverText(d)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    <Badge tone="green" label={`${p.billable} billable`} />
-                    {p.total - p.billable > 0 && (
-                      <Badge tone="amber" label={`${p.total - p.billable} non-billable`} />
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
