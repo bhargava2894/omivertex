@@ -8,6 +8,7 @@ import Icon from '../components/Icon.jsx';
 import Badge from '../components/Badge.jsx';
 import SkillEditor from '../components/SkillEditor.jsx';
 import AllocationForm from '../components/AllocationForm.jsx';
+import { joinedWithTenure, statusLabel } from '../format.js';
 import { proficiencyInfo } from '../proficiency.js';
 
 export default function Profile({ id, showToast, canEdit }) {
@@ -336,10 +337,13 @@ export default function Profile({ id, showToast, canEdit }) {
 
   return (
     <div style={{ display: 'grid', gap: '20px' }}>
-      {associate.exitReason && (
+      {(associate.lastWorkingDay || associate.exitReason) && (
         <div className="form-alert">
-          Exited — last working day {associate.lastWorkingDay} (
-          {associate.exitReason.replaceAll('_', ' ').toLowerCase()})
+          {associate.status === 'INACTIVE' ? 'Exited' : 'Leaving'} — last working day{' '}
+          {associate.lastWorkingDay || 'not set'}
+          {associate.exitReason && (
+            <> ({associate.exitReason.replaceAll('_', ' ').toLowerCase()})</>
+          )}
         </div>
       )}
       {/* Header Profile Card */}
@@ -369,6 +373,12 @@ export default function Profile({ id, showToast, canEdit }) {
           <div className="cell-sub" style={{ marginTop: '4px', fontSize: '14px' }}>
             <strong>{associate.designation}</strong> · {associate.email} · {associate.company} ·{' '}
             {associate.location || 'No Location'}
+          </div>
+          <div className="cell-sub" style={{ marginTop: '4px', fontSize: '13.5px' }}>
+            Joined {joinedWithTenure(associate.joinedDate) || '—'} · Status{' '}
+            {statusLabel(associate.status)}
+            {associate.resignationDate && <> · Resignation filed {associate.resignationDate}</>}
+            {associate.lastWorkingDay && <> · Last working day {associate.lastWorkingDay}</>}
           </div>
           {(associate.primarySkill || associate.secondarySkill) && (
             <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--color-muted-fg)' }}>

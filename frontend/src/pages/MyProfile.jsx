@@ -8,6 +8,7 @@ import Icon from '../components/Icon.jsx';
 import Modal from '../components/Modal.jsx';
 import SkillEditor from '../components/SkillEditor.jsx';
 import { PROF_LABELS } from '../proficiency.js';
+import { joinedWithTenure, statusLabel, workModeLabel } from '../format.js';
 
 /** One label/value line in the read-only "My Details" grid. */
 function DetailRow({ label, value }) {
@@ -17,38 +18,6 @@ function DetailRow({ label, value }) {
       <div className="cell-main detail-value">{value || '—'}</div>
     </>
   );
-}
-
-function workModeLabel(mode) {
-  if (!mode) return null;
-  return mode.charAt(0) + mode.slice(1).toLowerCase(); // ONSHORE -> Onshore
-}
-
-function statusLabel(status) {
-  return workModeLabel(status); // ACTIVE -> Active, same casing rule
-}
-
-/** "12 Mar 2023 · 3 yr 4 mo"; tenure suffix dropped when no joined date. */
-function joinedWithTenure(joinedDate) {
-  if (!joinedDate) return null;
-  const joined = new Date(joinedDate);
-  const dateStr = joined.toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-  const months = Math.max(
-    0,
-    (new Date().getFullYear() - joined.getFullYear()) * 12 +
-      (new Date().getMonth() - joined.getMonth())
-  );
-  const years = Math.floor(months / 12);
-  const rem = months % 12;
-  const parts = [];
-  if (years > 0) parts.push(`${years} yr`);
-  if (rem > 0) parts.push(`${rem} mo`);
-  if (years === 0 && rem === 0) parts.push('this month');
-  return `${dateStr} · ${parts.join(' ')}`;
 }
 
 /**
