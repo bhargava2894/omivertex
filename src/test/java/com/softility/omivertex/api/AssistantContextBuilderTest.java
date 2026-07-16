@@ -254,4 +254,27 @@ class AssistantContextBuilderTest extends ApiTestBase {
         seedWorkforce();
         assertThat(builder.listProjects("Nonexistent Inc")).contains("No matching projects");
     }
+
+    @Test
+    void skillGaps_reportsDemandBenchSupplyHoldersAndGap() {
+        seedWorkforce();
+        String result = builder.skillGaps();
+        assertThat(result).contains("Java (Backend)");
+        assertThat(result).contains("demand 1");
+        assertThat(result).contains("bench supply 0"); // Priya is allocated; Rahul is unrated
+        assertThat(result).contains("total holders 1");
+        assertThat(result).contains("gap 1");
+    }
+
+    @Test
+    void skillGaps_emptyWhenNoOpenDemand() {
+        associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE); // no positions at all
+        assertThat(builder.skillGaps()).contains("No open positions demand any skills");
+    }
+
+    @Test
+    void standingContext_advertisesSkillGapTool() {
+        seedWorkforce();
+        assertThat(builder.build()).contains("get_skill_gaps");
+    }
 }

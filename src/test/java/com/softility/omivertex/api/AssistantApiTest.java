@@ -366,4 +366,34 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reply", containsString("more than one match")));
     }
+
+    @Test
+    void chat_dispatchesSkillGapsTool() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var java = skill("Backend", "Java");
+        var position = new com.softility.omivertex.domain.OpenPosition();
+        position.setTitle("Java Dev");
+        position.setProject(proj);
+        openPositionRepository.save(position);
+        var req = new com.softility.omivertex.domain.PositionSkill();
+        req.setPosition(position);
+        req.setSkill(java);
+        req.setRequired(true);
+        positionSkillRepository.save(req);
+
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(ex.execute("get_skill_gaps", Map.of()), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"what are our skill gaps?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Java (Backend)")))
+                .andExpect(jsonPath("$.reply", containsString("gap 1")));
+    }
 }

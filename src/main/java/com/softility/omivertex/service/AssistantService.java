@@ -256,6 +256,7 @@ public class AssistantService {
             case "list_open_positions" -> contextBuilder.openPositions();
             case "list_clients" -> contextBuilder.listClients();
             case "list_projects" -> contextBuilder.listProjects(str(args, "clientName"));
+            case "get_skill_gaps" -> contextBuilder.skillGaps();
             default -> "Unknown tool: " + name;
         };
     }

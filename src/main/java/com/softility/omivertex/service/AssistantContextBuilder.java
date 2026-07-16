@@ -19,6 +19,7 @@ import com.softility.omivertex.repository.OpenPositionRepository;
 import com.softility.omivertex.repository.PositionSkillRepository;
 import com.softility.omivertex.repository.ProjectRepository;
 import com.softility.omivertex.web.dto.AssociateResponse;
+import com.softility.omivertex.web.dto.DashboardSummaryResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,11 +52,14 @@ public class AssistantContextBuilder {
     private final PositionSkillRepository positionSkills;
     private final ClientRepository clients;
     private final ProjectRepository projects;
+    private final SkillGapService skillGapService;
+    private final DashboardService dashboardService;
 
     public AssistantContextBuilder(AssociateRepository associates, AllocationRepository allocations,
                                    AssociateSkillRepository associateSkills, CertificationRepository certifications,
                                    OpenPositionRepository positions, PositionSkillRepository positionSkills,
-                                   ClientRepository clients, ProjectRepository projects) {
+                                   ClientRepository clients, ProjectRepository projects,
+                                   SkillGapService skillGapService, DashboardService dashboardService) {
         this.associates = associates;
         this.allocations = allocations;
         this.associateSkills = associateSkills;
@@ -64,6 +68,8 @@ public class AssistantContextBuilder {
         this.positionSkills = positionSkills;
         this.clients = clients;
         this.projects = projects;
+        this.skillGapService = skillGapService;
+        this.dashboardService = dashboardService;
     }
 
     /** Standing context: instructions + aggregate counts. Never roster rows. */
@@ -81,7 +87,7 @@ public class AssistantContextBuilder {
                 + "platform. Answer questions about the workforce concisely and accurately, using "
                 + "short bullet lists where helpful. Use your lookup tools (search_associates, "
                 + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches, "
-                + "list_clients, list_projects) "
+                + "list_clients, list_projects, get_skill_gaps) "
                 + "to fetch specifics before answering. If the tools cannot answer the question, "
                 + "say so — never invent people, projects, or numbers.\n\n"
                 + "## Key numbers (today: " + LocalDate.now() + ")\n"
@@ -321,6 +327,19 @@ public class AssistantContextBuilder {
             sb.append(" · open positions: ").append(String.join("; ", openSeats));
         }
         return sb.toString();
+    }
+
+    /** Read tool: skill supply vs demand, worst gap first (SkillGapService owns the math). */
+    public String skillGaps() {
+        List<DashboardSummaryResponse.SkillGap> gaps = skillGapService.dashboardPanel();
+        if (gaps.isEmpty()) {
+            return "No open positions demand any skills right now.";
+        }
+        return gaps.stream()
+                .map(g -> "- " + g.skillName() + " (" + g.category() + ") · demand " + g.demand()
+                        + " · bench supply " + g.benchSupply() + " · total holders " + g.totalSupply()
+                        + " · gap " + g.gap())
+                .collect(Collectors.joining("\n"));
     }
 
     // ---- shared row fragments ----

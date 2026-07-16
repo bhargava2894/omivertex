@@ -63,7 +63,8 @@ public class GeminiHttpClient implements GeminiClient {
     /** Tools executed server-side and fed back to the model (write tools return as drafts). */
     static final Set<String> READ_TOOLS = Set.of(READ_TOOL_MATCHES,
             "search_associates", "get_associate_detail", "get_project_detail",
-            "list_rolloffs", "list_open_positions", "list_clients", "list_projects");
+            "list_rolloffs", "list_open_positions", "list_clients", "list_projects",
+            "get_skill_gaps");
 
     /** All assistant tools. Write tools are drafts only — the server never executes them. */
     private static final List<Map<String, Object>> FUNCTION_DECLARATIONS = List.of(
@@ -145,7 +146,13 @@ public class GeminiHttpClient implements GeminiClient {
                             + " run, to list or name them, or what a given client is running.",
                     "parameters", Map.of("type", "object",
                             "properties", Map.of("clientName", Map.of("type", "string",
-                                    "description", "optional: only this client's projects")))));
+                                    "description", "optional: only this client's projects")))),
+            Map.of("name", "get_skill_gaps",
+                    "description", "Skill supply vs demand: for each skill required by open positions,"
+                            + " how many seats demand it, bench supply, total holders, and the gap"
+                            + " (positive = hire or train). Use when asked about skill gaps, shortages,"
+                            + " or hiring/training needs.",
+                    "parameters", Map.of("type", "object", "properties", Map.of())));
 
     @Override
     public AssistantReply replyWithTools(String workforceContext, List<Turn> history,
