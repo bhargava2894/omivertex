@@ -1,7 +1,7 @@
 # OmiVertex — Technical Documentation
 
 *Audience: developers building, maintaining, or extending the system.*
-*Last updated: 2026-07-10*
+*Last updated: 2026-07-16*
 
 ---
 
@@ -71,8 +71,10 @@ omivertex/
 │     ├─ motion.js                shared animation tokens/variants + reduced-motion hook
 │     ├─ components/              Icon, Modal, Badge, DataTable, Field, CollapsibleCard,
 │     │                           DataTransfer (import/export), charts.jsx
-│     └─ pages/                   Login, Dashboard, Associates, Clients,
-│                                 Projects, Allocations, Settings
+│     └─ pages/                   Login, Dashboard, Associates, Clients, Projects,
+│                                 Staffing (merged "Staffing & Allocations"), Positions
+│                                 (Demand), SkillReports, Taxonomy, AccessRequests,
+│                                 AuditLog, Profile, MyProfile, ProfileChanges, Settings
 └─ docs/                          this file, functional overview, specs, plans
 ```
 
@@ -98,6 +100,7 @@ Client 1 ──── * Project 1 ──── * Allocation * ──── 1 Ass
 | **OpenPosition** | title, project FK, billable, allocationPercent, startDate, endDate, workMode, status (OPEN/FILLED/CANCELLED) | endDate ≥ startDate → else 400 |
 | **PositionSkill** | position FK, skill FK, minProficiency, required (bool) | `(position_id, skill_id)` unique |
 | **ProfileChangeRequest** | associate FK, type (SKILLS/RESUME), status (PENDING/APPROVED/REJECTED), skillsPayload (text), resumeFilename, resumeContentType, resumeByteSize, resumeContent (blob), note, decidedBy, decidedAt, createdAt | — |
+| **Resume** | associateId, filename, contentType, byteSize, content (blob, lazy-loaded), uploadedAt | `associate_id` unique — one résumé per associate, replace-on-upload |
 
 **Derived, never stored:** an associate's `currentProject`, `currentClient`,
 `billable`, and `benchDays` are computed from allocations at read time
@@ -153,7 +156,8 @@ introduce Flyway before making breaking changes.
     never included — user decision, see docs/TODO.md. It calls the vendor-neutral
     `GeminiClient` boundary; the HTTP
     implementation (`GeminiHttpClient`) is config-gated by
-    `omivertex.assistant.gemini.api-key` / `.model` (default `gemini-2.5-flash`) and
+    `omivertex.assistant.gemini.api-key` / `.model` (default `gemini-3.1-flash-lite` —
+    chosen for free-tier quota headroom, see `docs/TODO.md`) and
     fails closed with 400 "not configured" when the key is unset. Message ≤ 2,000
     chars → else 400; history capped at the last 20 turns; upstream failures → 400
     with a readable message. Tests mock `GeminiClient` — the suite never calls Google.
@@ -166,12 +170,12 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 |---|---|---|
 | `/clients` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | — |
 | `/projects` | same | `?clientId=` |
-| `/associates` | same | `?workMode=&billable=&bench=&categoryId=&skillId=&minProficiency=` |
+| `/associates` | same | `?workMode=&billable=&bench=&categoryId=&skillId=&minProficiency=&q=` (name/email/company search) `&page=&size=` (25 default; omit `page` for a plain array, backward compatible) |
 | `/allocations` | same (PUT uses `AllocationUpdateRequest` — no re-parenting) | `?projectId=&associateId=&active=` |
 | `/positions` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | `?status=&projectId=` |
 | `/positions/{id}/matches` | GET (candidates ranked full-match first, partials labeled with what's missing; ADMIN) | — |
 | `/positions/{id}/fill` | POST (fills position by creating an allocation over the position's start–end window, so capacity is consumed for that period and the end date feeds the roll-off radar; start defaults to today when the position has none; ADMIN) | — |
-| `/staffing` | GET (client → project → associates tree from *current* allocations; per-level billable/non-billable counts, "billable wins" per client; ADMIN+VIEWER) | — |
+| `/staffing` | GET (client → project → associates tree; per-level billable/non-billable counts always reflect *current* allocations only, "billable wins" per client; the page merges the former Allocations screen — ADMIN gets inline Assign/Edit/Remove reusing `/allocations` CRUD, VIEWER gets read-only; ADMIN+VIEWER) | `?includeEnded=` (also return non-current rows, marked `active:false`, count-neutral) |
 | `/taxonomy` | GET (nested alphabetical tree) | — |
 | `/taxonomy/categories` | POST, DELETE/{id} (ADMIN) | — |
 | `/taxonomy/skills` | POST, DELETE/{id} (ADMIN) | — |
@@ -263,14 +267,17 @@ Two sign-in paths coexist:
    `viewer` → ROLE_VIEWER. Passwords default to `Admin@123` / `Viewer@123`;
    override with `omivertex.auth.admin-password` / `omivertex.auth.viewer-password`.
 2. **Company-email sign-in with approval workflow** (`POST /api/v1/auth/google`,
-   `AppUser` entity): only `@softility.com` addresses are accepted. First sign-in
-   creates an `AppUser` with status PENDING and role VIEWER; the user is refused
-   with "pending approval" until a Super Admin approves them under
+   `AppUser` entity): the posted Google ID token is verified server-side (signature +
+   audience) by `GoogleApiTokenVerifier` behind the injectable `GoogleTokenVerifier`
+   boundary, which fails closed when `omivertex.auth.google.client-id` is unset — the
+   client-posted email is never trusted directly. Only `@softility.com` addresses are
+   accepted. First sign-in creates an `AppUser` with status PENDING and role VIEWER;
+   the user is refused with "pending approval" until a Super Admin approves them under
    **Access Requests** (`/api/v1/admin/access-requests` — list, `/{id}/approve`,
    `/{id}/reject`; ADMIN-only, admin-only sidebar entry in the SPA). Approved
-   users authenticate by email; REJECTED users are refused.
-   *Note: this endpoint currently trusts the client-supplied email/name — wire it
-   to real Google ID-token verification before exposing beyond the intranet.*
+   users authenticate by email; REJECTED users are refused. Associate-role users
+   (`AppUser.role = ASSOCIATE`, linked to a roster record) sign in the same way but
+   are confined to `/me/**`.
 
 - **Authorization**: `/api/v1/auth/login` and `/api/v1/auth/google` are public;
   `/api/v1/admin/**` needs ADMIN; `GET /api/v1/**` needs any role; **all other
@@ -338,7 +345,7 @@ docx (POI XWPF). Returned as `attachment` with correct MIME type.
 # prerequisites: Java 21, Node 18+, PostgreSQL with database "omivertex"
 cd frontend && npm install && npm run build && cd ..   # SPA → static/
 ./mvnw spring-boot:run                                  # http://localhost:8080
-./mvnw test                                             # 94 tests
+./mvnw test                                             # 230 tests
 cd frontend && npm run dev                              # Vite on :5173, /api proxied
 ```
 
@@ -360,15 +367,19 @@ cd frontend && npm run dev                              # Vite on :5173, /api pr
   `AuthApiTest` exercises real logins with `MockHttpSession` instead.
 - The project is built **strictly TDD**: write the failing test first, watch it
   fail for the right reason, implement to green. Every business rule in §5 has
-  both a happy-path and a conflict test. Current suite: **94 tests**.
+  both a happy-path and a conflict test. Current suite: **230 tests**.
 
 ## 12. Known limitations / next steps
 
-- Company-email sign-in does not yet verify a Google ID token — it trusts the
-  posted email/name. Add real OAuth/OIDC verification before wider rollout.
-- Built-in accounts remain in-memory; access-request flow has no test coverage yet.
-- No pagination — list endpoints return everything (fine ≤ ~1k rows).
-- No audit trail or optimistic locking (`@Version`).
-- Hibernate-managed schema; adopt Flyway before schema-breaking changes.
+- Built-in `admin`/`viewer` accounts remain in-memory and shared; per-person
+  accounts (tracked P1 in `docs/TODO.md`) would let the audit trail name real
+  people instead of the shared role login.
+- Associates is server-paged + searched (`?page=&q=`); clients/projects/allocations
+  (now the merged Staffing view) still return everything client-side — fine at
+  current volume, tracked P3 in `docs/TODO.md`.
+- No optimistic locking (`@Version`) — two admins editing the same
+  associate/allocation concurrently still silently overwrite each other (P1).
+- Flyway (`V1`–`V9`) owns the prod schema (`ddl-auto=validate`); dev/tests keep
+  Hibernate `ddl-auto=update`/`create-drop` for iteration speed.
 - Import treats generated email as identity; a real email column in the sheet
   should take precedence if added.

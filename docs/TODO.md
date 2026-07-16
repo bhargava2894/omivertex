@@ -1,6 +1,6 @@
 # OmiVertex — Remaining Work
 
-Prioritized backlog as of 2026-07-06. Everything above the line blocks calling
+Prioritized backlog as of 2026-07-16. Everything above the line blocks calling
 this "production"; everything below improves an already-usable pilot.
 
 ## P0 — Security & deployment blockers — DONE (2026-07-06)
@@ -33,15 +33,16 @@ dashboard through caches/proxies).
 
 ## P1 — Pilot hardening
 
-- [ ] **Per-person accounts everywhere.** Once Google verification lands, retire
-      the shared `admin`/`viewer` logins so the audit trail names real people.
+- [ ] **Per-person accounts everywhere.** Google verification has landed; still
+      need to retire the shared `admin`/`viewer` logins so the audit trail names
+      real people.
 - [ ] **Optimistic locking** (`@Version` on Allocation/Associate) so two managers
       editing the same record don't silently overwrite each other.
 - [~] **Server-side pagination + search** — DONE for the associates roster
       (paged envelope + `q` search, backward compatible). Remaining lists tracked
       in P3.
 
-## P1.5 — Résumé Parsing & Matching (Current Epic)
+## P1.5 — Résumé Parsing & Matching — DONE (2026-07-11)
 
 - [x] **Résumé Parsing & Extraction Suite**
   - [x] Task 1: resumes table, entity, repository (V3, PDFBox) — DONE
@@ -75,14 +76,14 @@ dashboard through caches/proxies).
       the duplicate-open-allocation rule are described in docs but weakly
       cross-referenced to their code.
 - [ ] `graphify --wiki` for an agent/human-crawlable architecture wiki.
-- [ ] Server-side pagination for the remaining lists (clients/projects/allocations).
+- [ ] Server-side pagination for the remaining lists (clients/projects/staffing).
       Associates is already server-paged+searched; the others are small and use
       derived-field filters, so deferred until volume warrants it.
 - [ ] Extract the profile's allocation section (history table + End/Assign modals,
       ~250 lines) into a `ProfileAllocations` component — `Profile.jsx` is ~900
       lines with five modals (flagged in the 2026-07-10 code review).
 - [ ] Shared local-date helper: `todayStr()` (Profile) duplicates `today()`
-      (Allocations), and both use `toISOString()` which is UTC — evening users west
+      (Staffing), and both use `toISOString()` which is UTC — evening users west
       of UTC get tomorrow's date. Extract a `dates.js` local-date version.
 - [ ] Import runs one transaction per file: a runtime exception thrown *through a
       repository proxy* inside the row loop (not the guard's ConflictException,
@@ -90,6 +91,26 @@ dashboard through caches/proxies).
       savepoints if imports grow (flagged in the 2026-07-10 review).
 
 ## Resolved decisions
+
+- **Staffing & Allocations are one page; the server tree is the single source**
+  (2026-07-16): Allocations and Staffing rendered the same client → project →
+  associate tree with the same billable rollup — once grouped client-side, once
+  server-side (spec: `docs/superpowers/specs/2026-07-16-merge-staffing-allocations-design.md`)
+  — violating "one source of truth per concept" (AGENTS.md). Merged into a single
+  `staffing` route: viewers get the read-only tree as before, admins get inline
+  Assign/Edit/Remove reusing the existing `/allocations` CRUD (capacity guard,
+  uniqueness, and audit untouched — no new mutation endpoint). `GET /staffing?includeEnded=`
+  also returns non-current allocations marked `active:false`; counts always reflect
+  current allocations only so the rollup never mixes in history.
+
+- **MyProfile shows a read-only "My Details" block** (2026-07-16): the ASSOCIATE
+  self-service page previously surfaced only what a person can *change* (skills,
+  résumé); their own contact/identity fields (email, company, location, work mode,
+  designation, joined date + tenure, status) were never shown as a first-class,
+  clearly non-editable block (spec:
+  `docs/superpowers/specs/2026-07-16-associate-readonly-details-design.md`). Pure
+  frontend addition — every field already ships on `/me/profile`. Scope deliberately
+  excludes project history and certifications for this pass.
 
 - **The Utilization Forecast names the events behind each number; drivers are never
   individually scored** (2026-07-15): the panel showed four bare percentages and could not
@@ -240,21 +261,17 @@ dashboard through caches/proxies).
   flag (Flyway `V2`). CSV import still populates the text fields in bulk (unchanged).
   See `docs/superpowers/specs/2026-07-07-unify-associate-skills-entry-design.md`.
 
-- **Allocations page is a grouped drill-down** (2026-07-12): the Allocations page
-  mirrors the Staffing client → project → rows drill-down (collapsible client
-  cards, search auto-expands, "Current only / Including ended" kept, CRUD per
-  row). The project dropdown filter was removed — grouping + search replace it.
-  Grouping is client-side from `GET /allocations` joined to the projects list
-  for `clientId`/`code` (no backend change); the endpoint's `projectId` param
-  remains for API consumers. This is the third copy of the drill-down
-  scaffolding (Staffing, Projects variant, now Allocations) — if a fourth page
-  adopts it, extract a shared component/hook.
+- **~~Allocations page is a grouped drill-down~~ SUPERSEDED 2026-07-16** (originally
+  2026-07-12): Allocations grew its own client-side grouping mirroring Staffing's
+  server-side tree — two implementations of one concept. The 2026-07-16 merge
+  (see the "Staffing & Allocations are one page" entry above) deleted `Allocations.jsx`
+  entirely; the server-side `StaffingService` tree is now the only implementation.
 
 - **Drill-down scaffolding extracted; motion via shared tokens** (2026-07-12):
   the client-card expand/collapse shell (header button, chevron, animated
-  body) now lives in `CollapsibleCard.jsx`, used by Staffing, Projects, and
-  Allocations — this supersedes the "if a fourth page adopts it, extract"
-  note above. All framer-motion animation goes through `frontend/src/motion.js`
+  body) lives in `CollapsibleCard.jsx`, used by Staffing and Projects (also
+  Allocations until its 2026-07-16 removal — see above). All framer-motion
+  animation goes through `frontend/src/motion.js`
   tokens/variants and its `useMotionVariants` reduced-motion hook (the CSS
   `prefers-reduced-motion` kill-switch cannot reach framer-motion's inline
   styles). Route transitions, DataTable row animations, and dashboard tile

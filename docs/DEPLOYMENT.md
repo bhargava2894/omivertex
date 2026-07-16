@@ -41,11 +41,14 @@ configured (the endpoint fails closed with a clear 400 otherwise):
 | Variable | Purpose |
 |---|---|
 | `OMIVERTEX_ASSISTANT_GEMINI_API_KEY` | Google AI Studio API key; enables `GeminiHttpClient` |
-| `OMIVERTEX_ASSISTANT_GEMINI_MODEL` | Optional; defaults to `gemini-2.5-flash` |
+| `OMIVERTEX_ASSISTANT_GEMINI_MODEL` | Optional; defaults to `gemini-3.1-flash-lite` |
 
 Requires outbound HTTPS to `generativelanguage.googleapis.com` from the app
-server. Each question sends the full live workforce summary as model context
-(deliberate decision — see `docs/TODO.md`); resume file contents are never sent.
+server. Each question sends only aggregate counts (associates, bench, open
+positions, clients, projects) as standing context — no names, emails, skills,
+or allocations; the model fetches specifics per question through server-side
+read tools, each capped at 25 rows (deliberate decision — see `docs/TODO.md`).
+Resume file contents are never sent.
 
 ## Build
 

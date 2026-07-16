@@ -58,9 +58,22 @@ The Associates page is the always-current version of "the staffing spreadsheet":
 Open positions are created in the Demand tab. When adding a position, specify a required skill from the taxonomy and a minimum proficiency level.
 - **Smart Recommendations**: The system matches open roles against the bench roster, ranking candidates first by whether they satisfy the skill and minimum proficiency requirements (ordering by proficiency descending), then by how long they have been on the bench, ensuring maximum utilization.
 
-### Clients, Projects, Allocations — the system of record
+### Ask Mirai — a chat assistant that answers from live data
 
-Master lists of clients and their projects, plus the allocation workspace where associates are assigned to projects with a billable flag, an allocation percentage, and start/end dates. The system protects the data for you:
+A dashboard chat card lets anyone ask plain-English questions — "who's rolling off this
+month?", "which clients do we have?", "find a React developer on the bench" — and get an
+answer grounded in the current roster, not a canned FAQ. Mirai only ever *drafts*: if a
+question implies an action (staff someone, fill an open seat), it produces a visible
+proposal card that a human reviews and confirms through the normal screens — the same
+capacity guard, role checks, and audit trail apply as a manual edit. Only the slice of
+data needed to answer a given question ever leaves the building.
+
+### Clients, Projects, Staffing & Allocations — the system of record
+
+Master lists of clients and their projects, plus the staffing workspace — a
+client → project → associate tree — where associates are assigned to projects with a
+billable flag, an allocation percentage, and start/end dates. The system protects the
+data for you:
 
 - Nobody can be **double-booked past 100%** of their capacity — the system blocks it and says why.
 - No duplicate clients, project codes, or associates can be created.
@@ -74,9 +87,15 @@ Master lists of clients and their projects, plus the allocation workspace where 
 
 ### Access control built for a staffing org
 
-- **Super Admin** — full view and edit rights, manages access requests.
+- **Super Admin** — full view and edit rights, manages access requests, and reviews
+  the audit log of every change made in the system.
 - **User (read-only)** — sees every dashboard, list, and export, but cannot change
   a thing. Edit buttons don't just fail — they don't exist.
+- **Associate (self-service)** — a consultant's own login, scoped to a single "My
+  Profile" screen: their read-only identity details (email, company, location,
+  designation, tenure), plus the ability to *propose* a skills update or a new
+  résumé. Proposals sit in an admin approval queue and never touch live data until
+  approved.
 - New colleagues can request access with their **@softility.com** email; a Super
   Admin approves or rejects them from the Access Requests screen. The rules are
   enforced on the server, not just hidden in the interface.
