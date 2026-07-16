@@ -89,6 +89,12 @@ dashboard through caches/proxies).
       repository proxy* inside the row loop (not the guard's ConflictException,
       which is handled) could still mark the batch rollback-only. Consider per-row
       savepoints if imports grow (flagged in the 2026-07-10 review).
+- [ ] Assistant tool-registration coherence test: a read tool's name must agree
+      across `GeminiHttpClient.FUNCTION_DECLARATIONS`, `READ_TOOLS`, and the
+      `AssistantService.executeReadTool` switch — today a typo in one of the
+      three only surfaces at runtime against the live Gemini API (flagged in the
+      2026-07-16 Mirai read-tool reviews; needs a visibility decision on the
+      private declarations list).
 
 ## Resolved decisions
 

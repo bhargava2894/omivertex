@@ -146,7 +146,8 @@ introduce Flyway before making breaking changes.
    services, so validation + audit fire) or rejects with a note. One pending change per
    (associate, type) → 409. Approving as ASSOCIATE requires a roster email match → 400.
 10. **AI assistant** (2026-07-10; context narrowed 2026-07-11, enumeration tools added
-    2026-07-15) — `AssistantService` sends a standing context of **aggregate counts only**
+    2026-07-15, dashboard-grounded tools added 2026-07-16) — `AssistantService` sends a
+    standing context of **aggregate counts only**
     (`AssistantContextBuilder.build()`: active/bench/open-position/client/project counts —
     no names, emails, or roster rows) and fetches specifics per question through
     server-side read tools, each capped at `MAX_TOOL_ROWS` (25) with an explicit overflow
@@ -161,6 +162,11 @@ introduce Flyway before making breaking changes.
     fails closed with 400 "not configured" when the key is unset. Message ≤ 2,000
     chars → else 400; history capped at the last 20 turns; upstream failures → 400
     with a readable message. Tests mock `GeminiClient` — the suite never calls Google.
+    Four tools reuse dashboard math instead of recomputing it: `get_skill_gaps`
+    (`SkillGapService.dashboardPanel()`), `list_expiring_certifications`
+    (`DashboardService.expiringCerts(withinDays)`, default 90, shared with the
+    dashboard radar), and `get_workforce_summary` / `list_bench_aging`
+    (`DashboardService.summary()`).
 
 ## 6. REST API
 
@@ -194,7 +200,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/data/export` | GET | `?format=xlsx|csv|pdf|docx` |
 | `/auth` | POST `/login`, POST `/google`, POST `/logout`, GET `/me` | — |
 | `/admin/access-requests` | GET, POST `/{id}/approve`, POST `/{id}/reject` (ADMIN) | — |
-| `/assistant/chat` | POST (natural-language Q&A via Gemini; ADMIN+VIEWER; standing context is **aggregate counts only** — specifics are fetched per-question through server-side read tools (`search_associates`, `get_associate_detail`, `get_project_detail`, `list_rolloffs`, `list_open_positions`, `get_position_matches`, `list_clients`, `list_projects`; ≤25 rows each, ≤3 tool rounds), so only the queried slice of personal data reaches Google; may return `proposedAction {type: CREATE_ALLOCATION\|FILL_POSITION, resolved ids/names, percent, billable, dates, summary, warnings[]}` — the endpoint itself never mutates; the UI confirms via `POST /allocations` or `POST /positions/{id}/fill` under the user's own session) | — |
+| `/assistant/chat` | POST (natural-language Q&A via Gemini; ADMIN+VIEWER; standing context is **aggregate counts only** — specifics are fetched per-question through server-side read tools (`search_associates`, `get_associate_detail`, `get_project_detail`, `list_rolloffs`, `list_open_positions`, `get_position_matches`, `list_clients`, `list_projects`, `get_skill_gaps`, `list_expiring_certifications`, `get_workforce_summary`, `list_bench_aging`; ≤25 rows each, ≤3 tool rounds), so only the queried slice of personal data reaches Google; may return `proposedAction {type: CREATE_ALLOCATION\|FILL_POSITION, resolved ids/names, percent, billable, dates, summary, warnings[]}` — the endpoint itself never mutates; the UI confirms via `POST /allocations` or `POST /positions/{id}/fill` under the user's own session) | — |
 | `/me/profile` | GET (own profile; ASSOCIATE) | — |
 | `/me/profile-changes` | GET (own change requests list; ASSOCIATE) | — |
 | `/me/profile-changes/skills` | POST (submit proposed skills; ASSOCIATE) | — |
