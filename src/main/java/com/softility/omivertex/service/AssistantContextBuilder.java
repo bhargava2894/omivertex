@@ -87,7 +87,8 @@ public class AssistantContextBuilder {
                 + "platform. Answer questions about the workforce concisely and accurately, using "
                 + "short bullet lists where helpful. Use your lookup tools (search_associates, "
                 + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches, "
-                + "list_clients, list_projects, get_skill_gaps, list_expiring_certifications) "
+                + "list_clients, list_projects, get_skill_gaps, list_expiring_certifications, "
+                + "get_workforce_summary) "
                 + "to fetch specifics before answering. If the tools cannot answer the question, "
                 + "say so — never invent people, projects, or numbers.\n\n"
                 + "## Key numbers (today: " + LocalDate.now() + ")\n"
@@ -355,6 +356,50 @@ public class AssistantContextBuilder {
               .append(" (in ").append(c.daysLeft()).append(" days)\n");
         }
         appendOverflow(sb, certs.size());
+        return sb.toString();
+    }
+
+    /** Read tool: org-health KPIs, bench aging, six-month trend, and utilization forecast. */
+    public String workforceSummary() {
+        DashboardSummaryResponse s = dashboardService.summary();
+        StringBuilder sb = new StringBuilder();
+        sb.append("Active associates: ").append(s.totalAssociates())
+          .append(" · billable ").append(s.billableCount())
+          .append(" · non-billable ").append(s.nonBillableCount())
+          .append(" · bench ").append(s.benchCount())
+          .append(" · onshore ").append(s.onshoreCount())
+          .append(" · offshore ").append(s.offshoreCount()).append("\n");
+        sb.append("Clients: ").append(s.totalClients())
+          .append(" · active projects: ").append(s.activeProjects())
+          .append(" · open positions: ").append(s.openPositions())
+          .append(" · utilization: ").append(s.utilizationPercent()).append("%")
+          .append(" · exits last 12 months: ").append(s.exitsLast12Months()).append("\n");
+        DashboardSummaryResponse.BenchAging aging = s.benchAging();
+        sb.append("Bench aging: ").append(aging.days0to30()).append(" ≤30d · ")
+          .append(aging.days31to60()).append(" 31–60d · ")
+          .append(aging.days60plus()).append(" >60d\n");
+        sb.append("Staffing trend (allocated/billable per month): ").append(s.staffingTrend().stream()
+                .map(t -> t.month() + " " + t.total() + "/" + t.billable())
+                .collect(Collectors.joining(", "))).append("\n");
+        sb.append("Utilization forecast:\n");
+        for (DashboardSummaryResponse.ForecastPoint p : s.utilizationForecast()) {
+            sb.append("- ").append(p.label()).append(": ").append(p.percent()).append("%");
+            if (p.deltaPoints() != 0) {
+                sb.append(" (").append(p.deltaPoints() > 0 ? "+" : "")
+                  .append(p.deltaPoints()).append(" vs today)");
+            }
+            if (!p.drivers().isEmpty()) {
+                sb.append(" — ").append(p.drivers().stream()
+                        .map(d -> d.kind() + " " + d.associateName()
+                                + (d.projectName() == null ? "" : " (" + d.projectName() + ")")
+                                + " " + d.date())
+                        .collect(Collectors.joining("; ")));
+                if (p.omittedDrivers() > 0) {
+                    sb.append(" …and ").append(p.omittedDrivers()).append(" more");
+                }
+            }
+            sb.append("\n");
+        }
         return sb.toString();
     }
 

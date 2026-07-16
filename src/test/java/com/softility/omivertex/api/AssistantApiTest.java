@@ -422,4 +422,24 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.reply", containsString("AWS Solutions Architect")))
                 .andExpect(jsonPath("$.reply", containsString("No certifications expire within 30 days")));
     }
+
+    @Test
+    void chat_dispatchesWorkforceSummaryTool() throws Exception {
+        associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE); // 1 active, benched
+
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(
+                            ex.execute("get_workforce_summary", Map.of()), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"how healthy is the org?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Active associates: 1")))
+                .andExpect(jsonPath("$.reply", containsString("Utilization forecast")));
+    }
 }

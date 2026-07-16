@@ -323,4 +323,40 @@ class AssistantContextBuilderTest extends ApiTestBase {
         cert.setExpiryDate(expiry);
         certificationRepository.save(cert);
     }
+
+    @Test
+    void workforceSummary_coversKpisBucketsTrendAndForecast() {
+        seedWorkforce(); // Priya 100% billable, Rahul benched -> 2 active, utilization 50%
+        var alloc = allocationRepository.findAll().get(0);
+        alloc.setEndDate(LocalDate.now().plusDays(10)); // roll-off inside the +30d forecast window
+        allocationRepository.save(alloc);
+
+        String result = builder.workforceSummary();
+
+        assertThat(result).contains("Active associates: 2");
+        assertThat(result).contains("bench 1");
+        assertThat(result).contains("utilization: 50%");
+        assertThat(result).contains("Bench aging:");
+        assertThat(result).contains("Staffing trend");
+        assertThat(result).contains("Utilization forecast");
+        assertThat(result).contains("Today: 50%");
+        // the scheduled roll-off surfaces as a named forecast driver
+        assertThat(result).contains("ROLL_OFF Priya Sharma (Storefront Revamp)");
+    }
+
+    @Test
+    void workforceSummary_leavesSlicesToTheirOwnTools() {
+        seedWorkforce();
+        String result = builder.workforceSummary();
+        // open-position, cert, and skill-gap rows belong to their dedicated tools
+        assertThat(result).doesNotContain("Java Dev");
+        assertThat(result).doesNotContain("must-have");
+        assertThat(result).doesNotContain("gap ");
+    }
+
+    @Test
+    void standingContext_advertisesWorkforceSummaryTool() {
+        seedWorkforce();
+        assertThat(builder.build()).contains("get_workforce_summary");
+    }
 }

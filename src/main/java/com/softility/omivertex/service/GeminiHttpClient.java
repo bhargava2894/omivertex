@@ -64,7 +64,7 @@ public class GeminiHttpClient implements GeminiClient {
     static final Set<String> READ_TOOLS = Set.of(READ_TOOL_MATCHES,
             "search_associates", "get_associate_detail", "get_project_detail",
             "list_rolloffs", "list_open_positions", "list_clients", "list_projects",
-            "get_skill_gaps", "list_expiring_certifications");
+            "get_skill_gaps", "list_expiring_certifications", "get_workforce_summary");
 
     /** All assistant tools. Write tools are drafts only — the server never executes them. */
     private static final List<Map<String, Object>> FUNCTION_DECLARATIONS = List.of(
@@ -158,7 +158,15 @@ public class GeminiHttpClient implements GeminiClient {
                             + " first. Use when asked whose certifications expire or need renewal.",
                     "parameters", Map.of("type", "object",
                             "properties", Map.of("withinDays", Map.of("type", "integer",
-                                    "description", "look-ahead window in days; default 90")))));
+                                    "description", "look-ahead window in days; default "
+                                            + DashboardService.CERT_EXPIRY_HORIZON_DAYS)))),
+            Map.of("name", "get_workforce_summary",
+                    "description", "Org-health snapshot: headcounts, billable/non-billable/bench split,"
+                            + " onshore/offshore, utilization %, bench-aging buckets, exits in the last"
+                            + " 12 months, the six-month staffing trend, and the 30/60/90-day utilization"
+                            + " forecast with the events driving it. Use for overall health, utilization,"
+                            + " or trend questions.",
+                    "parameters", Map.of("type", "object", "properties", Map.of())));
 
     @Override
     public AssistantReply replyWithTools(String workforceContext, List<Turn> history,

@@ -70,9 +70,11 @@ public class DashboardService {
 
     /**
      * Certifications expiring within {@code withinDays} of today, soonest first.
-     * Upcoming only — already-expired certs are excluded. Shared by the dashboard
-     * radar (fixed {@link #CERT_EXPIRY_HORIZON_DAYS}) and the assistant tool
-     * (caller-chosen window), so the filter exists exactly once.
+     * Upcoming only — already-expired certs are excluded. Both endpoints inclusive: a
+     * cert expiring today or exactly {@code withinDays} days out is included; certs
+     * with no expiry date are skipped. Shared by the dashboard radar (fixed
+     * {@link #CERT_EXPIRY_HORIZON_DAYS}) and the assistant tool (caller-chosen
+     * window), so the filter exists exactly once.
      */
     public List<DashboardSummaryResponse.ExpiringCert> expiringCerts(int withinDays) {
         LocalDate today = LocalDate.now();

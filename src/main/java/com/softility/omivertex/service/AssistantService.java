@@ -259,6 +259,7 @@ public class AssistantService {
             case "get_skill_gaps" -> contextBuilder.skillGaps();
             case "list_expiring_certifications" -> contextBuilder.expiringCertifications(
                     intOrDefault(args.get("withinDays"), DashboardService.CERT_EXPIRY_HORIZON_DAYS));
+            case "get_workforce_summary" -> contextBuilder.workforceSummary();
             default -> "Unknown tool: " + name;
         };
     }
