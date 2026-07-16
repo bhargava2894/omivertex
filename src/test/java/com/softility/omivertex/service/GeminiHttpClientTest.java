@@ -14,6 +14,7 @@ class GeminiHttpClientTest {
     @Test
     void withoutApiKey_failsClosedWithClearMessage() {
         GeminiHttpClient client = new GeminiHttpClient("", "gemini-2.5-flash",
+                "https://generativelanguage.googleapis.com",
                 java.time.Duration.ofSeconds(5), java.time.Duration.ofSeconds(30));
         assertThatThrownBy(() -> client.replyWithTools("context", List.of(), "who is on the bench?", null))
                 .isInstanceOf(BadRequestException.class)

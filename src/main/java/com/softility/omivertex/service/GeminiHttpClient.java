@@ -30,7 +30,9 @@ public class GeminiHttpClient implements GeminiClient {
     private static final Logger log = LoggerFactory.getLogger(GeminiHttpClient.class);
     // v1beta, deliberately: the stable v1 surface rejects systemInstruction
     // ("Unknown name") — verified against the live API 2026-07-11.
-    private static final String ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent";
+    private static final String GENERATE_PATH = "/v1beta/models/%s:generateContent";
+
+    private final String endpoint;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -41,10 +43,12 @@ public class GeminiHttpClient implements GeminiClient {
     public GeminiHttpClient(
             @Value("${omivertex.assistant.gemini.api-key:}") String apiKey,
             @Value("${omivertex.assistant.gemini.model:gemini-3.1-flash-lite}") String model,
+            @Value("${omivertex.assistant.gemini.base-url:https://generativelanguage.googleapis.com}") String baseUrl,
             @Value("${omivertex.assistant.gemini.connect-timeout:5s}") Duration connectTimeout,
             @Value("${omivertex.assistant.gemini.read-timeout:30s}") Duration readTimeout) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = model;
+        this.endpoint = baseUrl + GENERATE_PATH; // overridable for tests; default is byte-identical to before
         // Bounded I/O: a hung upstream call must never hold an ai-* thread forever.
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout((int) connectTimeout.toMillis());
@@ -232,7 +236,7 @@ public class GeminiHttpClient implements GeminiClient {
     private Map<String, Object> callApi(Map<String, Object> body) {
         try {
             return rest.post()
-                    .uri(ENDPOINT.formatted(model))
+                    .uri(endpoint.formatted(model))
                     .header("x-goog-api-key", apiKey)
                     .header("Content-Type", "application/json")
                     .body(body)
@@ -310,7 +314,7 @@ public class GeminiHttpClient implements GeminiClient {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> response = rest.post()
-                    .uri(ENDPOINT.formatted(model))
+                    .uri(endpoint.formatted(model))
                     .header("x-goog-api-key", apiKey)
                     .header("Content-Type", "application/json")
                     .body(body)
