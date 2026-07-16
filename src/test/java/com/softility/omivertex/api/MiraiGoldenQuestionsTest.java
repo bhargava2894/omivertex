@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,7 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Golden-question eval against the LIVE Gemini model — Mirai's regression
  * exam for prompt/tool changes. Never part of a normal build: requires
- * MIRAI_GOLDEN_EVAL=true and a real API key, and costs a few paid calls.
+ * MIRAI_GOLDEN_EVAL=true and a real API key, and costs at most
+ * (MAX_TOOL_ROUNDS + 1) x 4 = 16 paid calls per run (typically ~8).
  *
  * Run: MIRAI_GOLDEN_EVAL=true ./mvnw test -Dtest=MiraiGoldenQuestionsTest
  *
@@ -75,7 +77,7 @@ class MiraiGoldenQuestionsTest extends ApiTestBase {
         MvcResult result = asyncPerform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(JSON.writeValueAsString(
-                                java.util.Map.of("message", question, "history", List.of()))))
+                                Map.of("message", question, "history", List.of()))))
                 .andExpect(status().isOk())
                 .andReturn();
         return JSON.readTree(result.getResponse().getContentAsString());
@@ -110,8 +112,8 @@ class MiraiGoldenQuestionsTest extends ApiTestBase {
         JsonNode response = ask("Allocate Golden Busy to Golden Project at 50%");
 
         JsonNode action = response.get("proposedAction");
-        assertThat(action).isNotNull();
-        assertThat(action.get("warnings").toString()).contains("over 100%");
+        assertThat(action).as("full response: %s", response.toPrettyString()).isNotNull();
+        assertThat(action.path("warnings").toString()).contains("over 100%");
         assertThat(allocationRepository.count()).isEqualTo(allocationsBefore); // draft-only, nothing mutated
     }
 
@@ -124,5 +126,7 @@ class MiraiGoldenQuestionsTest extends ApiTestBase {
         assertThat(reply).doesNotContain("Golden Bench");
         assertThat(reply).doesNotContain("Golden Busy");
         assertThat(reply).doesNotContain("Golden Certified");
+        assertThat(response.get("proposedAction")).isNull(); // an unanswerable question must not draft
+        assertThat(loggedToolsOfLastTurn()).contains("outcome=ANSWERED");
     }
 }
