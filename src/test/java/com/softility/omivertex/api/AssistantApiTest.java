@@ -442,4 +442,23 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.reply", containsString("Active associates: 1")))
                 .andExpect(jsonPath("$.reply", containsString("Utilization forecast")));
     }
+
+    @Test
+    void chat_dispatchesBenchAgingTool() throws Exception {
+        associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE); // benched
+
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(ex.execute("list_bench_aging", Map.of()), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"who has been on the bench longest?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Rahul Verma")))
+                .andExpect(jsonPath("$.reply", containsString("days on bench")));
+    }
 }

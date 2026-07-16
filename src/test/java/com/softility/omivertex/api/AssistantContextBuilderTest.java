@@ -336,10 +336,11 @@ class AssistantContextBuilderTest extends ApiTestBase {
         assertThat(result).contains("Active associates: 2");
         assertThat(result).contains("bench 1");
         assertThat(result).contains("utilization: 50%");
-        assertThat(result).contains("Bench aging:");
+        assertThat(result).contains("Bench aging: 1 ≤30d");
         assertThat(result).contains("Staffing trend");
         assertThat(result).contains("Utilization forecast");
         assertThat(result).contains("Today: 50%");
+        assertThat(result).contains("(-50 vs today)"); // the +30d point dropped to 0%
         // the scheduled roll-off surfaces as a named forecast driver
         assertThat(result).contains("ROLL_OFF Priya Sharma (Storefront Revamp)");
     }
@@ -358,5 +359,52 @@ class AssistantContextBuilderTest extends ApiTestBase {
     void standingContext_advertisesWorkforceSummaryTool() {
         seedWorkforce();
         assertThat(builder.build()).contains("get_workforce_summary");
+    }
+
+    @Test
+    void benchAging_bucketHeadline_longestBenchedFirst() {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var longBench = associate("Anil Kumar", "anil@softility.com", WorkMode.OFFSHORE);
+        var endedLongAgo = allocation(longBench, proj, true);
+        endedLongAgo.setStartDate(LocalDate.now().minusDays(200));
+        endedLongAgo.setEndDate(LocalDate.now().minusDays(74)); // 74 days on bench
+        allocationRepository.save(endedLongAgo);
+        var freshBench = associate("Meera Iyer", "meera@softility.com", WorkMode.ONSHORE);
+        var endedRecently = allocation(freshBench, proj, true);
+        endedRecently.setStartDate(LocalDate.now().minusDays(60));
+        endedRecently.setEndDate(LocalDate.now().minusDays(5)); // 5 days on bench
+        allocationRepository.save(endedRecently);
+
+        String result = builder.benchAging();
+
+        assertThat(result).contains("1 ≤30d").contains("0 31–60d").contains("1 >60d");
+        assertThat(result).contains("74 days on bench");
+        assertThat(result.indexOf("Anil Kumar")).isLessThan(result.indexOf("Meera Iyer"));
+    }
+
+    @Test
+    void benchAging_emptyWhenEveryoneIsAllocated() {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var busy = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        allocation(busy, proj, true);
+
+        assertThat(builder.benchAging()).contains("No one is on the bench");
+    }
+
+    @Test
+    void benchAging_capsRowsWithOverflowLine() {
+        for (int i = 1; i <= 27; i++) {
+            associate("Bench Person " + i, "bench" + i + "@softility.com", WorkMode.OFFSHORE);
+        }
+        // 27 benched people, MAX_TOOL_ROWS = 25 -> shared overflow line
+        assertThat(builder.benchAging()).contains("…and 2 more");
+    }
+
+    @Test
+    void standingContext_advertisesBenchAgingTool() {
+        seedWorkforce();
+        assertThat(builder.build()).contains("list_bench_aging");
     }
 }

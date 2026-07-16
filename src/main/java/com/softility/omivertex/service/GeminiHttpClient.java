@@ -64,7 +64,8 @@ public class GeminiHttpClient implements GeminiClient {
     static final Set<String> READ_TOOLS = Set.of(READ_TOOL_MATCHES,
             "search_associates", "get_associate_detail", "get_project_detail",
             "list_rolloffs", "list_open_positions", "list_clients", "list_projects",
-            "get_skill_gaps", "list_expiring_certifications", "get_workforce_summary");
+            "get_skill_gaps", "list_expiring_certifications", "get_workforce_summary",
+            "list_bench_aging");
 
     /** All assistant tools. Write tools are drafts only — the server never executes them. */
     private static final List<Map<String, Object>> FUNCTION_DECLARATIONS = List.of(
@@ -166,6 +167,11 @@ public class GeminiHttpClient implements GeminiClient {
                             + " 12 months, the six-month staffing trend, and the 30/60/90-day utilization"
                             + " forecast with the events driving it. Use for overall health, utilization,"
                             + " or trend questions.",
+                    "parameters", Map.of("type", "object", "properties", Map.of())),
+            Map.of("name", "list_bench_aging",
+                    "description", "Everyone on the bench sorted longest-benched first with days on"
+                            + " bench, plus aging bucket counts. Use when asked who has been on the"
+                            + " bench longest or how the bench is aging.",
                     "parameters", Map.of("type", "object", "properties", Map.of())));
 
     @Override

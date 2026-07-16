@@ -88,7 +88,7 @@ public class AssistantContextBuilder {
                 + "short bullet lists where helpful. Use your lookup tools (search_associates, "
                 + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches, "
                 + "list_clients, list_projects, get_skill_gaps, list_expiring_certifications, "
-                + "get_workforce_summary) "
+                + "get_workforce_summary, list_bench_aging) "
                 + "to fetch specifics before answering. If the tools cannot answer the question, "
                 + "say so — never invent people, projects, or numbers.\n\n"
                 + "## Key numbers (today: " + LocalDate.now() + ")\n"
@@ -400,6 +400,28 @@ public class AssistantContextBuilder {
             }
             sb.append("\n");
         }
+        return sb.toString();
+    }
+
+    /** Read tool: bench bucket counts + the bench roster, longest-benched first, capped. */
+    public String benchAging() {
+        DashboardSummaryResponse s = dashboardService.summary();
+        List<DashboardSummaryResponse.BenchAssociate> bench = s.benchAssociates();
+        if (bench.isEmpty()) {
+            return "No one is on the bench.";
+        }
+        DashboardSummaryResponse.BenchAging aging = s.benchAging();
+        StringBuilder sb = new StringBuilder();
+        sb.append("Bench: ").append(bench.size()).append(" people — ")
+          .append(aging.days0to30()).append(" ≤30d · ")
+          .append(aging.days31to60()).append(" 31–60d · ")
+          .append(aging.days60plus()).append(" >60d\n");
+        for (DashboardSummaryResponse.BenchAssociate b : bench.stream().limit(MAX_TOOL_ROWS).toList()) {
+            sb.append("- ").append(b.name()).append(" · ")
+              .append(b.designation() == null ? "no designation" : b.designation())
+              .append(" · ").append(b.benchDays()).append(" days on bench\n");
+        }
+        appendOverflow(sb, bench.size());
         return sb.toString();
     }
 
