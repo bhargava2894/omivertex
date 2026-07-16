@@ -206,7 +206,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/data/export` | GET | `?format=xlsx|csv|pdf|docx` |
 | `/auth` | POST `/login`, POST `/google`, POST `/logout`, GET `/me` | — |
 | `/admin/access-requests` | GET, POST `/{id}/approve`, POST `/{id}/reject` (ADMIN) | — |
-| `/assistant/chat` | POST (natural-language Q&A via Gemini; ADMIN+VIEWER; standing context is **aggregate counts only** — specifics are fetched per-question through server-side read tools (`search_associates`, `get_associate_detail`, `get_project_detail`, `list_rolloffs`, `list_open_positions`, `get_position_matches`, `list_clients`, `list_projects`, `get_skill_gaps`, `list_expiring_certifications`, `get_workforce_summary`, `list_bench_aging`; ≤25 rows each, ≤3 tool rounds), so only the queried slice of personal data reaches Google; may return `proposedAction {type: CREATE_ALLOCATION\|FILL_POSITION, resolved ids/names, percent, billable, dates, summary, warnings[]}` — the endpoint itself never mutates; the UI confirms via `POST /allocations` or `POST /positions/{id}/fill` under the user's own session) | — |
+| `/assistant/chat` | POST (natural-language Q&A via Gemini; ADMIN+VIEWER; standing context is **aggregate counts only** — specifics are fetched per-question through server-side read tools (`search_associates`, `get_associate_detail`, `get_project_detail`, `list_rolloffs`, `list_open_positions`, `get_position_matches`, `list_clients`, `list_projects`, `get_skill_gaps`, `list_expiring_certifications`, `get_workforce_summary`, `list_bench_aging`, `get_position_match_summary`; ≤25 rows each, ≤3 tool rounds + 1 wrap-up), so only the queried slice of personal data reaches Google; may return `proposedAction {type: CREATE_ALLOCATION\|FILL_POSITION, resolved ids/names, percent, billable, dates, summary, warnings[]}` — the endpoint itself never mutates; the UI confirms via `POST /allocations` or `POST /positions/{id}/fill` under the user's own session) | — |
 | `/me/profile` | GET (own profile; ASSOCIATE) | — |
 | `/me/profile-changes` | GET (own change requests list; ASSOCIATE) | — |
 | `/me/profile-changes/skills` | POST (submit proposed skills; ASSOCIATE) | — |
@@ -239,7 +239,10 @@ The Gemini endpoint base is configurable
 (`omivertex.assistant.gemini.base-url`, default
 `https://generativelanguage.googleapis.com`) so tests can stub the upstream;
 `GeminiToolLoopCapTest` pins that one turn performs at most
-`MAX_TOOL_ROUNDS + 1` upstream calls. A live golden-question eval
+`MAX_TOOL_ROUNDS + 2` upstream calls: when the round cap is hit on a read
+tool, the client sends the model a budget-exhausted tool result and takes
+exactly one wrap-up call, so the turn ends in prose from the data already
+gathered instead of leaking the read tool as a `proposedAction`. A live golden-question eval
 (`MiraiGoldenQuestionsTest`) runs only with `MIRAI_GOLDEN_EVAL=true` plus a
 real API key: `MIRAI_GOLDEN_EVAL=true ./mvnw test -Dtest=MiraiGoldenQuestionsTest`.
 
