@@ -374,10 +374,7 @@ public class AssistantContextBuilder {
           .append(" · open positions: ").append(s.openPositions())
           .append(" · utilization: ").append(s.utilizationPercent()).append("%")
           .append(" · exits last 12 months: ").append(s.exitsLast12Months()).append("\n");
-        DashboardSummaryResponse.BenchAging aging = s.benchAging();
-        sb.append("Bench aging: ").append(aging.days0to30()).append(" ≤30d · ")
-          .append(aging.days31to60()).append(" 31–60d · ")
-          .append(aging.days60plus()).append(" >60d\n");
+        sb.append("Bench aging: ").append(benchBuckets(s.benchAging())).append("\n");
         sb.append("Staffing trend (allocated/billable per month): ").append(s.staffingTrend().stream()
                 .map(t -> t.month() + " " + t.total() + "/" + t.billable())
                 .collect(Collectors.joining(", "))).append("\n");
@@ -410,12 +407,9 @@ public class AssistantContextBuilder {
         if (bench.isEmpty()) {
             return "No one is on the bench.";
         }
-        DashboardSummaryResponse.BenchAging aging = s.benchAging();
         StringBuilder sb = new StringBuilder();
         sb.append("Bench: ").append(bench.size()).append(" people — ")
-          .append(aging.days0to30()).append(" ≤30d · ")
-          .append(aging.days31to60()).append(" 31–60d · ")
-          .append(aging.days60plus()).append(" >60d\n");
+          .append(benchBuckets(s.benchAging())).append("\n");
         for (DashboardSummaryResponse.BenchAssociate b : bench.stream().limit(MAX_TOOL_ROWS).toList()) {
             sb.append("- ").append(b.name()).append(" · ")
               .append(b.designation() == null ? "no designation" : b.designation())
@@ -426,6 +420,12 @@ public class AssistantContextBuilder {
     }
 
     // ---- shared row fragments ----
+
+    /** The one place the bench-aging bucket fragment is worded, for every tool that shows it. */
+    private static String benchBuckets(DashboardSummaryResponse.BenchAging aging) {
+        return aging.days0to30() + " ≤30d · " + aging.days31to60() + " 31–60d · "
+                + aging.days60plus() + " >60d";
+    }
 
     /** The one place the row-cap overflow line is worded, for every capped tool. */
     private void appendOverflow(StringBuilder sb, int totalMatches) {
