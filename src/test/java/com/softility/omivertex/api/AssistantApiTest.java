@@ -1,11 +1,16 @@
 package com.softility.omivertex.api;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.softility.omivertex.domain.WorkMode;
+import com.softility.omivertex.service.AssistantInteractionLog;
 import com.softility.omivertex.service.GeminiClient;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
@@ -460,5 +465,99 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reply", containsString("Rahul Verma")))
                 .andExpect(jsonPath("$.reply", containsString("days on bench")));
+    }
+
+    private ListAppender<ILoggingEvent> attachInteractionAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger(AssistantInteractionLog.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        return appender;
+    }
+
+    private void detachInteractionAppender(ListAppender<ILoggingEvent> appender) {
+        ((Logger) LoggerFactory.getLogger(AssistantInteractionLog.class)).detachAppender(appender);
+    }
+
+    @Test
+    void chat_logsAnsweredTurnWithUserToolsAndQuestion_neverTheReply() throws Exception {
+        associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE); // benched
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    ex.execute("search_associates", Map.of("benchOnly", true));
+                    return new GeminiClient.AssistantReply("Priya Sharma is on the bench.", null);
+                });
+
+        ListAppender<ILoggingEvent> appender = attachInteractionAppender();
+        try {
+            asyncPerform(post("/api/v1/assistant/chat")
+                            .with(SecurityMockMvcRequestPostProcessors.user("viewer@softility.com").roles("VIEWER"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"message":"who is on the bench?","history":[]}"""))
+                    .andExpect(status().isOk());
+
+            assertThat(appender.list).hasSize(1);
+            String line = appender.list.get(0).getFormattedMessage();
+            assertThat(line).contains("MIRAI user=viewer@softility.com");
+            assertThat(line).contains("outcome=ANSWERED");
+            assertThat(line).contains("tools=[search_associates]");
+            assertThat(line).contains("question=\"who is on the bench?\"");
+            assertThat(line).contains("latencyMs=");
+            // privacy pin: the reply text is never logged
+            assertThat(line).doesNotContain("Priya Sharma is on the bench.");
+        } finally {
+            detachInteractionAppender(appender);
+        }
+    }
+
+    @Test
+    void chat_logsDraftedWhenAProposedActionIsReturned() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenReturn(new GeminiClient.AssistantReply("Here you go.",
+                        new GeminiClient.ActionCall("propose_allocation",
+                                Map.of("associateName", "Priya Sharma", "projectName", "Storefront Revamp"))));
+
+        ListAppender<ILoggingEvent> appender = attachInteractionAppender();
+        try {
+            asyncPerform(post("/api/v1/assistant/chat")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"message":"allocate priya to storefront","history":[]}"""))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.proposedAction.type").value("CREATE_ALLOCATION"));
+
+            assertThat(appender.list).hasSize(1);
+            assertThat(appender.list.get(0).getFormattedMessage()).contains("outcome=DRAFTED");
+        } finally {
+            detachInteractionAppender(appender);
+        }
+    }
+
+    @Test
+    void chat_logsErrorWhenTheTurnThrows_andTheErrorStillReachesTheClient() throws Exception {
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenThrow(new com.softility.omivertex.web.error.BadRequestException(
+                        "The AI assistant is unavailable right now — try again shortly"));
+
+        ListAppender<ILoggingEvent> appender = attachInteractionAppender();
+        try {
+            asyncPerform(post("/api/v1/assistant/chat")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"message":"hello","history":[]}"""))
+                    .andExpect(status().isBadRequest());
+
+            assertThat(appender.list).hasSize(1);
+            String line = appender.list.get(0).getFormattedMessage();
+            assertThat(line).contains("outcome=ERROR");
+            assertThat(line).contains("question=\"hello\"");
+        } finally {
+            detachInteractionAppender(appender);
+        }
     }
 }

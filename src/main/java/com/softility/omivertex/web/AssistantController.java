@@ -2,6 +2,7 @@ package com.softility.omivertex.web;
 
 import com.softility.omivertex.service.AiExecutor;
 import com.softility.omivertex.service.AssistantService;
+import com.softility.omivertex.service.AuditService;
 import com.softility.omivertex.web.dto.AssistantChatRequest;
 import com.softility.omivertex.web.dto.AssistantChatResponse;
 import jakarta.validation.Valid;
@@ -27,6 +28,8 @@ public class AssistantController {
     /** Async on the AI bulkhead: the servlet thread is freed while Gemini responds. */
     @PostMapping("/chat")
     public CompletableFuture<AssistantChatResponse> chat(@Valid @RequestBody AssistantChatRequest request) {
-        return aiExecutor.submit(() -> assistantService.chat(request));
+        // Resolved here, on the servlet thread: the ai-* pool never sees the SecurityContext.
+        String username = AuditService.currentUsername();
+        return aiExecutor.submit(() -> assistantService.chat(request, username));
     }
 }

@@ -29,7 +29,8 @@ public class AuditService {
         repository.save(entry);
     }
 
-    private static String currentUsername() {
+    /** The acting principal, "system" when unauthenticated — shared with the assistant interaction log. */
+    public static String currentUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth == null || !auth.isAuthenticated() ? "system" : auth.getName();
     }

@@ -49,11 +49,13 @@ public class AssistantService {
     private final AllocationRepository allocationRepository;
     private final PositionService positionService;
     private final ObjectMapper objectMapper;
+    private final AssistantInteractionLog interactionLog;
 
     public AssistantService(AssistantContextBuilder contextBuilder, GeminiClient geminiClient,
                             AssociateRepository associateRepository, ProjectRepository projectRepository,
                             OpenPositionRepository positionRepository, AllocationRepository allocationRepository,
-                            PositionService positionService, ObjectMapper objectMapper) {
+                            PositionService positionService, ObjectMapper objectMapper,
+                            AssistantInteractionLog interactionLog) {
         this.contextBuilder = contextBuilder;
         this.geminiClient = geminiClient;
         this.associateRepository = associateRepository;
@@ -62,21 +64,37 @@ public class AssistantService {
         this.allocationRepository = allocationRepository;
         this.positionService = positionService;
         this.objectMapper = objectMapper;
+        this.interactionLog = interactionLog;
     }
 
-    public AssistantChatResponse chat(AssistantChatRequest request) {
-        List<AssistantChatRequest.HistoryTurn> history =
-                request.history() == null ? List.of() : request.history();
-        List<GeminiClient.Turn> turns = history.stream()
-                .skip(Math.max(0, history.size() - MAX_HISTORY_TURNS))
-                .map(t -> new GeminiClient.Turn(t.role(), t.content()))
-                .toList();
-        GeminiClient.AssistantReply reply = geminiClient.replyWithTools(
-                contextBuilder.build(), turns, request.message(), this::executeReadTool);
-        if (reply.action() == null) {
-            return new AssistantChatResponse(reply.text(), null);
+    public AssistantChatResponse chat(AssistantChatRequest request, String username) {
+        long start = System.currentTimeMillis();
+        List<String> toolsCalled = new ArrayList<>();
+        try {
+            List<AssistantChatRequest.HistoryTurn> history =
+                    request.history() == null ? List.of() : request.history();
+            List<GeminiClient.Turn> turns = history.stream()
+                    .skip(Math.max(0, history.size() - MAX_HISTORY_TURNS))
+                    .map(t -> new GeminiClient.Turn(t.role(), t.content()))
+                    .toList();
+            GeminiClient.AssistantReply reply = geminiClient.replyWithTools(
+                    contextBuilder.build(), turns, request.message(), (name, args) -> {
+                        toolsCalled.add(name);
+                        return executeReadTool(name, args);
+                    });
+            AssistantChatResponse response = reply.action() == null
+                    ? new AssistantChatResponse(reply.text(), null)
+                    : draft(reply);
+            interactionLog.record(username,
+                    response.proposedAction() == null ? AssistantInteractionLog.Outcome.ANSWERED
+                            : AssistantInteractionLog.Outcome.DRAFTED,
+                    toolsCalled, System.currentTimeMillis() - start, request.message());
+            return response;
+        } catch (RuntimeException e) {
+            interactionLog.record(username, AssistantInteractionLog.Outcome.ERROR,
+                    toolsCalled, System.currentTimeMillis() - start, request.message());
+            throw e;
         }
-        return draft(reply);
     }
 
     // ---- write-tool drafts (resolution + pre-validation, never execution) ----
