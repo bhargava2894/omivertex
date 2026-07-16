@@ -24,11 +24,18 @@
   --color-muted: #f1f5f9;
   --color-border: #e2e8f0;
   --color-sidebar: #0f172a;
-  --color-sidebar-hover: rgba(59, 130, 246, 0.15);
   --color-sidebar-hover-fg: #dbe6f7;
   --color-sidebar-hover-icon: #60a5fa;
   --color-sidebar-fg: #94a3b8;
   --color-sidebar-active-fg: #ffffff;
+  /* per-route nav hover accents — the sidebar is dark navy in BOTH themes, so one
+     set of light (400-level) values passes ≥3:1 on the glyph without a dark override */
+  --nav-blue: #60a5fa;
+  --nav-green: #34d399;
+  --nav-amber: #fbbf24;
+  --nav-violet: #a78bfa;
+  --nav-cyan: #22d3ee;
+  --nav-rose: #fb7185;
   --color-scrim: rgba(15, 23, 42, 0.5);
   --badge-purple: #7c3aed;
   --radius-sm: 8px;
@@ -74,7 +81,6 @@
   --color-muted: #1a2438;
   --color-border: #25314a;
   --color-sidebar: #0a0f1d;
-  --color-sidebar-hover: rgba(96, 165, 250, 0.13);
   --color-sidebar-hover-icon: #7ab1fb;
   --color-sidebar-fg: #8ea0b8;
   --color-scrim: rgba(2, 6, 16, 0.68);
@@ -208,11 +214,21 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   transition: background 0.18s var(--ease), color 0.18s var(--ease), transform 0.18s var(--ease);
 }
 
+/* Each route carries a semantic accent (data-accent, set in App.jsx ROUTES); the
+   hover wash is derived from the same accent so icon and tint can never disagree. */
+.nav-item { --nav-accent: var(--color-sidebar-hover-icon); }
+.nav-item[data-accent='blue'] { --nav-accent: var(--nav-blue); }
+.nav-item[data-accent='green'] { --nav-accent: var(--nav-green); }
+.nav-item[data-accent='amber'] { --nav-accent: var(--nav-amber); }
+.nav-item[data-accent='violet'] { --nav-accent: var(--nav-violet); }
+.nav-item[data-accent='cyan'] { --nav-accent: var(--nav-cyan); }
+.nav-item[data-accent='rose'] { --nav-accent: var(--nav-rose); }
+
 .nav-item:hover:not(.active) {
-  background: var(--color-sidebar-hover);
+  background: color-mix(in srgb, var(--nav-accent) 13%, transparent);
   color: var(--color-sidebar-hover-fg);
 }
-.nav-item:hover:not(.active) svg { color: var(--color-sidebar-hover-icon); }
+.nav-item:hover:not(.active) svg { color: var(--nav-accent); }
 .nav-item:active { transform: scale(0.98); }
 
 .nav-item.active {

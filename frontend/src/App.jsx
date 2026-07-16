@@ -23,6 +23,7 @@ import { toastSlide, pageTransition, useMotionVariants } from './motion.js';
 const ROUTES = [
   {
     path: 'dashboard',
+    accent: 'blue',
     label: 'Dashboard',
     icon: 'dashboard',
     component: Dashboard,
@@ -30,6 +31,7 @@ const ROUTES = [
   },
   {
     path: 'associates',
+    accent: 'green',
     label: 'Associates',
     icon: 'users',
     component: Associates,
@@ -37,6 +39,7 @@ const ROUTES = [
   },
   {
     path: 'clients',
+    accent: 'amber',
     label: 'Clients',
     icon: 'building',
     component: Clients,
@@ -44,6 +47,7 @@ const ROUTES = [
   },
   {
     path: 'projects',
+    accent: 'violet',
     label: 'Projects',
     icon: 'briefcase',
     component: Projects,
@@ -51,6 +55,7 @@ const ROUTES = [
   },
   {
     path: 'staffing',
+    accent: 'cyan',
     label: 'Staffing & Allocations',
     icon: 'users',
     component: Staffing,
@@ -58,6 +63,7 @@ const ROUTES = [
   },
   {
     path: 'demand',
+    accent: 'rose',
     label: 'Demand',
     icon: 'target',
     component: Positions,
@@ -65,6 +71,7 @@ const ROUTES = [
   },
   {
     path: 'skill-reports',
+    accent: 'green',
     label: 'Skill Reports',
     icon: 'activity',
     component: SkillReports,
@@ -72,6 +79,7 @@ const ROUTES = [
   },
   {
     path: 'taxonomy',
+    accent: 'amber',
     label: 'Skill Taxonomy',
     icon: 'sheet',
     component: Taxonomy,
@@ -80,6 +88,7 @@ const ROUTES = [
   },
   {
     path: 'access-requests',
+    accent: 'cyan',
     label: 'Access Requests',
     icon: 'shield',
     component: AccessRequests,
@@ -88,6 +97,7 @@ const ROUTES = [
   },
   {
     path: 'audit',
+    accent: 'violet',
     label: 'Audit Log',
     icon: 'list',
     component: AuditLog,
@@ -96,6 +106,7 @@ const ROUTES = [
   },
   {
     path: 'my-profile',
+    accent: 'green',
     label: 'My Profile',
     icon: 'users',
     component: MyProfile,
@@ -104,6 +115,7 @@ const ROUTES = [
   },
   {
     path: 'profile-changes',
+    accent: 'rose',
     label: 'Profile Changes',
     icon: 'inbox',
     component: ProfileChanges,
@@ -112,6 +124,7 @@ const ROUTES = [
   },
   {
     path: 'settings',
+    accent: 'blue',
     label: 'Settings',
     icon: 'settings',
     component: Settings,
@@ -260,6 +273,7 @@ export default function App() {
                   <button
                     key={r.path}
                     className={`nav-item ${r.path === active.path ? 'active' : ''}`}
+                    data-accent={r.accent}
                     aria-current={r.path === active.path ? 'page' : undefined}
                     onClick={() => (window.location.hash = `/${r.path}`)}
                   >
