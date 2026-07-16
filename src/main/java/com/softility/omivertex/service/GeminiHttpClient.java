@@ -64,6 +64,14 @@ public class GeminiHttpClient implements GeminiClient {
 
     /** Max read-tool round-trips per turn before we force a final answer. */
     static final int MAX_TOOL_ROUNDS = 3;
+    /** Fed to the model as the last tool result once the round cap is hit, so it wraps up. */
+    static final String TOOL_BUDGET_EXHAUSTED_RESULT =
+            "Tool budget for this turn is exhausted. Do not request more tools — answer the user"
+                    + " now from the information already gathered, and say what you could not check.";
+    /** Returned when even the wrap-up call produces no prose. */
+    static final String TOOL_BUDGET_FALLBACK_TEXT =
+            "That question needs more lookups than I can run in one turn — try narrowing it,"
+                    + " for example to one position, person, or project.";
     static final String READ_TOOL_MATCHES = "get_position_matches";
 
     /** Tools executed server-side and fed back to the model (write tools return as drafts). */
@@ -200,14 +208,28 @@ public class GeminiHttpClient implements GeminiClient {
             @SuppressWarnings("unchecked")
             Map<String, Object> args = functionCall.get("args") instanceof Map<?, ?> m
                     ? (Map<String, Object>) m : Map.of();
-            if (READ_TOOLS.contains(name) && tools != null && round < MAX_TOOL_ROUNDS) {
-                String result = tools.execute(name, args);
+            if (READ_TOOLS.contains(name) && tools != null) {
                 contents.add(Map.of("role", "model",
                         "parts", firstCandidateParts(response)));
+                if (round < MAX_TOOL_ROUNDS) {
+                    String result = tools.execute(name, args);
+                    contents.add(Map.of("role", "user",
+                            "parts", List.of(Map.of("functionResponse",
+                                    Map.of("name", name, "response", Map.of("result", result))))));
+                    continue;
+                }
+                // Cap hit on a READ tool: leaking it as an ActionCall would earn the user
+                // the misleading write-tool fallback. Instead tell the model the budget is
+                // spent and take exactly one wrap-up call for a prose answer.
                 contents.add(Map.of("role", "user",
                         "parts", List.of(Map.of("functionResponse",
-                                Map.of("name", name, "response", Map.of("result", result))))));
-                continue;
+                                Map.of("name", name, "response",
+                                        Map.of("result", TOOL_BUDGET_EXHAUSTED_RESULT))))));
+                Map<String, Object> wrapUp = callApi(Map.of(
+                        "contents", contents,
+                        "tools", List.of(Map.of("functionDeclarations", FUNCTION_DECLARATIONS))));
+                String text = textOrEmpty(wrapUp);
+                return new AssistantReply(text.isBlank() ? TOOL_BUDGET_FALLBACK_TEXT : text, null);
             }
             return new AssistantReply(textOrEmpty(response), new ActionCall(name, args));
         }
