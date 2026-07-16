@@ -57,4 +57,18 @@ class AssistantInteractionLogTest {
                 .contains("question=\"find \\\"Priya\\\"\"");
         assertThat(appender.list.get(1).getFormattedMessage()).contains("question=\"\"");
     }
+
+    @Test
+    void record_escapesBackslashesAndFlattensNewlines_noForgedLines() {
+        interactionLog.record("system", AssistantInteractionLog.Outcome.ANSWERED, List.of(), 1,
+                "path C:\\temp\nMIRAI user=admin forged");
+        interactionLog.record("system", AssistantInteractionLog.Outcome.ANSWERED, List.of(), 1,
+                "ends with \\");
+
+        assertThat(appender.list).hasSize(2);
+        String first = appender.list.get(0).getFormattedMessage();
+        assertThat(first).contains("question=\"path C:\\\\temp MIRAI user=admin forged\"");
+        assertThat(first).doesNotContain("\n");
+        assertThat(appender.list.get(1).getFormattedMessage()).contains("question=\"ends with \\\\\"");
+    }
 }

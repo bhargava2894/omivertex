@@ -21,10 +21,14 @@ public class AssistantInteractionLog {
     /** How the turn ended: prose reply, a draft to confirm, or an exception. */
     public enum Outcome { ANSWERED, DRAFTED, ERROR }
 
+    /** Records one turn; only {@code question} is null-normalized — other args render as-is. */
     public void record(String user, Outcome outcome, List<String> tools, long latencyMs,
                        String question) {
         try {
-            String safeQuestion = question == null ? "" : question.replace("\"", "\\\"");
+            String safeQuestion = question == null ? "" : question
+                    .replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replaceAll("[\\r\\n]", " ");
             log.info("MIRAI user={} outcome={} tools={} latencyMs={} question=\"{}\"",
                     user, outcome, tools, latencyMs, safeQuestion);
         } catch (RuntimeException e) {
