@@ -9,7 +9,7 @@ const SUGGESTIONS = [
   'Which open positions have no bench match?',
   'Who rolls off a project in the next 30 days?',
   'Summarize our biggest skill gaps.',
-  'Who matches our open positions?',
+  'Whose certifications expire soon?',
 ];
 
 /** Renders reply text: blank-line paragraphs, "- " bullets, **bold** — no innerHTML. */
