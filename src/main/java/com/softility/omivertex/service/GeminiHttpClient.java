@@ -64,7 +64,7 @@ public class GeminiHttpClient implements GeminiClient {
     static final Set<String> READ_TOOLS = Set.of(READ_TOOL_MATCHES,
             "search_associates", "get_associate_detail", "get_project_detail",
             "list_rolloffs", "list_open_positions", "list_clients", "list_projects",
-            "get_skill_gaps");
+            "get_skill_gaps", "list_expiring_certifications");
 
     /** All assistant tools. Write tools are drafts only — the server never executes them. */
     private static final List<Map<String, Object>> FUNCTION_DECLARATIONS = List.of(
@@ -152,7 +152,13 @@ public class GeminiHttpClient implements GeminiClient {
                             + " how many seats demand it, bench supply, total holders, and the gap"
                             + " (positive = hire or train). Use when asked about skill gaps, shortages,"
                             + " or hiring/training needs.",
-                    "parameters", Map.of("type", "object", "properties", Map.of())));
+                    "parameters", Map.of("type", "object", "properties", Map.of())),
+            Map.of("name", "list_expiring_certifications",
+                    "description", "Certifications expiring soon across the whole workforce, soonest"
+                            + " first. Use when asked whose certifications expire or need renewal.",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of("withinDays", Map.of("type", "integer",
+                                    "description", "look-ahead window in days; default 90")))));
 
     @Override
     public AssistantReply replyWithTools(String workforceContext, List<Turn> history,

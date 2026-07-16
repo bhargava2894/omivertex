@@ -277,4 +277,50 @@ class AssistantContextBuilderTest extends ApiTestBase {
         seedWorkforce();
         assertThat(builder.build()).contains("get_skill_gaps");
     }
+
+    @Test
+    void expiringCertifications_windowIsInclusive_excludesBeyondAndExpired() {
+        var holder = associate("Ravi Kumar", "ravi@softility.com", WorkMode.OFFSHORE);
+        certification(holder, "AWS Solutions Architect", LocalDate.now().plusDays(60)); // boundary day
+        certification(holder, "Azure Administrator", LocalDate.now().plusDays(61));     // beyond window
+        certification(holder, "GCP Engineer", LocalDate.now().minusDays(1));            // already expired
+
+        String result = builder.expiringCertifications(60);
+
+        assertThat(result).contains("Ravi Kumar — AWS Solutions Architect");
+        assertThat(result).contains("(in 60 days)");
+        assertThat(result).doesNotContain("Azure Administrator");
+        assertThat(result).doesNotContain("GCP Engineer");
+    }
+
+    @Test
+    void expiringCertifications_emptyStateNamesTheWindow() {
+        assertThat(builder.expiringCertifications(30))
+                .contains("No certifications expire within 30 days");
+    }
+
+    @Test
+    void expiringCertifications_capsRowsWithOverflowLine() {
+        var holder = associate("Ravi Kumar", "ravi@softility.com", WorkMode.OFFSHORE);
+        for (int i = 1; i <= 27; i++) {
+            certification(holder, "Cert " + i, LocalDate.now().plusDays(i));
+        }
+        // 27 upcoming certs, MAX_TOOL_ROWS = 25 -> shared overflow line
+        assertThat(builder.expiringCertifications(90)).contains("…and 2 more");
+    }
+
+    @Test
+    void standingContext_advertisesCertExpiryTool() {
+        seedWorkforce();
+        assertThat(builder.build()).contains("list_expiring_certifications");
+    }
+
+    private void certification(com.softility.omivertex.domain.Associate holder, String name,
+                               LocalDate expiry) {
+        var cert = new com.softility.omivertex.domain.Certification();
+        cert.setAssociate(holder);
+        cert.setName(name);
+        cert.setExpiryDate(expiry);
+        certificationRepository.save(cert);
+    }
 }

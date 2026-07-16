@@ -87,7 +87,7 @@ public class AssistantContextBuilder {
                 + "platform. Answer questions about the workforce concisely and accurately, using "
                 + "short bullet lists where helpful. Use your lookup tools (search_associates, "
                 + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches, "
-                + "list_clients, list_projects, get_skill_gaps) "
+                + "list_clients, list_projects, get_skill_gaps, list_expiring_certifications) "
                 + "to fetch specifics before answering. If the tools cannot answer the question, "
                 + "say so — never invent people, projects, or numbers.\n\n"
                 + "## Key numbers (today: " + LocalDate.now() + ")\n"
@@ -340,6 +340,22 @@ public class AssistantContextBuilder {
                         + " · bench supply " + g.benchSupply() + " · total holders " + g.totalSupply()
                         + " · gap " + g.gap())
                 .collect(Collectors.joining("\n"));
+    }
+
+    /** Read tool: certifications expiring in the window, soonest first, capped. */
+    public String expiringCertifications(int withinDays) {
+        List<DashboardSummaryResponse.ExpiringCert> certs = dashboardService.expiringCerts(withinDays);
+        if (certs.isEmpty()) {
+            return "No certifications expire within " + withinDays + " days.";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (DashboardSummaryResponse.ExpiringCert c : certs.stream().limit(MAX_TOOL_ROWS).toList()) {
+            sb.append("- ").append(c.associateName()).append(" — ").append(c.name())
+              .append(", expires ").append(c.expiryDate())
+              .append(" (in ").append(c.daysLeft()).append(" days)\n");
+        }
+        appendOverflow(sb, certs.size());
+        return sb.toString();
     }
 
     // ---- shared row fragments ----

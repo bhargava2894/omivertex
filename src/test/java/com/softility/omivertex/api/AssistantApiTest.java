@@ -396,4 +396,30 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.reply", containsString("Java (Backend)")))
                 .andExpect(jsonPath("$.reply", containsString("gap 1")));
     }
+
+    @Test
+    void chat_dispatchesExpiringCertificationsTool_defaultsTo90Days() throws Exception {
+        var holder = associate("Ravi Kumar", "ravi@softility.com", WorkMode.OFFSHORE);
+        var cert = new com.softility.omivertex.domain.Certification();
+        cert.setAssociate(holder);
+        cert.setName("AWS Solutions Architect");
+        cert.setExpiryDate(java.time.LocalDate.now().plusDays(80)); // inside 90, outside 30
+        certificationRepository.save(cert);
+
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    String defaulted = ex.execute("list_expiring_certifications", Map.of());
+                    String narrow = ex.execute("list_expiring_certifications", Map.of("withinDays", 30));
+                    return new GeminiClient.AssistantReply(defaulted + "|" + narrow, null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"whose certifications expire soon?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("AWS Solutions Architect")))
+                .andExpect(jsonPath("$.reply", containsString("No certifications expire within 30 days")));
+    }
 }

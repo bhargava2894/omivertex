@@ -68,6 +68,26 @@ public class DashboardService {
         this.skillGapService = skillGapService;
     }
 
+    /**
+     * Certifications expiring within {@code withinDays} of today, soonest first.
+     * Upcoming only — already-expired certs are excluded. Shared by the dashboard
+     * radar (fixed {@link #CERT_EXPIRY_HORIZON_DAYS}) and the assistant tool
+     * (caller-chosen window), so the filter exists exactly once.
+     */
+    public List<DashboardSummaryResponse.ExpiringCert> expiringCerts(int withinDays) {
+        LocalDate today = LocalDate.now();
+        LocalDate limit = today.plusDays(withinDays);
+        return certificationRepository.findAllWithAssociate().stream()
+                .filter(c -> c.getExpiryDate() != null
+                        && !c.getExpiryDate().isBefore(today)
+                        && !c.getExpiryDate().isAfter(limit))
+                .sorted(Comparator.comparing(com.softility.omivertex.domain.Certification::getExpiryDate))
+                .map(c -> new DashboardSummaryResponse.ExpiringCert(c.getId(),
+                        c.getAssociate().getId(), c.getAssociate().getName(),
+                        c.getName(), c.getExpiryDate(), ChronoUnit.DAYS.between(today, c.getExpiryDate())))
+                .toList();
+    }
+
     public DashboardSummaryResponse summary() {
         // Every KPI is about the active workforce: leavers (INACTIVE) must not
         // inflate the bench or dilute utilization, even with lingering allocations.
@@ -155,17 +175,8 @@ public class DashboardService {
                         a.getEndDate(), ChronoUnit.DAYS.between(today, a.getEndDate())))
                 .toList();
 
-        // expiring certifications: certifications expiring within the horizon
-        LocalDate certExpiryLimit = today.plusDays(CERT_EXPIRY_HORIZON_DAYS);
-        List<DashboardSummaryResponse.ExpiringCert> expiringCerts = certificationRepository.findAllWithAssociate().stream()
-                .filter(c -> c.getExpiryDate() != null
-                        && !c.getExpiryDate().isBefore(today)
-                        && !c.getExpiryDate().isAfter(certExpiryLimit))
-                .sorted(Comparator.comparing(com.softility.omivertex.domain.Certification::getExpiryDate))
-                .map(c -> new DashboardSummaryResponse.ExpiringCert(c.getId(),
-                        c.getAssociate().getId(), c.getAssociate().getName(),
-                        c.getName(), c.getExpiryDate(), ChronoUnit.DAYS.between(today, c.getExpiryDate())))
-                .toList();
+        // expiring certifications: shared filter lives in expiringCerts(int)
+        List<DashboardSummaryResponse.ExpiringCert> expiringCerts = expiringCerts(CERT_EXPIRY_HORIZON_DAYS);
 
         // skill gaps: shared math lives in SkillGapService (the full report reuses it)
         List<DashboardSummaryResponse.SkillGap> skillGaps = skillGapService.dashboardPanel();

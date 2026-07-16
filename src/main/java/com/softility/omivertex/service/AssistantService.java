@@ -257,6 +257,8 @@ public class AssistantService {
             case "list_clients" -> contextBuilder.listClients();
             case "list_projects" -> contextBuilder.listProjects(str(args, "clientName"));
             case "get_skill_gaps" -> contextBuilder.skillGaps();
+            case "list_expiring_certifications" -> contextBuilder.expiringCertifications(
+                    intOrDefault(args.get("withinDays"), DashboardService.CERT_EXPIRY_HORIZON_DAYS));
             default -> "Unknown tool: " + name;
         };
     }
