@@ -27,13 +27,15 @@ class GeminiToolLoopCapTest {
     private HttpServer server;
 
     @Test
-    @Timeout(10) // a regression here would otherwise hang the suite
+    @Timeout(value = 10, threadMode = Timeout.ThreadMode.SEPARATE_THREAD) // a regression here would otherwise hang the suite
     void replyWithTools_terminatesAfterMaxToolRounds_evenIfTheModelNeverStops() throws Exception {
         AtomicInteger apiCalls = new AtomicInteger();
         String alwaysAskForATool = """
                 {"candidates":[{"content":{"parts":[{"functionCall":{"name":"search_associates","args":{}}}]}}]}""";
         server = HttpServer.create(new InetSocketAddress(0), 0);
-        server.createContext("/", exchange -> {
+        // Registered at the exact expected path so the test also pins endpoint
+        // construction — a malformed base-url/path join 404s and fails fast.
+        server.createContext("/v1beta/models/test-model:generateContent", exchange -> {
             apiCalls.incrementAndGet();
             byte[] body = alwaysAskForATool.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "application/json");

@@ -37,7 +37,6 @@ public class GeminiHttpClient implements GeminiClient {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String apiKey;
-    private final String model;
     private final RestClient rest;
 
     public GeminiHttpClient(
@@ -47,8 +46,11 @@ public class GeminiHttpClient implements GeminiClient {
             @Value("${omivertex.assistant.gemini.connect-timeout:5s}") Duration connectTimeout,
             @Value("${omivertex.assistant.gemini.read-timeout:30s}") Duration readTimeout) {
         this.apiKey = apiKey == null ? "" : apiKey.trim();
-        this.model = model;
-        this.endpoint = baseUrl + GENERATE_PATH; // overridable for tests; default is byte-identical to before
+        // Base URL is overridable for tests; the default is byte-identical to before.
+        // Format the path constant only, then concatenate — a base URL containing '%'
+        // must never pass through String.formatted.
+        String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.endpoint = base + GENERATE_PATH.formatted(model);
         // Bounded I/O: a hung upstream call must never hold an ai-* thread forever.
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout((int) connectTimeout.toMillis());
@@ -236,7 +238,7 @@ public class GeminiHttpClient implements GeminiClient {
     private Map<String, Object> callApi(Map<String, Object> body) {
         try {
             return rest.post()
-                    .uri(endpoint.formatted(model))
+                    .uri(endpoint)
                     .header("x-goog-api-key", apiKey)
                     .header("Content-Type", "application/json")
                     .body(body)
@@ -314,7 +316,7 @@ public class GeminiHttpClient implements GeminiClient {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> response = rest.post()
-                    .uri(endpoint.formatted(model))
+                    .uri(endpoint)
                     .header("x-goog-api-key", apiKey)
                     .header("Content-Type", "application/json")
                     .body(body)
