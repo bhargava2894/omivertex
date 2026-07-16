@@ -98,6 +98,19 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **Mirai interactions are logged, not stored** (2026-07-16): one log line per
+  assistant turn (user, outcome, tools, latency, question) through Logback into
+  the rotating app log. Deliberately no DB table (user decision: storage is
+  waste at this scale) and the reply text is never written anywhere — roster
+  data must not get a second home outside the entity tables. Known conscious
+  gap: a turn rejected by the AiExecutor bulkhead (503) never reaches the
+  service, so it produces no MIRAI line. Revisit only if usage analytics need
+  querying.
+- **Assistant rate limiting consciously deferred** (2026-07-16): the AiExecutor
+  bulkhead bounds concurrency but nothing bounds per-user request volume/spend.
+  Descoped from the ops-hardening phase by user decision; add before widening
+  assistant access beyond the current user base.
+
 - **Staffing & Allocations are one page; the server tree is the single source**
   (2026-07-16): Allocations and Staffing rendered the same client → project →
   associate tree with the same billable rollup — once grouped client-side, once

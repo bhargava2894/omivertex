@@ -166,7 +166,13 @@ introduce Flyway before making breaking changes.
     (`SkillGapService.dashboardPanel()`), `list_expiring_certifications`
     (`DashboardService.expiringCerts(withinDays)`, default 90, shared with the
     dashboard radar), and `get_workforce_summary` / `list_bench_aging`
-    (`DashboardService.summary()`).
+    (`DashboardService.summary()`). Every turn writes one interaction-log line
+    (`AssistantInteractionLog`, log-file only — no DB, and never the reply
+    text):
+    `MIRAI user=… outcome=ANSWERED|DRAFTED|ERROR tools=[…] latencyMs=… question="…"`
+    (question backslash/quote-escaped, newlines flattened). The username is
+    resolved on the servlet thread (`AuditService.currentUsername()`) because
+    the `ai-*` pool never sees the `SecurityContext`.
 
 ## 6. REST API
 
@@ -228,6 +234,14 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 servlet threads; the Gemini HTTP client has 5s connect / 30s read timeouts
 (`omivertex.assistant.gemini.connect-timeout` / `read-timeout`). Response
 contracts are unchanged.
+
+The Gemini endpoint base is configurable
+(`omivertex.assistant.gemini.base-url`, default
+`https://generativelanguage.googleapis.com`) so tests can stub the upstream;
+`GeminiToolLoopCapTest` pins that one turn performs at most
+`MAX_TOOL_ROUNDS + 1` upstream calls. A live golden-question eval
+(`MiraiGoldenQuestionsTest`) runs only with `MIRAI_GOLDEN_EVAL=true` plus a
+real API key: `MIRAI_GOLDEN_EVAL=true ./mvnw test -Dtest=MiraiGoldenQuestionsTest`.
 
 **`/dashboard/summary` response shape** (all computed live; every KPI counts
 **ACTIVE associates only** — INACTIVE leavers and their lingering allocations are
