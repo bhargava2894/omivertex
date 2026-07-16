@@ -19,6 +19,7 @@ import com.softility.omivertex.repository.OpenPositionRepository;
 import com.softility.omivertex.repository.PositionSkillRepository;
 import com.softility.omivertex.repository.ProjectRepository;
 import com.softility.omivertex.web.dto.AssociateResponse;
+import com.softility.omivertex.web.dto.MatchCandidateResponse;
 import com.softility.omivertex.web.dto.DashboardSummaryResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,12 +55,14 @@ public class AssistantContextBuilder {
     private final ProjectRepository projects;
     private final SkillGapService skillGapService;
     private final DashboardService dashboardService;
+    private final PositionService positionService;
 
     public AssistantContextBuilder(AssociateRepository associates, AllocationRepository allocations,
                                    AssociateSkillRepository associateSkills, CertificationRepository certifications,
                                    OpenPositionRepository positions, PositionSkillRepository positionSkills,
                                    ClientRepository clients, ProjectRepository projects,
-                                   SkillGapService skillGapService, DashboardService dashboardService) {
+                                   SkillGapService skillGapService, DashboardService dashboardService,
+                                   PositionService positionService) {
         this.associates = associates;
         this.allocations = allocations;
         this.associateSkills = associateSkills;
@@ -70,6 +73,7 @@ public class AssistantContextBuilder {
         this.projects = projects;
         this.skillGapService = skillGapService;
         this.dashboardService = dashboardService;
+        this.positionService = positionService;
     }
 
     /** Standing context: instructions + aggregate counts. Never roster rows. */
@@ -88,7 +92,7 @@ public class AssistantContextBuilder {
                 + "short bullet lists where helpful. Use your lookup tools (search_associates, "
                 + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches, "
                 + "list_clients, list_projects, get_skill_gaps, list_expiring_certifications, "
-                + "get_workforce_summary, list_bench_aging) "
+                + "get_workforce_summary, list_bench_aging, get_position_match_summary) "
                 + "to fetch specifics before answering. If the tools cannot answer the question, "
                 + "say so — never invent people, projects, or numbers.\n\n"
                 + "## Key numbers (today: " + LocalDate.now() + ")\n"
@@ -416,6 +420,47 @@ public class AssistantContextBuilder {
               .append(" · ").append(b.benchDays()).append(" days on bench\n");
         }
         appendOverflow(sb, bench.size());
+        return sb.toString();
+    }
+
+    /**
+     * Read tool: bench-match overview for EVERY open position in one call.
+     * "Which open positions have no bench match?" needs one lookup per position
+     * through {@code get_position_matches} — more than the per-turn tool budget
+     * once a few seats are open. This tool answers it in a single round.
+     */
+    public String positionMatchSummary() {
+        List<com.softility.omivertex.domain.OpenPosition> open = positions.findAllWithDetails().stream()
+                .filter(p -> p.getStatus() == PositionStatus.OPEN)
+                .sorted(Comparator.comparing(com.softility.omivertex.domain.OpenPosition::getTitle))
+                .toList();
+        if (open.isEmpty()) {
+            return "No open positions.";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (var p : open.stream().limit(MAX_TOOL_ROWS).toList()) {
+            List<MatchCandidateResponse> candidates = positionService.matches(p.getId());
+            List<MatchCandidateResponse> full = candidates.stream()
+                    .filter(MatchCandidateResponse::fullMatch).toList();
+            sb.append("- ").append(p.getTitle())
+              .append(" on ").append(p.getProject().getName())
+              .append(" @").append(p.getProject().getClient().getName())
+              .append(": ");
+            if (!full.isEmpty()) {
+                sb.append(full.size()).append(full.size() == 1 ? " full bench match — " : " full bench matches — ")
+                  .append(full.stream().limit(3)
+                          .map(c -> c.name() + (c.benchDays() == null ? "" : " (" + c.benchDays() + "d bench)"))
+                          .collect(Collectors.joining(", ")));
+            } else if (!candidates.isEmpty()) {
+                MatchCandidateResponse best = candidates.get(0);
+                sb.append("NO full match — closest: ").append(best.name())
+                  .append(", missing ").append(String.join(", ", best.missingRequirements()));
+            } else {
+                sb.append("NO full match — no available candidates at all");
+            }
+            sb.append("\n");
+        }
+        appendOverflow(sb, open.size());
         return sb.toString();
     }
 

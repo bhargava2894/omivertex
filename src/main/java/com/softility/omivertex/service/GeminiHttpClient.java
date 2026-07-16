@@ -79,7 +79,7 @@ public class GeminiHttpClient implements GeminiClient {
             "search_associates", "get_associate_detail", "get_project_detail",
             "list_rolloffs", "list_open_positions", "list_clients", "list_projects",
             "get_skill_gaps", "list_expiring_certifications", "get_workforce_summary",
-            "list_bench_aging");
+            "list_bench_aging", "get_position_match_summary");
 
     /** All assistant tools. Write tools are drafts only — the server never executes them. */
     private static final List<Map<String, Object>> FUNCTION_DECLARATIONS = List.of(
@@ -106,8 +106,9 @@ public class GeminiHttpClient implements GeminiClient {
                                     "associateName", Map.of("type", "string")),
                             "required", List.of("positionTitle", "associateName"))),
             Map.of("name", READ_TOOL_MATCHES,
-                    "description", "Rank candidates for an open position by skill and bench status."
-                            + " Use when asked who matches or could fill a position.",
+                    "description", "Rank candidates for ONE open position by skill and bench status."
+                            + " Use when asked who matches or could fill a specific position; for"
+                            + " questions across all positions use get_position_match_summary instead.",
                     "parameters", Map.of("type", "object",
                             "properties", Map.of("positionTitle", Map.of("type", "string")),
                             "required", List.of("positionTitle"))),
@@ -186,6 +187,12 @@ public class GeminiHttpClient implements GeminiClient {
                     "description", "Everyone on the bench sorted longest-benched first with days on"
                             + " bench, plus aging bucket counts. Use when asked who has been on the"
                             + " bench longest or how the bench is aging.",
+                    "parameters", Map.of("type", "object", "properties", Map.of())),
+            Map.of("name", "get_position_match_summary",
+                    "description", "Bench-match overview for ALL open positions in one call: which"
+                            + " have full bench matches (and who), and which have none. Use for"
+                            + " questions comparing or spanning positions, like which open positions"
+                            + " have no bench match.",
                     "parameters", Map.of("type", "object", "properties", Map.of())));
 
     @Override

@@ -407,4 +407,64 @@ class AssistantContextBuilderTest extends ApiTestBase {
         seedWorkforce();
         assertThat(builder.build()).contains("list_bench_aging");
     }
+
+    /** Position with one required skill — used by the match-summary tests. */
+    private void openPosition(com.softility.omivertex.domain.Project proj, String title,
+                              com.softility.omivertex.domain.Skill skill, Proficiency min) {
+        var position = new OpenPosition();
+        position.setTitle(title);
+        position.setProject(proj);
+        openPositionRepository.save(position);
+        var req = new PositionSkill();
+        req.setPosition(position);
+        req.setSkill(skill);
+        req.setMinProficiency(min);
+        req.setRequired(true);
+        positionSkillRepository.save(req);
+    }
+
+    @Test
+    void positionMatchSummary_oneCallCoversEveryOpenPosition() {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var java = skill("Backend", "Java");
+        var k8s = skill("Cloud", "Kubernetes");
+        var expert = associate("Divya Rao", "divya@softility.com", WorkMode.ONSHORE); // bench, rated
+        rateSkill(expert, java, Proficiency.ADVANCE);
+        openPosition(proj, "Java Dev", java, Proficiency.INTERMEDIATE);
+        openPosition(proj, "Ops Engineer", k8s, Proficiency.ADVANCE); // nobody has Kubernetes
+
+        String result = builder.positionMatchSummary();
+
+        // one line per open position, so "which positions lack a match" is one tool call
+        assertThat(result).contains("Java Dev");
+        assertThat(result).contains("full bench match").contains("Divya Rao");
+        assertThat(result).contains("Ops Engineer");
+        assertThat(result).contains("NO full match");
+    }
+
+    @Test
+    void positionMatchSummary_emptyWhenNothingIsOpen() {
+        seedWorkforce();
+        var only = positionRepositoryOpenRows();
+        assertThat(only).isNotZero(); // sanity: seed has an open seat
+        openPositionRepository.findAll().forEach(p -> {
+            p.setStatus(com.softility.omivertex.domain.PositionStatus.FILLED);
+            openPositionRepository.save(p);
+        });
+
+        assertThat(builder.positionMatchSummary()).contains("No open positions");
+    }
+
+    private long positionRepositoryOpenRows() {
+        return openPositionRepository.findAll().stream()
+                .filter(p -> p.getStatus() == com.softility.omivertex.domain.PositionStatus.OPEN)
+                .count();
+    }
+
+    @Test
+    void standingContext_advertisesPositionMatchSummaryTool() {
+        seedWorkforce();
+        assertThat(builder.build()).contains("get_position_match_summary");
+    }
 }

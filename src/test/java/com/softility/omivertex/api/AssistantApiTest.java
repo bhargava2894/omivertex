@@ -467,6 +467,30 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.reply", containsString("days on bench")));
     }
 
+    @Test
+    void chat_dispatchesPositionMatchSummaryTool() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var position = new com.softility.omivertex.domain.OpenPosition();
+        position.setTitle("Java Dev");
+        position.setProject(proj);
+        openPositionRepository.save(position);
+
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(
+                            ex.execute("get_position_match_summary", Map.of()), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"which open positions have no bench match?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Java Dev")));
+    }
+
     private ListAppender<ILoggingEvent> attachInteractionAppender() {
         Logger logger = (Logger) LoggerFactory.getLogger(AssistantInteractionLog.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
