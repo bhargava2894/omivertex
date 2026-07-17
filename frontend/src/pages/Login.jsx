@@ -147,10 +147,9 @@ export default function Login({ onLogin }) {
             src="/logo-mark.png"
             alt=""
             className="login-logo"
-            animate={reduceMotion ? {} : { y: [0, -6, 0], rotate: 360 }}
+            animate={reduceMotion ? {} : { y: [0, -6, 0] }}
             transition={{
               y: { duration: 5, repeat: Infinity, ease: 'easeInOut' },
-              rotate: { duration: 16, repeat: Infinity, ease: 'linear' },
             }}
           />
           <h1>OmiVertex</h1>
