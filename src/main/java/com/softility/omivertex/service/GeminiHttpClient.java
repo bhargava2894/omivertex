@@ -118,8 +118,9 @@ public class GeminiHttpClient implements GeminiClient {
                             "required", List.of("associateName", "projectName"))),
             Map.of("name", "propose_edit_allocation",
                     "description", "Draft modifying an associate's CURRENT allocation (change percent, "
-                            + "billability, or end date) on a project, for the user to confirm. Use when "
-                            + "asked to change allocation rate, make billable/non-billable, or adjust end date.",
+                            + "billability, or end date) on a project, for the user to confirm. Anything "
+                            + "not mentioned keeps its current value. Use when asked to change allocation "
+                            + "rate, make billable/non-billable, or adjust the end date.",
                     "parameters", Map.of("type", "object",
                             "properties", Map.of(
                                     "associateName", Map.of("type", "string"),
@@ -128,7 +129,8 @@ public class GeminiHttpClient implements GeminiClient {
                                             "description", "new allocation percent 1-100"),
                                     "billable", Map.of("type", "boolean"),
                                     "endDate", Map.of("type", "string",
-                                            "description", "ISO date; omit/null to keep open-ended")),
+                                            "description", "ISO date; omitted keeps the CURRENT end date"
+                                                    + " (this tool cannot clear one)")),
                             "required", List.of("associateName", "projectName"))),
             Map.of("name", "propose_position",
                     "description", "Draft opening a NEW position on a project, for the user to"

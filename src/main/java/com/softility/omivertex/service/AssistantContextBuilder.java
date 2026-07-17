@@ -114,12 +114,13 @@ public class AssistantContextBuilder {
                 + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches, "
                 + "list_clients, list_projects, get_skill_gaps, list_expiring_certifications, "
                 + "get_workforce_summary, list_bench_aging, get_position_match_summary) "
+                + "to fetch specifics before answering. If the tools cannot answer the question, "
+                + "say so — never invent people, projects, or numbers. "
                 + (adminTools
                         ? "As an admin you can also use list_pending_approvals (what awaits "
                                 + "approval) and get_audit_history (who changed what, when). "
                         : "")
-                + "to fetch specifics before answering. If the tools cannot answer the question, "
-                + "say so — never invent people, projects, or numbers.\n\n"
+                + "\n\n"
                 + "## Key numbers (today: " + LocalDate.now() + ")\n"
                 + "Active associates: " + active.size()
                 + " · Bench count: " + benchCount
