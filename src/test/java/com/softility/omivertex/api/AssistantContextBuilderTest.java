@@ -467,4 +467,54 @@ class AssistantContextBuilderTest extends ApiTestBase {
         seedWorkforce();
         assertThat(builder.build()).contains("get_position_match_summary");
     }
+
+    @Test
+    void pendingApprovals_listsBothQueues() {
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        var change = new com.softility.omivertex.domain.ProfileChangeRequest();
+        change.setAssociate(priya);
+        change.setType(com.softility.omivertex.domain.ProfileChangeType.SKILLS);
+        profileChangeRequestRepository.save(change);
+        var user = new com.softility.omivertex.domain.AppUser();
+        user.setEmail("new.hire@softility.com");
+        user.setName("New Hire");
+        appUserRepository.save(user); // status defaults to PENDING
+
+        String result = builder.pendingApprovals();
+
+        assertThat(result).contains("Profile changes pending");
+        assertThat(result).contains("Priya Sharma").contains("SKILLS");
+        assertThat(result).contains("Access requests pending");
+        assertThat(result).contains("New Hire (new.hire@softility.com)");
+    }
+
+    @Test
+    void pendingApprovals_emptyState() {
+        assertThat(builder.pendingApprovals()).contains("Nothing is waiting for approval");
+    }
+
+    @Test
+    void auditHistory_newestFirst_filtersByEntityType_andCaps() {
+        for (int i = 1; i <= 3; i++) {
+            var e = new com.softility.omivertex.domain.AuditEntry();
+            e.setUsername("admin");
+            e.setAction("UPDATE");
+            e.setEntityType(i == 3 ? "Project" : "Allocation");
+            e.setEntityId((long) i);
+            e.setSummary("change " + i);
+            auditEntryRepository.save(e);
+        }
+
+        String all = builder.auditHistory(null, 25);
+        assertThat(all.indexOf("change 3")).isLessThan(all.indexOf("change 1")); // newest first
+        String filtered = builder.auditHistory("Allocation", 25);
+        assertThat(filtered).contains("change 2").doesNotContain("change 3");
+        String capped = builder.auditHistory(null, 2);
+        assertThat(capped).contains("change 3").contains("change 2").doesNotContain("change 1");
+    }
+
+    @Test
+    void auditHistory_emptyStateNamesTheFilter() {
+        assertThat(builder.auditHistory("Client", 25)).contains("No audit entries for type \"Client\"");
+    }
 }

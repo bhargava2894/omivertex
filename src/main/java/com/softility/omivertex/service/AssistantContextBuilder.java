@@ -1,8 +1,11 @@
 package com.softility.omivertex.service;
 
+import com.softility.omivertex.domain.AccessStatus;
 import com.softility.omivertex.domain.Allocation;
+import com.softility.omivertex.domain.AppUser;
 import com.softility.omivertex.domain.Associate;
 import com.softility.omivertex.domain.AssociateSkill;
+import com.softility.omivertex.domain.AuditEntry;
 import com.softility.omivertex.domain.Certification;
 import com.softility.omivertex.domain.Client;
 import com.softility.omivertex.domain.EntityStatus;
@@ -10,21 +13,28 @@ import com.softility.omivertex.domain.PositionSkill;
 import com.softility.omivertex.domain.PositionStatus;
 import com.softility.omivertex.domain.Proficiency;
 import com.softility.omivertex.domain.Project;
+import com.softility.omivertex.domain.ProfileChangeRequest;
+import com.softility.omivertex.domain.ProfileChangeStatus;
 import com.softility.omivertex.repository.AllocationRepository;
+import com.softility.omivertex.repository.AppUserRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.AssociateSkillRepository;
+import com.softility.omivertex.repository.AuditEntryRepository;
 import com.softility.omivertex.repository.CertificationRepository;
 import com.softility.omivertex.repository.ClientRepository;
 import com.softility.omivertex.repository.OpenPositionRepository;
 import com.softility.omivertex.repository.PositionSkillRepository;
+import com.softility.omivertex.repository.ProfileChangeRequestRepository;
 import com.softility.omivertex.repository.ProjectRepository;
 import com.softility.omivertex.web.dto.AssociateResponse;
 import com.softility.omivertex.web.dto.MatchCandidateResponse;
 import com.softility.omivertex.web.dto.DashboardSummaryResponse;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
@@ -56,13 +66,17 @@ public class AssistantContextBuilder {
     private final SkillGapService skillGapService;
     private final DashboardService dashboardService;
     private final PositionService positionService;
+    private final ProfileChangeRequestRepository profileChanges;
+    private final AppUserRepository appUsers;
+    private final AuditEntryRepository auditEntries;
 
     public AssistantContextBuilder(AssociateRepository associates, AllocationRepository allocations,
                                    AssociateSkillRepository associateSkills, CertificationRepository certifications,
                                    OpenPositionRepository positions, PositionSkillRepository positionSkills,
                                    ClientRepository clients, ProjectRepository projects,
                                    SkillGapService skillGapService, DashboardService dashboardService,
-                                   PositionService positionService) {
+                                   PositionService positionService, ProfileChangeRequestRepository profileChanges,
+                                   AppUserRepository appUsers, AuditEntryRepository auditEntries) {
         this.associates = associates;
         this.allocations = allocations;
         this.associateSkills = associateSkills;
@@ -74,6 +88,9 @@ public class AssistantContextBuilder {
         this.skillGapService = skillGapService;
         this.dashboardService = dashboardService;
         this.positionService = positionService;
+        this.profileChanges = profileChanges;
+        this.appUsers = appUsers;
+        this.auditEntries = auditEntries;
     }
 
     /** Standing context: instructions + aggregate counts. Never roster rows. */
@@ -462,6 +479,56 @@ public class AssistantContextBuilder {
         }
         appendOverflow(sb, open.size());
         return sb.toString();
+    }
+
+    /** ADMIN-only read tool: everything waiting on an admin — profile changes + access requests. */
+    public String pendingApprovals() {
+        List<ProfileChangeRequest> changes = profileChanges.findAllByStatus(ProfileChangeStatus.PENDING);
+        List<AppUser> access = appUsers.findAll().stream()
+                .filter(u -> u.getStatus() == AccessStatus.PENDING).toList();
+        if (changes.isEmpty() && access.isEmpty()) {
+            return "Nothing is waiting for approval.";
+        }
+        StringBuilder sb = new StringBuilder();
+        if (!changes.isEmpty()) {
+            sb.append("Profile changes pending:\n");
+            for (ProfileChangeRequest c : changes.stream().limit(MAX_TOOL_ROWS).toList()) {
+                sb.append("- ").append(c.getAssociate().getName())
+                  .append(" · ").append(c.getType())
+                  .append(c.getCreatedAt() == null ? "" : " · requested "
+                          + c.getCreatedAt().atZone(ZoneId.systemDefault()).toLocalDate())
+                  .append("\n");
+            }
+            appendOverflow(sb, changes.size());
+        }
+        if (!access.isEmpty()) {
+            sb.append("Access requests pending:\n");
+            for (AppUser u : access.stream().limit(MAX_TOOL_ROWS).toList()) {
+                sb.append("- ").append(u.getName() == null || u.getName().isBlank()
+                        ? u.getEmail() : u.getName() + " (" + u.getEmail() + ")").append("\n");
+            }
+            appendOverflow(sb, access.size());
+        }
+        return sb.toString();
+    }
+
+    /** ADMIN-only read tool: recent audit entries, newest first, optionally one entity type. */
+    public String auditHistory(String entityType, int limit) {
+        int cap = Math.min(Math.max(limit, 1), MAX_TOOL_ROWS);
+        PageRequest page = PageRequest.of(0, cap);
+        List<AuditEntry> entries = entityType == null || entityType.isBlank()
+                ? auditEntries.findAllByOrderByIdDesc(page)
+                : auditEntries.findByEntityTypeOrderByIdDesc(entityType.trim(), page);
+        if (entries.isEmpty()) {
+            return entityType == null || entityType.isBlank() ? "No audit entries."
+                    : "No audit entries for type \"" + entityType + "\".";
+        }
+        return entries.stream()
+                .map(e -> "- " + (e.getTimestamp() == null ? "" : e.getTimestamp() + " · ")
+                        + e.getUsername() + " · " + e.getAction() + " " + e.getEntityType()
+                        + (e.getEntityId() == null ? "" : "#" + e.getEntityId())
+                        + " · " + e.getSummary())
+                .collect(Collectors.joining("\n"));
     }
 
     // ---- shared row fragments ----
