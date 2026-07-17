@@ -105,6 +105,17 @@ public class GeminiHttpClient implements GeminiClient {
                                     "positionTitle", Map.of("type", "string"),
                                     "associateName", Map.of("type", "string")),
                             "required", List.of("positionTitle", "associateName"))),
+            Map.of("name", "propose_end_allocation",
+                    "description", "Draft ending an associate's CURRENT allocation on a project, for"
+                            + " the user to confirm. Use when asked to roll someone off, release,"
+                            + " or end an engagement.",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of(
+                                    "associateName", Map.of("type", "string"),
+                                    "projectName", Map.of("type", "string"),
+                                    "endDate", Map.of("type", "string",
+                                            "description", "ISO date; default today")),
+                            "required", List.of("associateName", "projectName"))),
             Map.of("name", READ_TOOL_MATCHES,
                     "description", "Rank candidates for ONE open position by skill and bench status."
                             + " Use when asked who matches or could fill a specific position; for"

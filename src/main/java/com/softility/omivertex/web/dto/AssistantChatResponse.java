@@ -9,7 +9,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AssistantChatResponse(String reply, ProposedAction proposedAction) {
 
-    public enum ActionType { CREATE_ALLOCATION, FILL_POSITION }
+    public enum ActionType { CREATE_ALLOCATION, FILL_POSITION, END_ALLOCATION, EDIT_ALLOCATION, CREATE_POSITION }
 
     /** A draft the user must confirm in the UI; confirming calls the existing endpoints. */
     public record ProposedAction(ActionType type,
@@ -18,6 +18,9 @@ public record AssistantChatResponse(String reply, ProposedAction proposedAction)
                                  Long positionId, String positionTitle,
                                  Integer percent, Boolean billable,
                                  LocalDate startDate, LocalDate endDate,
+                                 Long allocationId,
+                                 Long skillId, String skillName,
+                                 com.softility.omivertex.domain.Proficiency minProficiency,
                                  String summary, List<String> warnings) {
     }
 }

@@ -636,4 +636,71 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.reply", containsString("created Acme")));
     }
+
+    @Test
+    void chat_draftsEndAllocation_withResolvedAllocationAndDefaultToday() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        var alloc = allocation(priya, proj, true);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
+                .thenReturn(new GeminiClient.AssistantReply("Draft ready.",
+                        new GeminiClient.ActionCall("propose_end_allocation",
+                                Map.of("associateName", "Priya Sharma",
+                                        "projectName", "Storefront Revamp"))));
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"roll priya off storefront","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction.type").value("END_ALLOCATION"))
+                .andExpect(jsonPath("$.proposedAction.allocationId").value(alloc.getId().intValue()))
+                .andExpect(jsonPath("$.proposedAction.endDate").value(java.time.LocalDate.now().toString()))
+                .andExpect(jsonPath("$.proposedAction.summary",
+                        containsString("End Priya Sharma's allocation on Storefront Revamp")));
+    }
+
+    @Test
+    void chat_endAllocation_noCurrentAllocation_asksBack() throws Exception {
+        var acme = client("Acme Corp");
+        project("ACM-100", "Storefront Revamp", acme);
+        associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE); // benched
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_end_allocation",
+                                Map.of("associateName", "Priya Sharma",
+                                        "projectName", "Storefront Revamp"))));
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"roll priya off storefront","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction").doesNotExist())
+                .andExpect(jsonPath("$.reply",
+                        containsString("no current allocation on Storefront Revamp")));
+    }
+
+    @Test
+    void chat_endAllocation_endBeforeStart_isRejectedAtDraftTime() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        allocation(priya, proj, true); // started 3 months ago
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_end_allocation",
+                                Map.of("associateName", "Priya Sharma",
+                                        "projectName", "Storefront Revamp",
+                                        "endDate", java.time.LocalDate.now().minusMonths(6).toString()))));
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"end it half a year ago","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction").doesNotExist())
+                .andExpect(jsonPath("$.reply", containsString("can't be before")));
+    }
 }

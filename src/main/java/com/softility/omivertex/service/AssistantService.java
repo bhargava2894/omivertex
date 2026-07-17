@@ -121,8 +121,9 @@ public class AssistantService {
         return switch (action.name()) {
             case "propose_allocation" -> draftAllocation(reply.text(), args);
             case "propose_position_fill" -> draftFill(reply.text(), args);
+            case "propose_end_allocation" -> draftEndAllocation(reply.text(), args);
             default -> new AssistantChatResponse(nonBlank(reply.text(),
-                    "I can't do that yet — I can draft allocations and position fills."), null);
+                    "I can't do that yet — I can draft allocations, position fills, and roll-offs."), null);
         };
     }
 
@@ -147,7 +148,7 @@ public class AssistantService {
         ProposedAction proposed = new ProposedAction(ActionType.CREATE_ALLOCATION,
                 associate.value().getId(), associate.value().getName(),
                 project.value().getId(), project.value().getName(),
-                null, null, percent, billable, start, end, summary, warnings);
+                null, null, percent, billable, start, end, null, null, null, null, summary, warnings);
         return new AssistantChatResponse(nonBlank(text,
                 "Here's the draft — review and confirm below."), proposed);
     }
@@ -171,7 +172,7 @@ public class AssistantService {
                 associate.value().getId(), associate.value().getName(),
                 pos.getProject().getId(), pos.getProject().getName(),
                 pos.getId(), pos.getTitle(), percent, pos.isBillable(),
-                pos.getStartDate(), pos.getEndDate(), summary, warnings);
+                pos.getStartDate(), pos.getEndDate(), null, null, null, null, summary, warnings);
         return new AssistantChatResponse(nonBlank(text,
                 "Here's the draft — review and confirm below."), proposed);
     }
@@ -187,6 +188,53 @@ public class AssistantService {
                     .formatted(associate.getName(), current));
         }
         return warnings;
+    }
+
+    private record ResolvedAllocation(Allocation value, String reply) {}
+
+    /** The associate's CURRENT allocation on the named project — at most one exists. */
+    private ResolvedAllocation resolveCurrentAllocation(String associateName, String projectName) {
+        Resolved<Associate> associate = resolveAssociate(associateName);
+        if (associate.reply() != null) {
+            return new ResolvedAllocation(null, associate.reply());
+        }
+        Resolved<Project> project = resolveProject(projectName);
+        if (project.reply() != null) {
+            return new ResolvedAllocation(null, project.reply());
+        }
+        Allocation current = allocationRepository.findByAssociateId(associate.value().getId()).stream()
+                .filter(Allocation::isCurrent)
+                .filter(a -> a.getProject().getId().equals(project.value().getId()))
+                .findFirst().orElse(null);
+        if (current == null) {
+            return new ResolvedAllocation(null, "%s has no current allocation on %s."
+                    .formatted(associate.value().getName(), project.value().getName()));
+        }
+        return new ResolvedAllocation(current, null);
+    }
+
+    private AssistantChatResponse draftEndAllocation(String text, Map<String, Object> args) {
+        ResolvedAllocation resolved = resolveCurrentAllocation(
+                str(args, "associateName"), str(args, "projectName"));
+        if (resolved.reply() != null) {
+            return new AssistantChatResponse(resolved.reply(), null);
+        }
+        Allocation al = resolved.value();
+        LocalDate end = dateOrDefault(args.get("endDate"), LocalDate.now());
+        if (end.isBefore(al.getStartDate())) {
+            return new AssistantChatResponse(
+                    "That allocation started on %s — the end date can't be before that."
+                            .formatted(al.getStartDate()), null);
+        }
+        String summary = "End %s's allocation on %s effective %s".formatted(
+                al.getAssociate().getName(), al.getProject().getName(), end);
+        ProposedAction proposed = new ProposedAction(ActionType.END_ALLOCATION,
+                al.getAssociate().getId(), al.getAssociate().getName(),
+                al.getProject().getId(), al.getProject().getName(),
+                null, null, al.getAllocationPercent(), al.isBillable(),
+                al.getStartDate(), end, al.getId(), null, null, null, summary, List.of());
+        return new AssistantChatResponse(nonBlank(text,
+                "Here's the draft — review and confirm below."), proposed);
     }
 
     // ---- name -> entity resolution; ambiguity or no match returns a clarifying reply ----
