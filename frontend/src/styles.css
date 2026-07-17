@@ -172,7 +172,9 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   width: 38px;
   height: 38px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 8px rgba(124, 58, 237, 0.45));
+  /* the sidebar is dark navy in both themes — lift the mark so the thin
+     gradient orbits stay clearly visible on it */
+  filter: brightness(1.18) saturate(1.12) drop-shadow(0 0 10px var(--intro-violet));
   transition: filter 0.3s var(--ease);
 }
 
@@ -816,6 +818,9 @@ td.actions { text-align: right; white-space: nowrap; }
 
 .login-brand { text-align: center; margin-bottom: 22px; }
 .login-logo { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 8px 22px rgba(124, 58, 237, 0.35)); }
+[data-theme='dark'] .login-logo {
+  filter: brightness(1.22) saturate(1.1) drop-shadow(0 0 16px var(--intro-violet));
+}
 .login-brand h1 {
   margin: 12px 0 4px;
   font-size: 26px;
