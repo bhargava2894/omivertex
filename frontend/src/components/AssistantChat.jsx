@@ -138,6 +138,26 @@ export default function AssistantChat({ showToast, canEdit }) {
           startDate: action.startDate,
           endDate: action.endDate,
         });
+      } else if (action.type === 'END_ALLOCATION' || action.type === 'EDIT_ALLOCATION') {
+        await api.update('allocations', action.allocationId, {
+          billable: action.billable,
+          allocationPercent: action.percent,
+          startDate: action.startDate,
+          endDate: action.endDate,
+        });
+      } else if (action.type === 'CREATE_POSITION') {
+        await api.create('positions', {
+          title: action.positionTitle,
+          projectId: action.projectId,
+          billable: action.billable,
+          allocationPercent: action.percent,
+          startDate: action.startDate,
+          endDate: action.endDate,
+          headcount: 1,
+          skills: action.skillId
+            ? [{ skillId: action.skillId, minProficiency: action.minProficiency, required: true }]
+            : [],
+        });
       } else {
         await api.create(`positions/${action.positionId}/fill`, {
           associateId: action.associateId,
