@@ -74,11 +74,14 @@ public class AssistantService {
         ToolProgressListener NONE = name -> {};
     }
 
-    public AssistantChatResponse chat(AssistantChatRequest request, String username) {
-        return chat(request, username, ToolProgressListener.NONE);
+    /** Who is asking — resolved on the servlet thread, since the ai-* pool cannot. */
+    public record Caller(String username, boolean admin) {}
+
+    public AssistantChatResponse chat(AssistantChatRequest request, Caller caller) {
+        return chat(request, caller, ToolProgressListener.NONE);
     }
 
-    public AssistantChatResponse chat(AssistantChatRequest request, String username,
+    public AssistantChatResponse chat(AssistantChatRequest request, Caller caller,
                                       ToolProgressListener progress) {
         long start = System.currentTimeMillis();
         List<String> toolsCalled = new ArrayList<>();
@@ -94,17 +97,17 @@ public class AssistantService {
                         toolsCalled.add(name);
                         progress.toolCalled(name);
                         return executeReadTool(name, args);
-                    });
+                    }, caller.admin());
             AssistantChatResponse response = reply.action() == null
                     ? new AssistantChatResponse(reply.text(), null)
                     : draft(reply);
-            interactionLog.record(username,
+            interactionLog.record(caller.username(),
                     response.proposedAction() == null ? AssistantInteractionLog.Outcome.ANSWERED
                             : AssistantInteractionLog.Outcome.DRAFTED,
                     toolsCalled, System.currentTimeMillis() - start, request.message());
             return response;
         } catch (RuntimeException e) {
-            interactionLog.record(username, AssistantInteractionLog.Outcome.ERROR,
+            interactionLog.record(caller.username(), AssistantInteractionLog.Outcome.ERROR,
                     toolsCalled, System.currentTimeMillis() - start, request.message());
             throw e;
         }

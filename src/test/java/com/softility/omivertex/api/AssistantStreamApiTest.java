@@ -12,6 +12,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -51,7 +52,7 @@ class AssistantStreamApiTest extends ApiTestBase {
 
     @Test
     void stream_sendsToolEventsInOrder_thenTheReply() throws Exception {
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     ex.execute("list_open_positions", Map.of());
@@ -73,7 +74,7 @@ class AssistantStreamApiTest extends ApiTestBase {
         var acme = client("Acme Corp");
         project("ACM-100", "Storefront Revamp", acme);
         associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("Here's the draft.",
                         new GeminiClient.ActionCall("propose_allocation",
                                 Map.of("associateName", "Priya Sharma",
@@ -87,7 +88,7 @@ class AssistantStreamApiTest extends ApiTestBase {
 
     @Test
     void stream_failureBecomesAnErrorEvent() throws Exception {
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenThrow(new com.softility.omivertex.web.error.BadRequestException(
                         "The AI assistant is unavailable right now — try again shortly"));
 

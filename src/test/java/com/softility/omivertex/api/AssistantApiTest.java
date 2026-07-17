@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
@@ -35,7 +36,7 @@ class AssistantApiTest extends ApiTestBase {
     @Test
     void chat_answersWithWorkforceContext() throws Exception {
         associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE); // on bench
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("Priya Sharma is on the bench.", null));
 
         asyncPerform(post("/api/v1/assistant/chat")
@@ -47,7 +48,7 @@ class AssistantApiTest extends ApiTestBase {
 
         // the live roster went along as context
         ArgumentCaptor<String> context = ArgumentCaptor.forClass(String.class);
-        verify(geminiClient).replyWithTools(context.capture(), anyList(), anyString(), any());
+        verify(geminiClient).replyWithTools(context.capture(), anyList(), anyString(), any(), anyBoolean());
         // minimal-context design: the standing context carries aggregates, never roster rows
         assertThat(context.getValue()).doesNotContain("Priya Sharma");
         assertThat(context.getValue()).contains("Active associates: 1");
@@ -55,7 +56,7 @@ class AssistantApiTest extends ApiTestBase {
 
     @Test
     void chat_viewerAllowed_associateForbidden() throws Exception {
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("ok", null));
         asyncPerform(post("/api/v1/assistant/chat")
                         .with(SecurityMockMvcRequestPostProcessors.user("viewer").roles("VIEWER"))
@@ -88,7 +89,7 @@ class AssistantApiTest extends ApiTestBase {
     @Test
     @SuppressWarnings("unchecked")
     void chat_capsHistoryToLast20Turns() throws Exception {
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("ok", null));
         StringBuilder history = new StringBuilder("[");
         for (int i = 0; i < 30; i++) {
@@ -106,7 +107,7 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(status().isOk());
 
         ArgumentCaptor<List<GeminiClient.Turn>> turns = ArgumentCaptor.forClass(List.class);
-        verify(geminiClient).replyWithTools(any(), turns.capture(), any(), any());
+        verify(geminiClient).replyWithTools(any(), turns.capture(), any(), any(), anyBoolean());
         assertThat(turns.getValue()).hasSize(20);
         assertThat(turns.getValue().get(0).content()).isEqualTo("turn 10"); // oldest dropped
     }
@@ -116,7 +117,7 @@ class AssistantApiTest extends ApiTestBase {
         var acme = client("Acme Corp");
         var proj = project("ACM-100", "Storefront Revamp", acme);
         var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("",
                         new GeminiClient.ActionCall("propose_allocation",
                                 Map.of("associateName", "Priya Sharma", "projectName", "Storefront Revamp",
@@ -142,7 +143,7 @@ class AssistantApiTest extends ApiTestBase {
         project("ACM-100", "Storefront Revamp", acme);
         associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
         associate("Priya Verma", "priya.v@softility.com", WorkMode.ONSHORE);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("",
                         new GeminiClient.ActionCall("propose_allocation",
                                 Map.of("associateName", "Priya", "projectName", "Storefront Revamp"))));
@@ -164,7 +165,7 @@ class AssistantApiTest extends ApiTestBase {
         var other = project("ACM-200", "Data Platform", acme);
         var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
         allocation(priya, other, true);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("",
                         new GeminiClient.ActionCall("propose_allocation",
                                 Map.of("associateName", "Priya Sharma", "projectName", "Storefront Revamp",
@@ -187,7 +188,7 @@ class AssistantApiTest extends ApiTestBase {
         pos.setProject(proj);
         openPositionRepository.save(pos);
         var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("",
                         new GeminiClient.ActionCall("propose_position_fill",
                                 Map.of("positionTitle", "Java Dev", "associateName", "Priya Sharma"))));
@@ -211,7 +212,7 @@ class AssistantApiTest extends ApiTestBase {
         pos.setProject(proj);
         openPositionRepository.save(pos);
         associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE); // on bench
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     String result = ex.execute("get_position_matches", Map.of("positionTitle", "Java Dev"));
@@ -231,7 +232,7 @@ class AssistantApiTest extends ApiTestBase {
         var java = skill("Backend", "Java");
         var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
         rateSkill(priya, java, com.softility.omivertex.domain.Proficiency.ADVANCE);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     String result = ex.execute("search_associates",
@@ -251,7 +252,7 @@ class AssistantApiTest extends ApiTestBase {
     void chat_readTool_listClients_namesClientsWithNoOpenPositions() throws Exception {
         client("Acme Corp");
         client("Quiet Holdings"); // reachable through no other read tool
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     return new GeminiClient.AssistantReply(
@@ -273,7 +274,7 @@ class AssistantApiTest extends ApiTestBase {
         project("ACM-100", "Storefront Revamp", acme);
         var helios = client("Helios Energy");
         project("HEL-100", "Grid Analytics", helios);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     return new GeminiClient.AssistantReply(
@@ -295,7 +296,7 @@ class AssistantApiTest extends ApiTestBase {
         var proj = project("ACM-100", "Storefront Revamp", acme);
         var asha = associate("Asha Nair", "asha@softility.com", WorkMode.ONSHORE);
         allocation(asha, proj, true);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     return new GeminiClient.AssistantReply(
@@ -317,7 +318,7 @@ class AssistantApiTest extends ApiTestBase {
         alum.setLastWorkingDay(java.time.LocalDate.now().minusMonths(1));
         alum.setExitReason(com.softility.omivertex.domain.ExitReason.RESIGNED);
         associateRepository.save(alum);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     return new GeminiClient.AssistantReply(
@@ -339,7 +340,7 @@ class AssistantApiTest extends ApiTestBase {
         var alum = associate("Nikhil Rao", "nikhil@softility.com", WorkMode.OFFSHORE);
         alum.setStatus(com.softility.omivertex.domain.EntityStatus.INACTIVE);
         associateRepository.save(alum);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("",
                         new GeminiClient.ActionCall("propose_allocation",
                                 Map.of("associateName", "Nikhil Rao", "projectName", "Storefront Revamp"))));
@@ -357,7 +358,7 @@ class AssistantApiTest extends ApiTestBase {
     void chat_readTool_associateDetail_ambiguousNameAsksBack() throws Exception {
         associate("Priya Sharma", "priya@softility.com", WorkMode.ONSHORE);
         associate("Priya Verma", "priya.v@softility.com", WorkMode.ONSHORE);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     return new GeminiClient.AssistantReply(
@@ -387,7 +388,7 @@ class AssistantApiTest extends ApiTestBase {
         req.setRequired(true);
         positionSkillRepository.save(req);
 
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     return new GeminiClient.AssistantReply(ex.execute("get_skill_gaps", Map.of()), null);
@@ -411,7 +412,7 @@ class AssistantApiTest extends ApiTestBase {
         cert.setExpiryDate(java.time.LocalDate.now().plusDays(80)); // inside 90, outside 30
         certificationRepository.save(cert);
 
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     String defaulted = ex.execute("list_expiring_certifications", Map.of());
@@ -432,7 +433,7 @@ class AssistantApiTest extends ApiTestBase {
     void chat_dispatchesWorkforceSummaryTool() throws Exception {
         associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE); // 1 active, benched
 
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     return new GeminiClient.AssistantReply(
@@ -452,7 +453,7 @@ class AssistantApiTest extends ApiTestBase {
     void chat_dispatchesBenchAgingTool() throws Exception {
         associate("Rahul Verma", "rahul@softility.com", WorkMode.ONSHORE); // benched
 
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     return new GeminiClient.AssistantReply(ex.execute("list_bench_aging", Map.of()), null);
@@ -476,7 +477,7 @@ class AssistantApiTest extends ApiTestBase {
         position.setProject(proj);
         openPositionRepository.save(position);
 
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     return new GeminiClient.AssistantReply(
@@ -506,7 +507,7 @@ class AssistantApiTest extends ApiTestBase {
     @Test
     void chat_logsAnsweredTurnWithUserToolsAndQuestion_neverTheReply() throws Exception {
         associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE); // benched
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenAnswer(inv -> {
                     GeminiClient.ToolExecutor ex = inv.getArgument(3);
                     ex.execute("search_associates", Map.of("benchOnly", true));
@@ -541,7 +542,7 @@ class AssistantApiTest extends ApiTestBase {
         var acme = client("Acme Corp");
         var proj = project("ACM-100", "Storefront Revamp", acme);
         associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenReturn(new GeminiClient.AssistantReply("Here you go.",
                         new GeminiClient.ActionCall("propose_allocation",
                                 Map.of("associateName", "Priya Sharma", "projectName", "Storefront Revamp"))));
@@ -564,7 +565,7 @@ class AssistantApiTest extends ApiTestBase {
 
     @Test
     void chat_logsErrorWhenTheTurnThrows_andTheErrorStillReachesTheClient() throws Exception {
-        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any()))
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
                 .thenThrow(new com.softility.omivertex.web.error.BadRequestException(
                         "The AI assistant is unavailable right now — try again shortly"));
 

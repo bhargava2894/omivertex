@@ -67,7 +67,7 @@ class GeminiToolLoopCapTest {
                 "which open positions have no bench match?", (name, args) -> {
                     toolRuns.incrementAndGet();
                     return "rows";
-                });
+                }, false);
 
         // MAX_TOOL_ROUNDS = 3: initial call + three tool rounds + one wrap-up call
         assertThat(apiCalls.get()).isEqualTo(5);
@@ -84,7 +84,7 @@ class GeminiToolLoopCapTest {
         GeminiHttpClient client = clientAgainstStub(apiCalls, call -> ASK_FOR_A_TOOL);
 
         GeminiClient.AssistantReply reply = client.replyWithTools("context", List.of(),
-                "who is on the bench?", (name, args) -> "rows");
+                "who is on the bench?", (name, args) -> "rows", false);
 
         // still strictly bounded: the wrap-up call is the last one, whatever it returns
         assertThat(apiCalls.get()).isEqualTo(5);

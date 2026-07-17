@@ -15,9 +15,11 @@ public interface GeminiClient {
      * One assistant turn with tool support. Read tools run via {@code tools};
      * a write tool surfaces as {@link AssistantReply#action()} for the caller
      * to turn into a user-confirmable draft. Never mutates anything itself.
+     * {@code adminTools} controls whether admin-only tools are declared to the
+     * model at all — a non-admin's model never sees them.
      */
     AssistantReply replyWithTools(String workforceContext, List<Turn> history,
-                                  String userMessage, ToolExecutor tools);
+                                  String userMessage, ToolExecutor tools, boolean adminTools);
 
     /** True when an API key is present; callers use this to pick AI vs fallback paths. */
     boolean isConfigured();

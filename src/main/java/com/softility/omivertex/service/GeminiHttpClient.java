@@ -197,7 +197,7 @@ public class GeminiHttpClient implements GeminiClient {
 
     @Override
     public AssistantReply replyWithTools(String workforceContext, List<Turn> history,
-                                         String userMessage, ToolExecutor tools) {
+                                         String userMessage, ToolExecutor tools, boolean adminTools) {
         if (apiKey.isEmpty()) {
             throw new BadRequestException("The AI assistant is not configured — "
                     + "set OMIVERTEX_ASSISTANT_GEMINI_API_KEY and restart");

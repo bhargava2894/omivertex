@@ -6,6 +6,8 @@ import com.softility.omivertex.service.AuditService;
 import com.softility.omivertex.web.dto.AssistantChatRequest;
 import com.softility.omivertex.web.dto.AssistantChatResponse;
 import jakarta.validation.Valid;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,12 +32,20 @@ public class AssistantController {
         this.aiExecutor = aiExecutor;
     }
 
+    /** Role + username, resolved on the servlet thread — the ai-* pool never sees the SecurityContext. */
+    private static AssistantService.Caller currentCaller() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean admin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        return new AssistantService.Caller(AuditService.currentUsername(), admin);
+    }
+
     /** Async on the AI bulkhead: the servlet thread is freed while Gemini responds. */
     @PostMapping("/chat")
     public CompletableFuture<AssistantChatResponse> chat(@Valid @RequestBody AssistantChatRequest request) {
         // Resolved here, on the servlet thread: the ai-* pool never sees the SecurityContext.
-        String username = AuditService.currentUsername();
-        return aiExecutor.submit(() -> assistantService.chat(request, username));
+        AssistantService.Caller caller = currentCaller();
+        return aiExecutor.submit(() -> assistantService.chat(request, caller));
     }
 
     /**
@@ -47,12 +57,12 @@ public class AssistantController {
     @PostMapping("/chat/stream")
     public SseEmitter chatStream(@Valid @RequestBody AssistantChatRequest request) {
         // Resolved here, on the servlet thread: the ai-* pool never sees the SecurityContext.
-        String username = AuditService.currentUsername();
+        AssistantService.Caller caller = currentCaller();
         SseEmitter emitter = new SseEmitter(STREAM_TIMEOUT_MS);
         emitter.onTimeout(emitter::complete);
         aiExecutor.submit(() -> {
             try {
-                AssistantChatResponse response = assistantService.chat(request, username,
+                AssistantChatResponse response = assistantService.chat(request, caller,
                         name -> send(emitter, "tool", name));
                 send(emitter, "reply", response);
             } catch (RuntimeException e) {
