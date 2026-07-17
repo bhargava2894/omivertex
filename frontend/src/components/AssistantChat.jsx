@@ -12,6 +12,23 @@ const SUGGESTIONS = [
   'Whose certifications expire soon?',
 ];
 
+/** Friendly progress labels per read tool; anything unknown gets the generic line. */
+const TOOL_LABELS = {
+  search_associates: 'Searching associates…',
+  get_associate_detail: 'Reading a profile…',
+  get_project_detail: 'Reading a project…',
+  list_rolloffs: 'Checking upcoming roll-offs…',
+  list_open_positions: 'Looking up open positions…',
+  get_position_matches: 'Ranking bench matches…',
+  get_position_match_summary: 'Checking bench matches for every open position…',
+  list_clients: 'Listing clients…',
+  list_projects: 'Listing projects…',
+  get_skill_gaps: 'Analyzing skill gaps…',
+  list_expiring_certifications: 'Checking certifications…',
+  get_workforce_summary: 'Compiling the workforce summary…',
+  list_bench_aging: 'Reviewing the bench…',
+};
+
 /** Renders reply text: blank-line paragraphs, "- " bullets, **bold** — no innerHTML. */
 function ReplyText({ text }) {
   const lines = (text || '').split('\n');
@@ -67,6 +84,7 @@ export default function AssistantChat({ showToast, canEdit }) {
   const [messages, setMessages] = useState([]); // { role, content, action?, actionDone? }
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [activity, setActivity] = useState('');
   const [isFullScreen, setIsFullScreen] = useState(false);
   const messageAnim = useMotionVariants(chatMessage);
 
@@ -88,16 +106,20 @@ export default function AssistantChat({ showToast, canEdit }) {
     if (!question || busy) return;
     setBusy(true);
     setInput('');
+    setActivity('Thinking…');
     const history = messages;
     setMessages((m) => [...m, { role: 'user', content: question }]);
     try {
-      const { reply, proposedAction } = await api.askAssistant(question, history);
+      const { reply, proposedAction } = await api.askAssistantStream(question, history, (tool) =>
+        setActivity(TOOL_LABELS[tool] || 'Looking things up…')
+      );
       setMessages((m) => [...m, { role: 'model', content: reply, action: proposedAction }]);
     } catch (err) {
       setMessages((m) => m.slice(0, -1));
       showToast(err.message, true);
     } finally {
       setBusy(false);
+      setActivity('');
       setTimeout(() => logRef.current?.scrollTo(0, logRef.current.scrollHeight), 50);
     }
   };
@@ -258,10 +280,15 @@ export default function AssistantChat({ showToast, canEdit }) {
                 ))}
               </AnimatePresence>
               {busy && (
-                <div className="mirai-typing" aria-label="Mirai is thinking">
-                  <span />
-                  <span />
-                  <span />
+                <div className="mirai-typing-row">
+                  <div className="mirai-typing" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <span className="mirai-activity" aria-live="polite">
+                    {activity}
+                  </span>
                 </div>
               )}
             </div>
