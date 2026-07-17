@@ -758,4 +758,50 @@ class AssistantApiTest extends ApiTestBase {
                 // 70 + the OTHER 40 = 110 -> warn
                 .andExpect(jsonPath("$.proposedAction.warnings[0]", containsString("over 100%")));
     }
+
+    @Test
+    void chat_draftsPosition_withResolvedSkillAndDefaults() throws Exception {
+        var acme = client("Acme Corp");
+        project("ACM-100", "Storefront Revamp", acme);
+        var react = skill("Frontend", "React");
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_position",
+                                Map.of("title", "Senior React Developer",
+                                        "projectName", "Storefront Revamp",
+                                        "skillName", "react",
+                                        "minProficiency", "ADVANCE"))));
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"open a senior react position on storefront","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction.type").value("CREATE_POSITION"))
+                .andExpect(jsonPath("$.proposedAction.positionTitle").value("Senior React Developer"))
+                .andExpect(jsonPath("$.proposedAction.skillId").value(react.getId().intValue()))
+                .andExpect(jsonPath("$.proposedAction.skillName").value("React"))
+                .andExpect(jsonPath("$.proposedAction.minProficiency").value("ADVANCE"))
+                .andExpect(jsonPath("$.proposedAction.percent").value(100))
+                .andExpect(jsonPath("$.proposedAction.billable").value(true));
+    }
+
+    @Test
+    void chat_position_unknownSkill_asksBack() throws Exception {
+        var acme = client("Acme Corp");
+        project("ACM-100", "Storefront Revamp", acme);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_position",
+                                Map.of("title", "Sorcerer", "projectName", "Storefront Revamp",
+                                        "skillName", "Dark Arts"))));
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"we need a sorcerer","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction").doesNotExist())
+                .andExpect(jsonPath("$.reply", containsString("couldn't find a skill matching \"Dark Arts\"")));
+    }
 }

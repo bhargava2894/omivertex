@@ -8,10 +8,12 @@ import com.softility.omivertex.domain.EntityStatus;
 import com.softility.omivertex.domain.OpenPosition;
 import com.softility.omivertex.domain.PositionStatus;
 import com.softility.omivertex.domain.Project;
+import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.OpenPositionRepository;
 import com.softility.omivertex.repository.ProjectRepository;
+import com.softility.omivertex.repository.SkillRepository;
 import com.softility.omivertex.web.dto.AssistantChatRequest;
 import com.softility.omivertex.web.dto.AssistantChatResponse;
 import com.softility.omivertex.web.dto.AssistantChatResponse.ActionType;
@@ -48,14 +50,15 @@ public class AssistantService {
     private final OpenPositionRepository positionRepository;
     private final AllocationRepository allocationRepository;
     private final PositionService positionService;
+    private final SkillRepository skillRepository;
     private final ObjectMapper objectMapper;
     private final AssistantInteractionLog interactionLog;
 
     public AssistantService(AssistantContextBuilder contextBuilder, GeminiClient geminiClient,
                             AssociateRepository associateRepository, ProjectRepository projectRepository,
                             OpenPositionRepository positionRepository, AllocationRepository allocationRepository,
-                            PositionService positionService, ObjectMapper objectMapper,
-                            AssistantInteractionLog interactionLog) {
+                            PositionService positionService, SkillRepository skillRepository,
+                            ObjectMapper objectMapper, AssistantInteractionLog interactionLog) {
         this.contextBuilder = contextBuilder;
         this.geminiClient = geminiClient;
         this.associateRepository = associateRepository;
@@ -63,6 +66,7 @@ public class AssistantService {
         this.positionRepository = positionRepository;
         this.allocationRepository = allocationRepository;
         this.positionService = positionService;
+        this.skillRepository = skillRepository;
         this.objectMapper = objectMapper;
         this.interactionLog = interactionLog;
     }
@@ -123,8 +127,9 @@ public class AssistantService {
             case "propose_position_fill" -> draftFill(reply.text(), args);
             case "propose_end_allocation" -> draftEndAllocation(reply.text(), args);
             case "propose_edit_allocation" -> draftEditAllocation(reply.text(), args);
+            case "propose_position" -> draftPosition(reply.text(), args);
             default -> new AssistantChatResponse(nonBlank(reply.text(),
-                    "I can't do that yet — I can draft allocations, position fills, and roll-offs."), null);
+                    "I can't do that yet — I can draft allocations, position fills, roll-offs, and new positions."), null);
         };
     }
 
@@ -273,6 +278,62 @@ public class AssistantService {
                 al.getProject().getId(), al.getProject().getName(),
                 null, null, percent, billable,
                 al.getStartDate(), end, al.getId(), null, null, null, summary, warnings);
+        return new AssistantChatResponse(nonBlank(text,
+                "Here's the draft — review and confirm below."), proposed);
+    }
+
+    private Resolved<Skill> resolveSkill(String name) {
+        if (name == null || name.isBlank()) {
+            return new Resolved<>(null, null); // no skill requested — a skill-less seat is fine
+        }
+        List<Skill> matches = matchByName(skillRepository.findAll(), Skill::getName, name);
+        if (matches.size() == 1) {
+            return new Resolved<>(matches.get(0), null);
+        }
+        if (matches.isEmpty()) {
+            return new Resolved<>(null, "I couldn't find a skill matching \"%s\" in the taxonomy."
+                    .formatted(name));
+        }
+        return new Resolved<>(null, "I found more than one skill for \"%s\": %s — which one did you mean?"
+                .formatted(name, matches.stream().map(Skill::getName).collect(Collectors.joining(", "))));
+    }
+
+    private AssistantChatResponse draftPosition(String text, Map<String, Object> args) {
+        if (str(args, "title") == null || str(args, "title").isBlank()) {
+            return new AssistantChatResponse("What should the position be called? Give me a title.", null);
+        }
+        Resolved<Project> project = resolveProject(str(args, "projectName"));
+        if (project.reply() != null) {
+            return new AssistantChatResponse(project.reply(), null);
+        }
+        Resolved<Skill> skill = resolveSkill(str(args, "skillName"));
+        if (skill.reply() != null) {
+            return new AssistantChatResponse(skill.reply(), null);
+        }
+        int percent = intOrDefault(args.get("percent"), DEFAULT_PERCENT);
+        if (percent < 1 || percent > 100) {
+            return new AssistantChatResponse(
+                    "An allocation must be between 1%% and 100%% — %d%% isn't valid.".formatted(percent), null);
+        }
+        boolean billable = boolOrDefault(args.get("billable"), true);
+        LocalDate start = dateOrDefault(args.get("startDate"), null);
+        LocalDate end = dateOrDefault(args.get("endDate"), null);
+        // spec: an unparseable minProficiency degrades to INTERMEDIATE (only relevant with a skill)
+        com.softility.omivertex.domain.Proficiency minProf = skill.value() == null ? null
+                : java.util.Objects.requireNonNullElse(
+                        proficiencyOrNull(str(args, "minProficiency")),
+                        com.softility.omivertex.domain.Proficiency.INTERMEDIATE);
+        String title = str(args, "title").trim();
+        String summary = "Open '%s' on %s (%d%%, %s%s)".formatted(
+                title, project.value().getName(), percent,
+                billable ? "billable" : "non-billable",
+                skill.value() == null ? "" : ", requires " + skill.value().getName() + " min " + minProf);
+        ProposedAction proposed = new ProposedAction(ActionType.CREATE_POSITION,
+                null, null, project.value().getId(), project.value().getName(),
+                null, title, percent, billable, start, end, null,
+                skill.value() == null ? null : skill.value().getId(),
+                skill.value() == null ? null : skill.value().getName(),
+                minProf, summary, List.of());
         return new AssistantChatResponse(nonBlank(text,
                 "Here's the draft — review and confirm below."), proposed);
     }

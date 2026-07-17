@@ -130,6 +130,24 @@ public class GeminiHttpClient implements GeminiClient {
                                     "endDate", Map.of("type", "string",
                                             "description", "ISO date; omit/null to keep open-ended")),
                             "required", List.of("associateName", "projectName"))),
+            Map.of("name", "propose_position",
+                    "description", "Draft opening a NEW position on a project, for the user to"
+                            + " confirm — optionally with one required skill from the taxonomy."
+                            + " Use when asked to open a seat, create a position, or hire for a role.",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of(
+                                    "title", Map.of("type", "string"),
+                                    "projectName", Map.of("type", "string"),
+                                    "skillName", Map.of("type", "string",
+                                            "description", "one required skill; optional"),
+                                    "minProficiency", Map.of("type", "string",
+                                            "description", "NOVICE, FOUNDATIONAL, INTERMEDIATE,"
+                                                    + " FUNCTIONAL_USER, ADVANCE or MASTERY"),
+                                    "percent", Map.of("type", "integer", "description", "default 100"),
+                                    "billable", Map.of("type", "boolean", "description", "default true"),
+                                    "startDate", Map.of("type", "string", "description", "ISO date; optional"),
+                                    "endDate", Map.of("type", "string", "description", "ISO date; optional")),
+                            "required", List.of("title", "projectName"))),
             Map.of("name", READ_TOOL_MATCHES,
                     "description", "Rank candidates for ONE open position by skill and bench status."
                             + " Use when asked who matches or could fill a specific position; for"
