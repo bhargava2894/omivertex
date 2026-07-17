@@ -32,6 +32,14 @@ The prompt asks for strict JSON with first-of-month ISO dates or null
 null, entries without a company are dropped. The keyword fallback path
 returns the new fields empty — no AI key means today's behavior exactly.
 
+**Softility rows are never imported** (user decision): internal engagement
+history is authoritative and system-derived from allocations, while résumé
+history is self-reported external data — the two are shown as separate
+profile cards and never merged. Extracted entries whose company matches the
+form's Company value (case-insensitive; default "Softility") are dropped in
+the overview with a one-line note ("Softility entry omitted — internal
+history comes from allocations"); the admin can still add a row manually.
+
 **Email is deliberately not extracted**: résumés carry personal addresses,
 while this app derives company emails via `EmailNaming` — prefilling a
 personal email would plant wrong data.
