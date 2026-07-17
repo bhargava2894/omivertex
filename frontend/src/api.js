@@ -160,6 +160,51 @@ export const api = {
   // Dashboard AI assistant
   askAssistant: (message, history) =>
     request('/assistant/chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
+  // Streams a chat turn: onTool(name) fires as each lookup runs; resolves with the
+  // same payload askAssistant returns. Any TRANSPORT failure falls back to the
+  // plain endpoint so a chat always gets an answer; a server-sent error event is
+  // a real business error and is rethrown, not retried.
+  askAssistantStream: async (message, history, onTool) => {
+    try {
+      const res = await fetch(`${BASE}/assistant/chat/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, history }),
+      });
+      if (!res.ok || !res.body) throw new Error('stream unavailable');
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let event = 'message';
+      let reply = null;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            event = line.slice(6).trim();
+          } else if (line.startsWith('data:')) {
+            const data = line.slice(5).trim();
+            if (event === 'tool' && onTool) onTool(data);
+            else if (event === 'reply') reply = JSON.parse(data);
+            else if (event === 'error') {
+              const err = new Error(data);
+              err.fromStream = true; // business error — do NOT retry on the plain endpoint
+              throw err;
+            }
+          }
+        }
+      }
+      if (reply) return reply;
+      throw new Error('stream ended without a reply');
+    } catch (err) {
+      if (err.fromStream) throw err;
+      return api.askAssistant(message, history); // transport fallback (also restores 401 handling)
+    }
+  },
   // Admin profile changes queue
   listProfileChanges: (params = {}) => api.list('profile-changes', params),
   approveProfileChange: (id) => request(`/profile-changes/${id}/approve`, { method: 'POST' }),
