@@ -73,11 +73,15 @@ class MiraiGoldenQuestionsTest extends ApiTestBase {
         interactionLogger.detachAppender(appender);
     }
 
+    /** Live turns can run several tool rounds — allow well beyond the 10s mock-path default. */
+    private static final long LIVE_ASYNC_WAIT_MS = 60_000;
+
     private JsonNode ask(String question) throws Exception {
         MvcResult result = asyncPerform(post("/api/v1/assistant/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(JSON.writeValueAsString(
-                                Map.of("message", question, "history", List.of()))))
+                                Map.of("message", question, "history", List.of()))),
+                LIVE_ASYNC_WAIT_MS)
                 .andExpect(status().isOk())
                 .andReturn();
         return JSON.readTree(result.getResponse().getContentAsString());

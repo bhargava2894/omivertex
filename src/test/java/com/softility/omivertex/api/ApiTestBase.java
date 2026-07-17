@@ -57,9 +57,16 @@ public abstract class ApiTestBase {
 
     /** Two-step MockMvc for async (CompletableFuture) endpoints. */
     protected ResultActions asyncPerform(RequestBuilder requestBuilder) throws Exception {
+        return asyncPerform(requestBuilder, 10_000);
+    }
+
+    /** Live-model callers (the golden eval) need a longer wait than the 10s default. */
+    protected ResultActions asyncPerform(RequestBuilder requestBuilder, long asyncWaitMs)
+            throws Exception {
         MvcResult started = mockMvc.perform(requestBuilder)
                 .andExpect(request().asyncStarted())
                 .andReturn();
+        started.getAsyncResult(asyncWaitMs); // blocks until the future completes, or fails at the cap
         return mockMvc.perform(asyncDispatch(started));
     }
 
