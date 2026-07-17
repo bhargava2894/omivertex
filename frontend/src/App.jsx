@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Icon from './components/Icon.jsx';
 import IntroOverlay from './components/IntroOverlay.jsx';
+import { MIRAI_CHAT_KEY } from './components/AssistantChat.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Associates from './pages/Associates.jsx';
 import Clients from './pages/Clients.jsx';
@@ -197,6 +198,8 @@ export default function App() {
     try {
       await api.logout();
     } finally {
+      // a shared machine must not show the next login this user's chat
+      sessionStorage.removeItem(MIRAI_CHAT_KEY);
       setUser(null);
     }
   };

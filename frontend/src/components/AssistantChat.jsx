@@ -12,6 +12,21 @@ const SUGGESTIONS = [
   'Whose certifications expire soon?',
 ];
 
+/** Per-tab chat persistence: survives a refresh, gone when the tab closes. */
+export const MIRAI_CHAT_KEY = 'mirai-chat';
+/** Quota bound: only this many trailing messages are persisted. */
+const MAX_STORED_MESSAGES = 40;
+
+function storedMessages() {
+  try {
+    const raw = sessionStorage.getItem(MIRAI_CHAT_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return []; // malformed storage — start fresh rather than break the card
+  }
+}
+
 /** Friendly progress labels per read tool; anything unknown gets the generic line. */
 const TOOL_LABELS = {
   search_associates: 'Searching associates…',
@@ -81,7 +96,7 @@ function ReplyText({ text }) {
 }
 
 export default function AssistantChat({ showToast, canEdit }) {
-  const [messages, setMessages] = useState([]); // { role, content, action?, actionDone? }
+  const [messages, setMessages] = useState(storedMessages); // { role, content, action?, actionDone? }
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState('');
@@ -98,6 +113,19 @@ export default function AssistantChat({ showToast, canEdit }) {
       document.body.style.overflow = '';
     };
   }, [isFullScreen]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(MIRAI_CHAT_KEY, JSON.stringify(messages.slice(-MAX_STORED_MESSAGES)));
+    } catch {
+      // storage full or unavailable — the chat still works, it just won't survive a refresh
+    }
+  }, [messages]);
+
+  const clearChat = () => {
+    setMessages([]);
+    sessionStorage.removeItem(MIRAI_CHAT_KEY);
+  };
 
   const logRef = useRef(null);
 
@@ -193,14 +221,27 @@ export default function AssistantChat({ showToast, canEdit }) {
             </div>
             <p className="mirai-tagline">orchestrate with intelligence</p>
           </div>
-          <button
-            type="button"
-            className="mirai-expand-btn"
-            onClick={() => setIsFullScreen(!isFullScreen)}
-            title={isFullScreen ? 'Exit full screen' : 'Open full screen'}
-          >
-            <Icon name={isFullScreen ? 'minimize' : 'maximize'} size={16} />
-          </button>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {messages.length > 0 && !busy && (
+              <button
+                type="button"
+                className="mirai-expand-btn"
+                onClick={clearChat}
+                title="Clear this conversation"
+                aria-label="Clear this conversation"
+              >
+                <Icon name="trash" size={15} />
+              </button>
+            )}
+            <button
+              type="button"
+              className="mirai-expand-btn"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              title={isFullScreen ? 'Exit full screen' : 'Open full screen'}
+            >
+              <Icon name={isFullScreen ? 'minimize' : 'maximize'} size={16} />
+            </button>
+          </div>
         </div>
         <div className="mirai-body">
           {messages.length === 0 && (
