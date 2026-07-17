@@ -2,12 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 
 /**
  * Cosmic intro: glowing stars scatter across the viewport, converge along
- * curved paths onto the logo's constellation, connect with animated lines,
- * crossfade into the real logo-mark with a smooth 60° settle (the three
- * orbits sit 60° apart, so the turn reads as orbital motion), then FLY to
- * the page's real logo placeholder — the
- * sidebar brand or the login card's logo — un-twisting as it shrinks, while
- * the page rises in underneath (the parent is told via onLanding).
+ * curved paths onto the logo's orbital constellation (dots only — no
+ * connecting lines), crossfade into the real logo-mark, then FLY to the
+ * page's real logo placeholder — the sidebar brand or the login card's
+ * logo — shrinking as it goes, while the page rises in underneath (the
+ * parent is told via onLanding).
  *
  * Runs once per full page load; click skips; prefers-reduced-motion replaces
  * the whole sequence with a short fade; a hard time cap ends it regardless.
@@ -19,11 +18,9 @@ import { useEffect, useRef, useState } from 'react';
 // crossfades to the real image, which guarantees exactness.)
 function constellation() {
   const nodes = []; // [x, y, weight] — beads are heavier than arc points
-  const edges = [];
   const ORBITS = [-Math.PI / 6, Math.PI / 6, Math.PI / 2]; // -30°, 30°, 90°
   const PTS = 12;
   ORBITS.forEach((rot) => {
-    const first = nodes.length;
     for (let i = 0; i < PTS; i++) {
       const a = (Math.PI * 2 * i) / PTS;
       const ex = Math.cos(a);
@@ -31,12 +28,11 @@ function constellation() {
       const x = ex * Math.cos(rot) - ey * Math.sin(rot);
       const y = ex * Math.sin(rot) + ey * Math.cos(rot);
       nodes.push([x, y, i % 4 === 0 ? 3.1 : 1.7]); // every 4th point is a bead
-      edges.push([first + i, first + ((i + 1) % PTS)]);
     }
   });
   nodes.push([0, -0.13, 4.2]); // the figure's head
   nodes.push([0, 0.14, 5.2]); // the figure's shoulders
-  return { nodes, edges };
+  return nodes;
 }
 
 /** The page's real logo slot the intro logo lands on. */
@@ -45,8 +41,8 @@ const LANDING_TARGETS = '.brand-logo, .login-logo';
 const STAR_COUNT = 64; // 38 become constellation nodes; the rest fade out during convergence
 const T_SCATTER = 700;
 const T_CONVERGE = 900;
-const T_CONNECT = 700;
-const T_REVEAL = 1000; // crossfade + 60° settle
+const T_GLOW = 350; // beads brighten in place before the crossfade
+const T_REVEAL = 900; // crossfade, no rotation
 const T_FLY = 650;
 const HARD_CAP_MS = 4200;
 
@@ -87,7 +83,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
     const violet = styles.getPropertyValue('--intro-violet').trim();
     const blue = styles.getPropertyValue('--intro-blue').trim();
 
-    const { nodes, edges } = constellation();
+    const nodes = constellation();
     const scale = Math.min(w, h) * 0.21;
     const cx = w / 2;
     const cy = h / 2;
@@ -133,36 +129,8 @@ export default function IntroOverlay({ onLanding, onDone }) {
 
       const scatter = Math.min(1, t / T_SCATTER);
       const converge = Math.min(1, Math.max(0, (t - T_SCATTER) / T_CONVERGE));
-      const connect = Math.min(1, Math.max(0, (t - T_SCATTER - T_CONVERGE) / T_CONNECT));
+      const glow = Math.min(1, Math.max(0, (t - T_SCATTER - T_CONVERGE) / T_GLOW));
       const k = easeInOut(converge);
-
-      // edges draw in, each slightly staggered, with a soft glow
-      if (connect > 0) {
-        ctx.lineWidth = 1.4;
-        edges.forEach(([a, b], i) => {
-          const local = Math.min(1, Math.max(0, connect * edges.length * 0.35 - i * 0.22));
-          if (local <= 0) return;
-          const [ax, ay] = nodes[a];
-          const [bx, by] = nodes[b];
-          const x1 = cx + ax * scale;
-          const y1 = cy + ay * scale;
-          const x2 = cx + bx * scale;
-          const y2 = cy + by * scale;
-          const grad = ctx.createLinearGradient(x1, y1, x2, y2);
-          grad.addColorStop(0, colorAt(ax));
-          grad.addColorStop(1, colorAt(bx));
-          ctx.strokeStyle = grad;
-          ctx.globalAlpha = 0.55 * local;
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = colorAt((ax + bx) / 2);
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x1 + (x2 - x1) * local, y1 + (y2 - y1) * local);
-          ctx.stroke();
-        });
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
-      }
 
       for (const s of stars) {
         let x = s.sx;
@@ -178,7 +146,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
         const ambientFade = s.node ? 1 : Math.max(0, 1 - converge * 1.6);
         if (ambientFade <= 0) continue;
         const tw = 0.65 + 0.35 * Math.sin(s.twinkle + t / 260);
-        const r = s.node ? Math.max(1.4, s.targetR * (0.55 + 0.45 * k)) : 1.4;
+        const r = s.node ? Math.max(1.4, s.targetR * (0.55 + 0.45 * k) * (1 + 0.15 * glow)) : 1.4;
         ctx.globalAlpha = scatter * tw * ambientFade;
         ctx.shadowBlur = 10;
         ctx.shadowColor = s.color;
@@ -190,7 +158,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
 
-      if (t >= T_SCATTER + T_CONVERGE + T_CONNECT) {
+      if (t >= T_SCATTER + T_CONVERGE + T_GLOW) {
         finish();
         return;
       }
@@ -213,8 +181,8 @@ export default function IntroOverlay({ onLanding, onDone }) {
     return () => clearTimeout(toFly);
   }, [phase]);
 
-  // fly: FLIP the centered logo onto the real placeholder, un-twisting the 60°;
-  // the page rises in underneath (onLanding). No placeholder -> plain fade.
+  // fly: FLIP the centered logo onto the real placeholder while the page
+  // rises in underneath (onLanding). No placeholder -> plain fade.
   useEffect(() => {
     if (phase !== 'fly') return undefined;
     const img = logoRef.current;
@@ -230,13 +198,12 @@ export default function IntroOverlay({ onLanding, onDone }) {
     const dx = to.left + to.width / 2 - (from.left + from.width / 2);
     const dy = to.top + to.height / 2 - (from.top + from.height / 2);
     const s = to.width / from.width;
-    // starting point = where the settle animation left it (rotated 60°)
     img.classList.remove('intro-logo-reveal');
     img.classList.add('intro-logo-flying');
-    img.style.transform = 'rotate(60deg) scale(1)';
+    img.style.transform = 'scale(1)';
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        img.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg) scale(${s})`;
+        img.style.transform = `translate(${dx}px, ${dy}px) scale(${s})`;
       });
     });
     const done = setTimeout(() => {
