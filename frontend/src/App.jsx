@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Icon from './components/Icon.jsx';
+import IntroOverlay from './components/IntroOverlay.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Associates from './pages/Associates.jsx';
 import Clients from './pages/Clients.jsx';
@@ -162,6 +163,7 @@ export default function App() {
   const pageAnim = useMotionVariants(pageTransition);
   const [theme, setThemeState] = useState(storedTheme);
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
+  const [intro, setIntro] = useState(true); // cosmic intro, once per full page load
 
   useEffect(() => {
     api
@@ -236,15 +238,23 @@ export default function App() {
   const Page = isProfile ? Profile : active.component;
   const isDark = resolveTheme(theme) === 'dark';
 
+  const introEl = intro ? <IntroOverlay onDone={() => setIntro(false)} /> : null;
+
   if (user === undefined) {
-    return null; // session check in flight — avoid flashing the login page
+    return introEl; // session check in flight — the intro covers it; never flash the login page
   }
   if (user === null) {
-    return <Login onLogin={setUser} />;
+    return (
+      <>
+        {introEl}
+        <Login onLogin={setUser} />
+      </>
+    );
   }
 
   return (
     <div className="shell">
+      {introEl}
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div className="brand-logo-wrap">

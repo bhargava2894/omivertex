@@ -1,4 +1,11 @@
 :root {
+  /* cosmic intro: sampled from logo-mark.png's gradient; the backdrop is deep
+     space navy in BOTH themes — the intro is deliberately dark and premium. */
+  --intro-pink: #ea6bcc;
+  --intro-violet: #a691f2;
+  --intro-blue: #6ab9ff;
+  --intro-backdrop: #070b18;
+
   --color-primary: #2563eb;
   --color-primary-strong: #1d4ed8;
   --color-primary-grad: linear-gradient(180deg, #3b82f6, #2563eb);
@@ -57,6 +64,13 @@
 }
 
 [data-theme='dark'] {
+  /* cosmic intro: sampled from logo-mark.png's gradient; the backdrop is deep
+     space navy in BOTH themes — the intro is deliberately dark and premium. */
+  --intro-pink: #ea6bcc;
+  --intro-violet: #a691f2;
+  --intro-blue: #6ab9ff;
+  --intro-backdrop: #070b18;
+
   --color-primary: #3b82f6;
   --color-primary-strong: #2563eb;
   --color-primary-grad: linear-gradient(180deg, #4f8ef7, #2f6fe4);
@@ -1557,4 +1571,43 @@ svg path, svg rect, svg circle { transition: opacity 0.15s var(--ease); }
 @media (prefers-reduced-motion: reduce) {
   .gap-tile, .gap-row, .gap-bar-fill { transition: none; }
   .gap-tile:hover { transform: none; }
+}
+
+/* ---- cosmic intro overlay ---- */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--intro-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+.intro-overlay-out { opacity: 0; pointer-events: none; }
+.intro-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.intro-logo {
+  width: min(42vmin, 300px);
+  opacity: 0;
+  filter: drop-shadow(0 0 26px var(--intro-violet));
+}
+.intro-logo-reveal {
+  animation: intro-logo-settle 1s ease-in-out forwards;
+}
+.intro-logo-reduced {
+  animation: intro-logo-fade 0.3s ease forwards;
+}
+/* the mark is six-fold symmetric: a smooth 60° turn lands exactly on itself */
+@keyframes intro-logo-settle {
+  0%   { opacity: 0; transform: rotate(0deg) scale(0.96); }
+  35%  { opacity: 1; }
+  100% { opacity: 1; transform: rotate(60deg) scale(1); }
+}
+@keyframes intro-logo-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .intro-logo-reveal { animation: intro-logo-fade 0.3s ease forwards; }
 }
