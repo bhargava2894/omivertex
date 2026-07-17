@@ -15,11 +15,18 @@ overlay fades out to the app. Elegant, modern, enterprise-grade.
 - **One self-contained component** `frontend/src/components/IntroOverlay.jsx`:
   full-screen fixed canvas + rAF loop, mounted once in `App.jsx`, unmounts
   completely when finished (zero post-intro cost).
-- **Sequence (~2.8s):** stars fade in scattered (~0.7s) → converge to the
+- **Sequence (~3.5s):** stars fade in scattered (~0.7s) → converge to the
   logo's node coordinates with easing (~0.9s) → edges draw between nodes
-  with a soft glow (~0.7s) → crossfade to the real `logo-mark.png`, subtle
-  few-degree rotation with settle, overlay fades (~0.5s). The crossfade to
-  the actual PNG is what guarantees the logo forms "exactly".
+  with a soft glow (~0.7s) → crossfade to the real `logo-mark.png` with a
+  smooth 60° settle (~1s; the mark is six-fold symmetric) → **the logo
+  flies home** (~0.65s): a FLIP transition onto the page's real logo
+  placeholder (`.brand-logo` in the sidebar or `.login-logo` on the login
+  card), un-twisting back to 0° as it shrinks, while the backdrop dissolves
+  and the page fades in underneath (`onLanding` → an opacity-only entrance;
+  transforms are deliberately avoided so the landing target cannot move
+  mid-flight). The real placeholder is hidden during the flight so there is
+  never a double logo. No placeholder found → plain fade fallback. The
+  crossfade to the actual PNG is what guarantees the logo forms "exactly".
 - **Node coordinates** extracted once from `logo-mark.png` (offline script)
   and embedded as a normalized constant array; edges connect each node to
   its nearest neighbors to recreate the logo's web.

@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * Cosmic intro: glowing stars scatter across the viewport, converge along
  * curved paths onto the logo's constellation, connect with animated lines,
- * then crossfade into the real logo-mark, which settles with a smooth 60°
- * rotation (the mark is six-fold symmetric, so it lands on its own shape).
+ * crossfade into the real logo-mark with a smooth 60° settle (the mark is
+ * six-fold symmetric), then FLY to the page's real logo placeholder — the
+ * sidebar brand or the login card's logo — un-twisting as it shrinks, while
+ * the page rises in underneath (the parent is told via onLanding).
  *
  * Runs once per full page load; click skips; prefers-reduced-motion replaces
  * the whole sequence with a short fade; a hard time cap ends it regardless.
@@ -37,23 +39,37 @@ function constellation() {
   return { nodes, edges };
 }
 
+/** The page's real logo slot the intro logo lands on. */
+const LANDING_TARGETS = '.brand-logo, .login-logo';
+
 const STAR_COUNT = 64; // 19 become nodes; the rest fade out during convergence
 const T_SCATTER = 700;
 const T_CONVERGE = 900;
 const T_CONNECT = 700;
-const T_REVEAL = 550;
-const HARD_CAP_MS = 3500;
+const T_REVEAL = 1000; // crossfade + 60° settle
+const T_FLY = 650;
+const HARD_CAP_MS = 4200;
 
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
-export default function IntroOverlay({ onDone }) {
+export default function IntroOverlay({ onLanding, onDone }) {
   const canvasRef = useRef(null);
-  const [phase, setPhase] = useState('run'); // run -> reveal -> fade
+  const logoRef = useRef(null);
+  const landedRef = useRef(false);
+  const [phase, setPhase] = useState('run'); // run -> reveal -> fly | fade
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const land = () => {
+    if (!landedRef.current) {
+      landedRef.current = true;
+      onLanding?.();
+    }
+  };
 
   useEffect(() => {
     if (reduced) {
-      // accessibility path: brief logo fade, no particles, no rotation
+      // accessibility path: brief logo fade, no particles, no flight
+      land();
       const t = setTimeout(onDone, 900);
       return () => clearTimeout(t);
     }
@@ -186,29 +202,71 @@ export default function IntroOverlay({ onDone }) {
       clearTimeout(cap);
       window.removeEventListener('pointerdown', skip);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onDone, reduced]);
 
-  // reveal phase: crossfade to the real mark + 60° settle, then fade the overlay
+  // reveal -> fly: after the settle, launch toward the page's logo placeholder
   useEffect(() => {
     if (phase !== 'reveal') return undefined;
-    const toFade = setTimeout(() => setPhase('fade'), T_REVEAL + 450);
-    return () => clearTimeout(toFade);
+    const toFly = setTimeout(() => setPhase('fly'), T_REVEAL + 150);
+    return () => clearTimeout(toFly);
   }, [phase]);
 
+  // fly: FLIP the centered logo onto the real placeholder, un-twisting the 60°;
+  // the page rises in underneath (onLanding). No placeholder -> plain fade.
+  useEffect(() => {
+    if (phase !== 'fly') return undefined;
+    const img = logoRef.current;
+    const target = document.querySelector(LANDING_TARGETS);
+    land(); // page starts rising either way
+    if (!img || !target) {
+      setPhase('fade');
+      return undefined;
+    }
+    const from = img.getBoundingClientRect();
+    const to = target.getBoundingClientRect();
+    target.style.visibility = 'hidden'; // no double logo while in flight
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+    const s = to.width / from.width;
+    // starting point = where the settle animation left it (rotated 60°)
+    img.classList.remove('intro-logo-reveal');
+    img.classList.add('intro-logo-flying');
+    img.style.transform = 'rotate(60deg) scale(1)';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        img.style.transform = `translate(${dx}px, ${dy}px) rotate(0deg) scale(${s})`;
+      });
+    });
+    const done = setTimeout(() => {
+      target.style.visibility = '';
+      onDone();
+    }, T_FLY + 80);
+    return () => {
+      clearTimeout(done);
+      target.style.visibility = '';
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, onDone]);
+
+  // fade fallback (no landing target found)
   useEffect(() => {
     if (phase !== 'fade') return undefined;
     const done = setTimeout(onDone, 420);
     return () => clearTimeout(done);
   }, [phase, onDone]);
 
+  const outClass =
+    phase === 'fly'
+      ? 'intro-overlay-out'
+      : phase === 'fade'
+        ? 'intro-overlay-out intro-overlay-gone'
+        : '';
   return (
-    <div
-      className={`intro-overlay ${phase === 'fade' ? 'intro-overlay-out' : ''}`}
-      role="presentation"
-      aria-hidden="true"
-    >
+    <div className={`intro-overlay ${outClass}`} role="presentation" aria-hidden="true">
       {!reduced && <canvas ref={canvasRef} className="intro-canvas" />}
       <img
+        ref={logoRef}
         src="/logo-mark.png"
         alt=""
         className={`intro-logo ${reduced ? 'intro-logo-reduced' : phase !== 'run' ? 'intro-logo-reveal' : ''}`}

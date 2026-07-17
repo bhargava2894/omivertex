@@ -164,6 +164,7 @@ export default function App() {
   const [theme, setThemeState] = useState(storedTheme);
   const [user, setUser] = useState(undefined); // undefined = checking, null = logged out
   const [intro, setIntro] = useState(true); // cosmic intro, once per full page load
+  const [landing, setLanding] = useState(false); // intro logo is flying home — page rises in
 
   useEffect(() => {
     api
@@ -238,7 +239,11 @@ export default function App() {
   const Page = isProfile ? Profile : active.component;
   const isDark = resolveTheme(theme) === 'dark';
 
-  const introEl = intro ? <IntroOverlay onDone={() => setIntro(false)} /> : null;
+  const introEl = intro ? (
+    <IntroOverlay onLanding={() => setLanding(true)} onDone={() => setIntro(false)} />
+  ) : null;
+  // veiled while the intro plays, rises as the logo lands, plain afterwards
+  const stageClass = intro && !landing ? 'app-veiled' : landing && intro ? 'app-enter' : '';
 
   if (user === undefined) {
     return introEl; // session check in flight — the intro covers it; never flash the login page
@@ -247,13 +252,15 @@ export default function App() {
     return (
       <>
         {introEl}
-        <Login onLogin={setUser} />
+        <div className={stageClass}>
+          <Login onLogin={setUser} />
+        </div>
       </>
     );
   }
 
   return (
-    <div className="shell">
+    <div className={`shell ${stageClass}`}>
       {introEl}
       <aside className="sidebar">
         <div className="sidebar-brand">
