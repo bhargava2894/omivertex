@@ -173,13 +173,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   height: 38px;
   object-fit: contain;
   filter: drop-shadow(0 2px 8px rgba(124, 58, 237, 0.45));
-  animation: logo-spin 20s linear infinite;
   transition: filter 0.3s var(--ease);
-}
-
-@keyframes logo-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .brand-name { color: #fff; font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }

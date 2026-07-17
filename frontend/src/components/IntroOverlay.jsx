@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 
 /**
  * Cosmic intro: glowing stars scatter across the viewport, converge along
- * curved paths onto the logo's orbital constellation (dots only — no
- * connecting lines), crossfade into the real logo-mark, then FLY to the
+ * curved paths onto the logo's orbital constellation, then the three orbit
+ * lines sweep themselves around the central figure and the whole mark
+ * aligns into the real logo-mark (crossfade), which then FLIES to the
  * page's real logo placeholder — the sidebar brand or the login card's
  * logo — shrinking as it goes, while the page rises in underneath (the
  * parent is told via onLanding).
@@ -16,15 +17,17 @@ import { useEffect, useRef, useState } from 'react';
 // The constellation mirrors the logo-mark's structure: three elliptical orbits
 // around a central figure, with bead nodes along the arcs. (The finale
 // crossfades to the real image, which guarantees exactness.)
+const ORBIT_ANGLES = [-Math.PI / 6, Math.PI / 6, Math.PI / 2]; // -30°, 30°, 90°
+const ORBIT_RY = 0.45; // orbit ellipse minor-axis ratio
+
 function constellation() {
   const nodes = []; // [x, y, weight] — beads are heavier than arc points
-  const ORBITS = [-Math.PI / 6, Math.PI / 6, Math.PI / 2]; // -30°, 30°, 90°
   const PTS = 12;
-  ORBITS.forEach((rot) => {
+  ORBIT_ANGLES.forEach((rot) => {
     for (let i = 0; i < PTS; i++) {
       const a = (Math.PI * 2 * i) / PTS;
       const ex = Math.cos(a);
-      const ey = Math.sin(a) * 0.45;
+      const ey = Math.sin(a) * ORBIT_RY;
       const x = ex * Math.cos(rot) - ey * Math.sin(rot);
       const y = ex * Math.sin(rot) + ey * Math.cos(rot);
       nodes.push([x, y, i % 4 === 0 ? 3.1 : 1.7]); // every 4th point is a bead
@@ -41,7 +44,7 @@ const LANDING_TARGETS = '.brand-logo, .login-logo';
 const STAR_COUNT = 64; // 38 become constellation nodes; the rest fade out during convergence
 const T_SCATTER = 700;
 const T_CONVERGE = 900;
-const T_GLOW = 350; // beads brighten in place before the crossfade
+const T_ORBIT = 700; // the orbit lines sweep around the figure
 const T_REVEAL = 900; // crossfade, no rotation
 const T_FLY = 650;
 const HARD_CAP_MS = 4200;
@@ -129,8 +132,40 @@ export default function IntroOverlay({ onLanding, onDone }) {
 
       const scatter = Math.min(1, t / T_SCATTER);
       const converge = Math.min(1, Math.max(0, (t - T_SCATTER) / T_CONVERGE));
-      const glow = Math.min(1, Math.max(0, (t - T_SCATTER - T_CONVERGE) / T_GLOW));
+      const orbit = Math.min(1, Math.max(0, (t - T_SCATTER - T_CONVERGE) / T_ORBIT));
       const k = easeInOut(converge);
+
+      // the orbit lines sweep around the central figure, slightly staggered,
+      // passing exactly through the seated dots — then the mark aligns with
+      // the real logo in the crossfade
+      if (orbit > 0) {
+        ctx.lineWidth = 2.2;
+        ORBIT_ANGLES.forEach((rot, oi) => {
+          const local = Math.min(1, Math.max(0, orbit * 1.4 - oi * 0.2));
+          if (local <= 0) return;
+          const grad = ctx.createLinearGradient(cx - scale, cy, cx + scale, cy);
+          grad.addColorStop(0, pink);
+          grad.addColorStop(0.5, violet);
+          grad.addColorStop(1, blue);
+          ctx.strokeStyle = grad;
+          ctx.globalAlpha = 0.8 * local;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = violet;
+          ctx.beginPath();
+          ctx.ellipse(
+            cx,
+            cy,
+            scale,
+            scale * ORBIT_RY,
+            rot,
+            -Math.PI / 2,
+            -Math.PI / 2 + easeInOut(local) * Math.PI * 2
+          );
+          ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+      }
 
       for (const s of stars) {
         let x = s.sx;
@@ -146,7 +181,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
         const ambientFade = s.node ? 1 : Math.max(0, 1 - converge * 1.6);
         if (ambientFade <= 0) continue;
         const tw = 0.65 + 0.35 * Math.sin(s.twinkle + t / 260);
-        const r = s.node ? Math.max(1.4, s.targetR * (0.55 + 0.45 * k) * (1 + 0.15 * glow)) : 1.4;
+        const r = s.node ? Math.max(1.4, s.targetR * (0.55 + 0.45 * k) * (1 + 0.15 * orbit)) : 1.4;
         ctx.globalAlpha = scatter * tw * ambientFade;
         ctx.shadowBlur = 10;
         ctx.shadowColor = s.color;
@@ -158,7 +193,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
 
-      if (t >= T_SCATTER + T_CONVERGE + T_GLOW) {
+      if (t >= T_SCATTER + T_CONVERGE + T_ORBIT) {
         finish();
         return;
       }
