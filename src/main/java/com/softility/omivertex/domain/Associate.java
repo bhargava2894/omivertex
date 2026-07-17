@@ -31,6 +31,10 @@ public class Associate {
 
     private String designation;
 
+    // Résumé-extracted contact number; not required at intake.
+    @Column(length = 32)
+    private String phone;
+
     // Day the person joined the company. Anchors the bench clock for associates who
     // have never been allocated; without it, re-importing a roster would reset
     // everyone's bench age to the row's creation date.
@@ -78,6 +82,8 @@ public class Associate {
     public void setWorkMode(WorkMode workMode) { this.workMode = workMode; }
     public String getDesignation() { return designation; }
     public void setDesignation(String designation) { this.designation = designation; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
     public LocalDate getJoinedDate() { return joinedDate; }
     public void setJoinedDate(LocalDate joinedDate) { this.joinedDate = joinedDate; }
     public LocalDate getResignationDate() { return resignationDate; }

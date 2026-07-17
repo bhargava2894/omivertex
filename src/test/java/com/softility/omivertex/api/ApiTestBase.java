@@ -36,6 +36,7 @@ public abstract class ApiTestBase {
     @Autowired protected AppUserRepository appUserRepository;
     @Autowired protected com.softility.omivertex.repository.ResumeRepository resumeRepository;
     @Autowired protected ProfileChangeRequestRepository profileChangeRequestRepository;
+    @Autowired protected EmploymentHistoryRepository employmentHistoryRepository;
 
     @BeforeEach
     void cleanDatabase() {
@@ -49,6 +50,7 @@ public abstract class ApiTestBase {
         positionSkillRepository.deleteAll();
         openPositionRepository.deleteAll();
         projectRepository.deleteAll();
+        employmentHistoryRepository.deleteAll();
         associateRepository.deleteAll();
         clientRepository.deleteAll();
         skillRepository.deleteAll();
