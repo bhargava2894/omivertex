@@ -98,6 +98,13 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **Assistant tools are role-registered** (2026-07-17): `GeminiClient.replyWithTools`
+  takes the caller's admin flag; admin-only tools (`list_pending_approvals`,
+  `get_audit_history`) are absent from a viewer's declarations AND refused at
+  dispatch (defense in depth). The write-draft contract is unchanged — Mirai
+  still never mutates; new END/EDIT/CREATE_POSITION drafts confirm through the
+  existing endpoints under the user's own session.
+
 - **Mirai interactions are logged, not stored** (2026-07-16): one log line per
   assistant turn (user, outcome, tools, latency, question) through Logback into
   the rotating app log. Deliberately no DB table (user decision: storage is
