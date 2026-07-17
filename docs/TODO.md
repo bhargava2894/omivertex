@@ -98,6 +98,13 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **Mirai chat history is per-tab sessionStorage, not server-side** (2026-07-18):
+  a refresh restores the conversation (last 40 messages incl. draft cards);
+  the tab closing or logout wipes it. Deliberately no server persistence and
+  no localStorage — replies contain roster data, which must not get a durable
+  home outside the entity tables. Per-reply feedback buttons were considered
+  and descoped by the user.
+
 - **Assistant tools are role-registered** (2026-07-17): `GeminiClient.replyWithTools`
   takes the caller's admin flag; admin-only tools (`list_pending_approvals`,
   `get_audit_history`) are absent from a viewer's declarations AND refused at

@@ -172,7 +172,10 @@ introduce Flyway before making breaking changes.
     `MIRAI user=… outcome=ANSWERED|DRAFTED|ERROR tools=[…] latencyMs=… question="…"`
     (question backslash/quote-escaped, newlines flattened). The username is
     resolved on the servlet thread (`AuditService.currentUsername()`) because
-    the `ai-*` pool never sees the `SecurityContext`. Write drafts now cover end/edit
+    the `ai-*` pool never sees the `SecurityContext`. The chat conversation
+    persists per browser tab (`sessionStorage`, last 40 messages, wiped on
+    logout and tab close — never `localStorage`, never the server, matching
+    the log-not-DB posture). Write drafts now cover end/edit
     allocation and opening a position (one taxonomy-resolved required skill); tools
     are role-registered via `AssistantService.Caller` — a viewer's model never sees
     admin tools, and dispatch refuses them anyway.
