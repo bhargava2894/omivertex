@@ -67,7 +67,19 @@ public class AssistantService {
         this.interactionLog = interactionLog;
     }
 
+    /** Notified as each read tool runs during a turn — lets transports show live progress. */
+    public interface ToolProgressListener {
+        void toolCalled(String name);
+
+        ToolProgressListener NONE = name -> {};
+    }
+
     public AssistantChatResponse chat(AssistantChatRequest request, String username) {
+        return chat(request, username, ToolProgressListener.NONE);
+    }
+
+    public AssistantChatResponse chat(AssistantChatRequest request, String username,
+                                      ToolProgressListener progress) {
         long start = System.currentTimeMillis();
         List<String> toolsCalled = new ArrayList<>();
         try {
@@ -80,6 +92,7 @@ public class AssistantService {
             GeminiClient.AssistantReply reply = geminiClient.replyWithTools(
                     contextBuilder.build(), turns, request.message(), (name, args) -> {
                         toolsCalled.add(name);
+                        progress.toolCalled(name);
                         return executeReadTool(name, args);
                     });
             AssistantChatResponse response = reply.action() == null
