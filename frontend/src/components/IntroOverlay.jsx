@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * Cosmic intro: glowing stars scatter across the viewport, converge along
  * curved paths onto the logo's constellation, connect with animated lines,
- * crossfade into the real logo-mark with a smooth 60° settle (the mark is
- * six-fold symmetric), then FLY to the page's real logo placeholder — the
+ * crossfade into the real logo-mark with a smooth 60° settle (the three
+ * orbits sit 60° apart, so the turn reads as orbital motion), then FLY to
+ * the page's real logo placeholder — the
  * sidebar brand or the login card's logo — un-twisting as it shrinks, while
  * the page rises in underneath (the parent is told via onLanding).
  *
@@ -13,36 +14,35 @@ import { useEffect, useRef, useState } from 'react';
  * The component unmounts completely afterwards — zero post-intro cost.
  */
 
-// The constellation mirrors logo-mark.png's structure: 6 hexagon corners,
-// 6 perimeter midpoints, an inner ring of 6, and the center — 19 nodes.
-// (The finale crossfades to the real image, which guarantees exactness.)
+// The constellation mirrors the logo-mark's structure: three elliptical orbits
+// around a central figure, with bead nodes along the arcs. (The finale
+// crossfades to the real image, which guarantees exactness.)
 function constellation() {
-  const nodes = [];
-  for (let i = 0; i < 6; i++) {
-    const corner = (Math.PI / 3) * i - Math.PI / 2;
-    const mid = corner + Math.PI / 6;
-    nodes.push([Math.cos(corner), Math.sin(corner)]); // corner, r = 1
-    nodes.push([Math.cos(mid) * 0.866, Math.sin(mid) * 0.866]); // perimeter midpoint
-    nodes.push([Math.cos(mid) * 0.48, Math.sin(mid) * 0.48]); // inner ring
-  }
-  nodes.push([0, 0]); // center
+  const nodes = []; // [x, y, weight] — beads are heavier than arc points
   const edges = [];
-  for (let a = 0; a < nodes.length; a++) {
-    for (let b = a + 1; b < nodes.length; b++) {
-      const dx = nodes[a][0] - nodes[b][0];
-      const dy = nodes[a][1] - nodes[b][1];
-      if (Math.sqrt(dx * dx + dy * dy) <= 1.05) {
-        edges.push([a, b]);
-      }
+  const ORBITS = [-Math.PI / 6, Math.PI / 6, Math.PI / 2]; // -30°, 30°, 90°
+  const PTS = 12;
+  ORBITS.forEach((rot) => {
+    const first = nodes.length;
+    for (let i = 0; i < PTS; i++) {
+      const a = (Math.PI * 2 * i) / PTS;
+      const ex = Math.cos(a);
+      const ey = Math.sin(a) * 0.45;
+      const x = ex * Math.cos(rot) - ey * Math.sin(rot);
+      const y = ex * Math.sin(rot) + ey * Math.cos(rot);
+      nodes.push([x, y, i % 4 === 0 ? 3.1 : 1.7]); // every 4th point is a bead
+      edges.push([first + i, first + ((i + 1) % PTS)]);
     }
-  }
+  });
+  nodes.push([0, -0.13, 4.2]); // the figure's head
+  nodes.push([0, 0.14, 5.2]); // the figure's shoulders
   return { nodes, edges };
 }
 
 /** The page's real logo slot the intro logo lands on. */
 const LANDING_TARGETS = '.brand-logo, .login-logo';
 
-const STAR_COUNT = 64; // 19 become nodes; the rest fade out during convergence
+const STAR_COUNT = 64; // 38 become constellation nodes; the rest fade out during convergence
 const T_SCATTER = 700;
 const T_CONVERGE = 900;
 const T_CONNECT = 700;
@@ -106,6 +106,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
         bendY: (Math.random() - 0.5) * h * 0.3,
         tx: target ? cx + target[0] * scale : sx,
         ty: target ? cy + target[1] * scale : sy,
+        targetR: target ? target[2] : 0,
         color: target ? colorAt(target[0]) : violet,
         node: !!target,
         twinkle: Math.random() * Math.PI * 2,
@@ -177,7 +178,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
         const ambientFade = s.node ? 1 : Math.max(0, 1 - converge * 1.6);
         if (ambientFade <= 0) continue;
         const tw = 0.65 + 0.35 * Math.sin(s.twinkle + t / 260);
-        const r = s.node ? 2.2 + 1.2 * k : 1.4;
+        const r = s.node ? Math.max(1.4, s.targetR * (0.55 + 0.45 * k)) : 1.4;
         ctx.globalAlpha = scatter * tw * ambientFade;
         ctx.shadowBlur = 10;
         ctx.shadowColor = s.color;

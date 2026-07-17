@@ -1613,7 +1613,7 @@ svg path, svg rect, svg circle { transition: opacity 0.15s var(--ease); }
 .intro-logo-reduced {
   animation: intro-logo-fade 0.3s ease forwards;
 }
-/* the mark is six-fold symmetric: a smooth 60° turn lands exactly on itself */
+/* the mark's three orbits sit 60° apart: the turn reads as orbital motion */
 @keyframes intro-logo-settle {
   0%   { opacity: 0; transform: rotate(0deg) scale(0.96); }
   35%  { opacity: 1; }
