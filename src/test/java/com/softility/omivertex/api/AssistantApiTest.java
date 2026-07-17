@@ -585,4 +585,55 @@ class AssistantApiTest extends ApiTestBase {
             detachInteractionAppender(appender);
         }
     }
+
+    @Test
+    void chat_adminToolWorksForAdmin_andIsUnknownForViewer() throws Exception {
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(
+                            ex.execute("list_pending_approvals", Map.of()), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"what needs my attention?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Nothing is waiting for approval")));
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .with(SecurityMockMvcRequestPostProcessors.user("viewer").roles("VIEWER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"what needs my attention?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("Unknown tool: list_pending_approvals")));
+    }
+
+    @Test
+    void chat_auditHistoryToolIsAdminOnly() throws Exception {
+        var e = new com.softility.omivertex.domain.AuditEntry();
+        e.setUsername("admin");
+        e.setAction("CREATE");
+        e.setEntityType("Client");
+        e.setEntityId(7L);
+        e.setSummary("created Acme");
+        auditEntryRepository.save(e);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
+                .thenAnswer(inv -> {
+                    GeminiClient.ToolExecutor ex = inv.getArgument(3);
+                    return new GeminiClient.AssistantReply(
+                            ex.execute("get_audit_history", Map.of("entityType", "Client")), null);
+                });
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .with(SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"who created acme?","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reply", containsString("created Acme")));
+    }
 }

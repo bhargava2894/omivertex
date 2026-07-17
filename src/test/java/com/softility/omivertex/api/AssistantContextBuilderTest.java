@@ -489,6 +489,19 @@ class AssistantContextBuilderTest extends ApiTestBase {
     }
 
     @Test
+    void pendingApprovals_capsEachQueueWithOverflowLine() {
+        for (int i = 1; i <= 27; i++) {
+            var u = new com.softility.omivertex.domain.AppUser();
+            u.setEmail("pending" + i + "@softility.com");
+            u.setName("Pending " + i);
+            appUserRepository.save(u);
+        }
+        String result = builder.pendingApprovals();
+        assertThat(result).contains("Access requests pending");
+        assertThat(result).contains("…and 2 more");
+    }
+
+    @Test
     void pendingApprovals_emptyState() {
         assertThat(builder.pendingApprovals()).contains("Nothing is waiting for approval");
     }
@@ -514,7 +527,29 @@ class AssistantContextBuilderTest extends ApiTestBase {
     }
 
     @Test
+    void auditHistory_limitLowerBoundClampsToOne() {
+        for (int i = 1; i <= 3; i++) {
+            var e = new com.softility.omivertex.domain.AuditEntry();
+            e.setUsername("admin");
+            e.setAction("UPDATE");
+            e.setEntityType("Allocation");
+            e.setEntityId((long) i);
+            e.setSummary("change " + i);
+            auditEntryRepository.save(e);
+        }
+        String result = builder.auditHistory(null, 0); // clamps to 1
+        assertThat(result).contains("change 3").doesNotContain("change 2");
+    }
+
+    @Test
     void auditHistory_emptyStateNamesTheFilter() {
         assertThat(builder.auditHistory("Client", 25)).contains("No audit entries for type \"Client\"");
+    }
+
+    @Test
+    void standingContext_advertisesAdminToolsOnlyForAdmins() {
+        seedWorkforce();
+        assertThat(builder.build(true)).contains("list_pending_approvals").contains("get_audit_history");
+        assertThat(builder.build()).doesNotContain("list_pending_approvals");
     }
 }

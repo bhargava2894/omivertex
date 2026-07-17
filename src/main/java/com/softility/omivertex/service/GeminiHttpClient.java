@@ -195,6 +195,36 @@ public class GeminiHttpClient implements GeminiClient {
                             + " have no bench match.",
                     "parameters", Map.of("type", "object", "properties", Map.of())));
 
+    /** Declared and executable only when the caller is an admin. */
+    static final Set<String> ADMIN_READ_TOOLS = Set.of("list_pending_approvals", "get_audit_history");
+
+    private static final List<Map<String, Object>> ADMIN_DECLARATIONS = List.of(
+            Map.of("name", "list_pending_approvals",
+                    "description", "Everything waiting on an admin: pending profile-change"
+                            + " requests and pending access requests. Use when an admin asks"
+                            + " what needs their attention or approval.",
+                    "parameters", Map.of("type", "object", "properties", Map.of())),
+            Map.of("name", "get_audit_history",
+                    "description", "Recent audit-log entries, newest first: who changed what"
+                            + " and when. Optionally filtered by entity type (e.g. Allocation,"
+                            + " Associate, Project, Client).",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of(
+                                    "entityType", Map.of("type", "string",
+                                            "description", "optional entity type filter"),
+                                    "limit", Map.of("type", "integer",
+                                            "description", "max rows; default 25")))));
+
+    /** The base declarations, plus the admin set when the caller is an admin. */
+    static List<Map<String, Object>> declarationsFor(boolean adminTools) {
+        if (!adminTools) {
+            return FUNCTION_DECLARATIONS;
+        }
+        List<Map<String, Object>> all = new java.util.ArrayList<>(FUNCTION_DECLARATIONS);
+        all.addAll(ADMIN_DECLARATIONS);
+        return all;
+    }
+
     @Override
     public AssistantReply replyWithTools(String workforceContext, List<Turn> history,
                                          String userMessage, ToolExecutor tools, boolean adminTools) {
@@ -206,7 +236,7 @@ public class GeminiHttpClient implements GeminiClient {
         for (int round = 0; ; round++) {
             Map<String, Object> response = callApi(Map.of(
                     "contents", contents,
-                    "tools", List.of(Map.of("functionDeclarations", FUNCTION_DECLARATIONS))));
+                    "tools", List.of(Map.of("functionDeclarations", declarationsFor(adminTools)))));
             Map<String, Object> functionCall = firstFunctionCall(response);
             if (functionCall == null) {
                 return new AssistantReply(textOrEmpty(response), null);
@@ -215,7 +245,8 @@ public class GeminiHttpClient implements GeminiClient {
             @SuppressWarnings("unchecked")
             Map<String, Object> args = functionCall.get("args") instanceof Map<?, ?> m
                     ? (Map<String, Object>) m : Map.of();
-            if (READ_TOOLS.contains(name) && tools != null) {
+            if ((READ_TOOLS.contains(name) || (adminTools && ADMIN_READ_TOOLS.contains(name)))
+                    && tools != null) {
                 contents.add(Map.of("role", "model",
                         "parts", firstCandidateParts(response)));
                 if (round < MAX_TOOL_ROUNDS) {
@@ -234,7 +265,7 @@ public class GeminiHttpClient implements GeminiClient {
                                         Map.of("result", TOOL_BUDGET_EXHAUSTED_RESULT))))));
                 Map<String, Object> wrapUp = callApi(Map.of(
                         "contents", contents,
-                        "tools", List.of(Map.of("functionDeclarations", FUNCTION_DECLARATIONS))));
+                        "tools", List.of(Map.of("functionDeclarations", declarationsFor(adminTools)))));
                 String text = textOrEmpty(wrapUp);
                 return new AssistantReply(text.isBlank() ? TOOL_BUDGET_FALLBACK_TEXT : text, null);
             }

@@ -95,6 +95,10 @@ public class AssistantContextBuilder {
 
     /** Standing context: instructions + aggregate counts. Never roster rows. */
     public String build() {
+        return build(false);
+    }
+
+    public String build(boolean adminTools) {
         List<Associate> active = activeAssociates();
         Map<Long, List<Allocation>> byAssociate = allocationsByAssociate();
         long benchCount = active.stream()
@@ -110,6 +114,10 @@ public class AssistantContextBuilder {
                 + "get_associate_detail, list_rolloffs, list_open_positions, get_position_matches, "
                 + "list_clients, list_projects, get_skill_gaps, list_expiring_certifications, "
                 + "get_workforce_summary, list_bench_aging, get_position_match_summary) "
+                + (adminTools
+                        ? "As an admin you can also use list_pending_approvals (what awaits "
+                                + "approval) and get_audit_history (who changed what, when). "
+                        : "")
                 + "to fetch specifics before answering. If the tools cannot answer the question, "
                 + "say so — never invent people, projects, or numbers.\n\n"
                 + "## Key numbers (today: " + LocalDate.now() + ")\n"
@@ -119,6 +127,7 @@ public class AssistantContextBuilder {
                 + " · Clients: " + clients.count()
                 + " · Projects: " + projects.count() + "\n";
     }
+
 
     /** Read tool: filtered roster slice, capped at {@link #MAX_TOOL_ROWS}. */
     public String searchAssociates(String name, String skillName, Proficiency minProficiency,
@@ -484,8 +493,7 @@ public class AssistantContextBuilder {
     /** ADMIN-only read tool: everything waiting on an admin — profile changes + access requests. */
     public String pendingApprovals() {
         List<ProfileChangeRequest> changes = profileChanges.findAllByStatus(ProfileChangeStatus.PENDING);
-        List<AppUser> access = appUsers.findAll().stream()
-                .filter(u -> u.getStatus() == AccessStatus.PENDING).toList();
+        List<AppUser> access = appUsers.findAllByStatusOrderByCreatedAtAsc(AccessStatus.PENDING);
         if (changes.isEmpty() && access.isEmpty()) {
             return "Nothing is waiting for approval.";
         }
@@ -514,17 +522,19 @@ public class AssistantContextBuilder {
 
     /** ADMIN-only read tool: recent audit entries, newest first, optionally one entity type. */
     public String auditHistory(String entityType, int limit) {
+        String type = entityType == null ? null : entityType.trim();
         int cap = Math.min(Math.max(limit, 1), MAX_TOOL_ROWS);
         PageRequest page = PageRequest.of(0, cap);
-        List<AuditEntry> entries = entityType == null || entityType.isBlank()
+        List<AuditEntry> entries = type == null || type.isBlank()
                 ? auditEntries.findAllByOrderByIdDesc(page)
-                : auditEntries.findByEntityTypeOrderByIdDesc(entityType.trim(), page);
+                : auditEntries.findByEntityTypeOrderByIdDesc(type, page);
         if (entries.isEmpty()) {
-            return entityType == null || entityType.isBlank() ? "No audit entries."
-                    : "No audit entries for type \"" + entityType + "\".";
+            return type == null || type.isBlank() ? "No audit entries."
+                    : "No audit entries for type \"" + type + "\".";
         }
         return entries.stream()
-                .map(e -> "- " + (e.getTimestamp() == null ? "" : e.getTimestamp() + " · ")
+                .map(e -> "- " + (e.getTimestamp() == null ? ""
+                        : e.getTimestamp().truncatedTo(ChronoUnit.MINUTES) + " · ")
                         + e.getUsername() + " · " + e.getAction() + " " + e.getEntityType()
                         + (e.getEntityId() == null ? "" : "#" + e.getEntityId())
                         + " · " + e.getSummary())

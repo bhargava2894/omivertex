@@ -93,10 +93,10 @@ public class AssistantService {
                     .map(t -> new GeminiClient.Turn(t.role(), t.content()))
                     .toList();
             GeminiClient.AssistantReply reply = geminiClient.replyWithTools(
-                    contextBuilder.build(), turns, request.message(), (name, args) -> {
+                    contextBuilder.build(caller.admin()), turns, request.message(), (name, args) -> {
                         toolsCalled.add(name);
                         progress.toolCalled(name);
-                        return executeReadTool(name, args);
+                        return executeReadTool(name, args, caller.admin());
                     }, caller.admin());
             AssistantChatResponse response = reply.action() == null
                     ? new AssistantChatResponse(reply.text(), null)
@@ -269,7 +269,7 @@ public class AssistantService {
 
     // ---- read tools (executed server-side, result goes back to the model) ----
 
-    private String executeReadTool(String name, Map<String, Object> args) {
+    private String executeReadTool(String name, Map<String, Object> args, boolean admin) {
         return switch (name) {
             case "get_position_matches" -> positionMatches(args);
             case "search_associates" -> contextBuilder.searchAssociates(
@@ -296,6 +296,12 @@ public class AssistantService {
             case "get_workforce_summary" -> contextBuilder.workforceSummary();
             case "list_bench_aging" -> contextBuilder.benchAging();
             case "get_position_match_summary" -> contextBuilder.positionMatchSummary();
+            case "list_pending_approvals" -> admin ? contextBuilder.pendingApprovals()
+                    : "Unknown tool: " + name;
+            case "get_audit_history" -> admin ? contextBuilder.auditHistory(
+                    str(args, "entityType"),
+                    intOrDefault(args.get("limit"), AssistantContextBuilder.MAX_TOOL_ROWS))
+                    : "Unknown tool: " + name;
             default -> "Unknown tool: " + name;
         };
     }
