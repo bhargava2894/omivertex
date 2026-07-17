@@ -703,4 +703,59 @@ class AssistantApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.proposedAction").doesNotExist())
                 .andExpect(jsonPath("$.reply", containsString("can't be before")));
     }
+
+    @Test
+    void chat_draftsEditAllocation_mergingOverCurrentValues() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        var alloc = allocation(priya, proj, true); // 100%, billable, no end date
+        alloc.setAllocationPercent(50);
+        allocationRepository.save(alloc);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_edit_allocation",
+                                Map.of("associateName", "Priya Sharma",
+                                        "projectName", "Storefront Revamp",
+                                        "percent", 80))));
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"bump priya to 80%","history":[]}"""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.proposedAction.type").value("EDIT_ALLOCATION"))
+                .andExpect(jsonPath("$.proposedAction.percent").value(80))
+                .andExpect(jsonPath("$.proposedAction.billable").value(true)) // kept from current
+                // raising 50 -> 80 must NOT warn against her own 50
+                .andExpect(jsonPath("$.proposedAction.warnings").isEmpty());
+    }
+
+    @Test
+    void chat_editAllocation_capacityWarningCountsOnlyOtherAllocations() throws Exception {
+        var acme = client("Acme Corp");
+        var p1 = project("ACM-100", "Storefront Revamp", acme);
+        var p2 = project("ACM-200", "Data Platform", acme);
+        var priya = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        var a1 = allocation(priya, p1, true);
+        a1.setAllocationPercent(50);
+        allocationRepository.save(a1);
+        var a2 = allocation(priya, p2, true);
+        a2.setAllocationPercent(40);
+        allocationRepository.save(a2);
+        when(geminiClient.replyWithTools(anyString(), anyList(), anyString(), any(), anyBoolean()))
+                .thenReturn(new GeminiClient.AssistantReply("",
+                        new GeminiClient.ActionCall("propose_edit_allocation",
+                                Map.of("associateName", "Priya Sharma",
+                                        "projectName", "Storefront Revamp",
+                                        "percent", 70))));
+
+        asyncPerform(post("/api/v1/assistant/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"message":"bump priya to 70% on storefront","history":[]}"""))
+                .andExpect(status().isOk())
+                // 70 + the OTHER 40 = 110 -> warn
+                .andExpect(jsonPath("$.proposedAction.warnings[0]", containsString("over 100%")));
+    }
 }

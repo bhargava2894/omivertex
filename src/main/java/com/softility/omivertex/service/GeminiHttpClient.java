@@ -116,6 +116,20 @@ public class GeminiHttpClient implements GeminiClient {
                                     "endDate", Map.of("type", "string",
                                             "description", "ISO date; default today")),
                             "required", List.of("associateName", "projectName"))),
+            Map.of("name", "propose_edit_allocation",
+                    "description", "Draft modifying an associate's CURRENT allocation (change percent, "
+                            + "billability, or end date) on a project, for the user to confirm. Use when "
+                            + "asked to change allocation rate, make billable/non-billable, or adjust end date.",
+                    "parameters", Map.of("type", "object",
+                            "properties", Map.of(
+                                    "associateName", Map.of("type", "string"),
+                                    "projectName", Map.of("type", "string"),
+                                    "percent", Map.of("type", "integer",
+                                            "description", "new allocation percent 1-100"),
+                                    "billable", Map.of("type", "boolean"),
+                                    "endDate", Map.of("type", "string",
+                                            "description", "ISO date; omit/null to keep open-ended")),
+                            "required", List.of("associateName", "projectName"))),
             Map.of("name", READ_TOOL_MATCHES,
                     "description", "Rank candidates for ONE open position by skill and bench status."
                             + " Use when asked who matches or could fill a specific position; for"

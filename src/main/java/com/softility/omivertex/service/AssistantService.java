@@ -122,6 +122,7 @@ public class AssistantService {
             case "propose_allocation" -> draftAllocation(reply.text(), args);
             case "propose_position_fill" -> draftFill(reply.text(), args);
             case "propose_end_allocation" -> draftEndAllocation(reply.text(), args);
+            case "propose_edit_allocation" -> draftEditAllocation(reply.text(), args);
             default -> new AssistantChatResponse(nonBlank(reply.text(),
                     "I can't do that yet — I can draft allocations, position fills, and roll-offs."), null);
         };
@@ -178,8 +179,14 @@ public class AssistantService {
     }
 
     private List<String> capacityWarnings(Associate associate, int percent) {
+        return capacityWarnings(associate, percent, null);
+    }
+
+    /** {@code excludeAllocationId}: when editing, that allocation's current percent must not count against itself. */
+    private List<String> capacityWarnings(Associate associate, int percent, Long excludeAllocationId) {
         int current = allocationRepository.findByAssociateId(associate.getId()).stream()
                 .filter(Allocation::isCurrent)
+                .filter(a -> !a.getId().equals(excludeAllocationId))
                 .mapToInt(Allocation::getAllocationPercent)
                 .sum();
         List<String> warnings = new ArrayList<>();
@@ -233,6 +240,39 @@ public class AssistantService {
                 al.getProject().getId(), al.getProject().getName(),
                 null, null, al.getAllocationPercent(), al.isBillable(),
                 al.getStartDate(), end, al.getId(), null, null, null, summary, List.of());
+        return new AssistantChatResponse(nonBlank(text,
+                "Here's the draft — review and confirm below."), proposed);
+    }
+
+    private AssistantChatResponse draftEditAllocation(String text, Map<String, Object> args) {
+        ResolvedAllocation resolved = resolveCurrentAllocation(
+                str(args, "associateName"), str(args, "projectName"));
+        if (resolved.reply() != null) {
+            return new AssistantChatResponse(resolved.reply(), null);
+        }
+        Allocation al = resolved.value();
+        int percent = intOrDefault(args.get("percent"), al.getAllocationPercent());
+        if (percent < 1 || percent > 100) {
+            return new AssistantChatResponse(
+                    "An allocation must be between 1%% and 100%% — %d%% isn't valid.".formatted(percent), null);
+        }
+        boolean billable = boolOrDefault(args.get("billable"), al.isBillable());
+        LocalDate end = dateOrDefault(args.get("endDate"), al.getEndDate());
+        if (end != null && end.isBefore(al.getStartDate())) {
+            return new AssistantChatResponse(
+                    "That allocation started on %s — the end date can't be before that."
+                            .formatted(al.getStartDate()), null);
+        }
+        List<String> warnings = capacityWarnings(al.getAssociate(), percent, al.getId());
+        String summary = "Change %s's allocation on %s to %d%% (%s)%s".formatted(
+                al.getAssociate().getName(), al.getProject().getName(), percent,
+                billable ? "billable" : "non-billable",
+                end == null ? "" : ", ending " + end);
+        ProposedAction proposed = new ProposedAction(ActionType.EDIT_ALLOCATION,
+                al.getAssociate().getId(), al.getAssociate().getName(),
+                al.getProject().getId(), al.getProject().getName(),
+                null, null, percent, billable,
+                al.getStartDate(), end, al.getId(), null, null, null, summary, warnings);
         return new AssistantChatResponse(nonBlank(text,
                 "Here's the draft — review and confirm below."), proposed);
     }
