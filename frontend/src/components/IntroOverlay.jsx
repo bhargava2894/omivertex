@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 
 /**
  * Cosmic intro: glowing stars scatter across the viewport, converge along
- * curved paths onto the logo's orbital constellation, then the three orbit
- * lines sweep themselves around the central figure and the whole mark
- * aligns into the real logo-mark (crossfade), which then FLIES to the
- * page's real logo placeholder — the sidebar brand or the login card's
- * logo — shrinking as it goes, while the page rises in underneath (the
+ * curved paths onto the logo's orbital constellation, the three orbit
+ * lines sweep themselves around the center, then the small user icon
+ * resolves in the middle — the animation CONSTRUCTS the logo (no full-image
+ * crossfade, so there is never a doubled set of orbits). The constructed
+ * mark then flies to the page's real logo placeholder — the sidebar brand
+ * or the login card's logo — while the page rises in underneath (the
  * parent is told via onLanding).
  *
  * Runs once per full page load; click skips; prefers-reduced-motion replaces
@@ -44,8 +45,8 @@ const LANDING_TARGETS = '.brand-logo, .login-logo';
 const STAR_COUNT = 64; // 38 become constellation nodes; the rest fade out during convergence
 const T_SCATTER = 700;
 const T_CONVERGE = 900;
-const T_ORBIT = 700; // the orbit lines sweep around the figure
-const T_REVEAL = 900; // crossfade, no rotation
+const T_ORBIT = 700; // the orbit lines sweep around the center
+const T_FIGURE = 500; // the user icon resolves in the middle
 const T_FLY = 650;
 const HARD_CAP_MS = 4200;
 
@@ -55,7 +56,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
   const canvasRef = useRef(null);
   const logoRef = useRef(null);
   const landedRef = useRef(false);
-  const [phase, setPhase] = useState('run'); // run -> reveal -> fly | fade
+  const [phase, setPhase] = useState('run'); // run -> fly | fade
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const land = () => {
@@ -120,7 +121,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
       if (finished) return;
       finished = true;
       cancelAnimationFrame(raf);
-      setPhase('reveal');
+      setPhase('fly');
     };
     const cap = setTimeout(finish, HARD_CAP_MS);
     const skip = () => finish();
@@ -133,6 +134,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
       const scatter = Math.min(1, t / T_SCATTER);
       const converge = Math.min(1, Math.max(0, (t - T_SCATTER) / T_CONVERGE));
       const orbit = Math.min(1, Math.max(0, (t - T_SCATTER - T_CONVERGE) / T_ORBIT));
+      const figure = Math.min(1, Math.max(0, (t - T_SCATTER - T_CONVERGE - T_ORBIT) / T_FIGURE));
       const k = easeInOut(converge);
 
       // the orbit lines sweep around the central figure, slightly staggered,
@@ -193,7 +195,34 @@ export default function IntroOverlay({ onLanding, onDone }) {
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
 
-      if (t >= T_SCATTER + T_CONVERGE + T_ORBIT) {
+      // the small user icon resolves in the middle once the orbits are drawn
+      if (figure > 0) {
+        const f = easeInOut(figure);
+        const grad = ctx.createLinearGradient(cx - scale * 0.2, cy, cx + scale * 0.2, cy);
+        grad.addColorStop(0, pink);
+        grad.addColorStop(1, violet);
+        ctx.globalAlpha = f;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = violet;
+        ctx.fillStyle = grad;
+        const g = 0.85 + 0.15 * f; // grows slightly as it fades in
+        ctx.beginPath();
+        ctx.arc(cx, cy - 0.13 * scale * g, 0.095 * scale * g, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.roundRect(
+          cx - 0.16 * scale * g,
+          cy + 0.01 * scale * g,
+          0.32 * scale * g,
+          0.19 * scale * g,
+          0.09 * scale * g
+        );
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+      }
+
+      if (t >= T_SCATTER + T_CONVERGE + T_ORBIT + T_FIGURE + 250) {
         finish();
         return;
       }
@@ -208,13 +237,6 @@ export default function IntroOverlay({ onLanding, onDone }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onDone, reduced]);
-
-  // reveal -> fly: after the settle, launch toward the page's logo placeholder
-  useEffect(() => {
-    if (phase !== 'reveal') return undefined;
-    const toFly = setTimeout(() => setPhase('fly'), T_REVEAL + 150);
-    return () => clearTimeout(toFly);
-  }, [phase]);
 
   // fly: FLIP the centered logo onto the real placeholder while the page
   // rises in underneath (onLanding). No placeholder -> plain fade.
@@ -233,7 +255,6 @@ export default function IntroOverlay({ onLanding, onDone }) {
     const dx = to.left + to.width / 2 - (from.left + from.width / 2);
     const dy = to.top + to.height / 2 - (from.top + from.height / 2);
     const s = to.width / from.width;
-    img.classList.remove('intro-logo-reveal');
     img.classList.add('intro-logo-flying');
     img.style.transform = 'scale(1)';
     requestAnimationFrame(() => {
@@ -272,7 +293,7 @@ export default function IntroOverlay({ onLanding, onDone }) {
         ref={logoRef}
         src="/logo-mark.png"
         alt=""
-        className={`intro-logo ${reduced ? 'intro-logo-reduced' : phase !== 'run' ? 'intro-logo-reveal' : ''}`}
+        className={`intro-logo ${reduced ? 'intro-logo-reduced' : ''}`}
       />
     </div>
   );

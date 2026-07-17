@@ -1595,29 +1595,21 @@ svg path, svg rect, svg circle { transition: opacity 0.15s var(--ease); }
   opacity: 0;
   filter: drop-shadow(0 0 26px var(--intro-violet));
 }
-/* FLIP flight to the page's logo placeholder; transform is set inline */
+/* FLIP flight to the page's logo placeholder; transform is set inline. The
+   real image fades in AS it starts moving — motion masks the swap from the
+   canvas-constructed mark, so orbits are never doubled at rest. */
 .intro-logo-flying {
   opacity: 1;
-  transition: transform 0.65s cubic-bezier(0.22, 0.9, 0.35, 1), filter 0.65s ease;
+  transition: transform 0.65s cubic-bezier(0.22, 0.9, 0.35, 1),
+    opacity 0.2s ease, filter 0.65s ease;
   filter: drop-shadow(0 0 6px var(--intro-violet));
-}
-.intro-logo-reveal {
-  animation: intro-logo-settle 1s ease-in-out forwards;
 }
 .intro-logo-reduced {
   animation: intro-logo-fade 0.3s ease forwards;
 }
-@keyframes intro-logo-settle {
-  0%   { opacity: 0; transform: scale(0.96); }
-  35%  { opacity: 1; }
-  100% { opacity: 1; transform: scale(1); }
-}
 @keyframes intro-logo-fade {
   from { opacity: 0; }
   to   { opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .intro-logo-reveal { animation: intro-logo-fade 0.3s ease forwards; }
 }
 
 /* ---- page entrance, timed with the intro logo's landing ---- */
