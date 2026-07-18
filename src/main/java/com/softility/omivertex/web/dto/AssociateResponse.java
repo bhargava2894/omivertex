@@ -20,6 +20,7 @@ public record AssociateResponse(
         Long id,
         String name,
         String email,
+        String phone,
         String company,
         String location,
         WorkMode workMode,
@@ -38,6 +39,7 @@ public record AssociateResponse(
         LocalDate currentProjectStartDate,
         LocalDate currentProjectEndDate,
         Long benchDays,
+        List<EmploymentEntry> employmentHistory,
         List<SkillGroup> skillGroups,
         String resumeFilename) {
 
@@ -56,13 +58,23 @@ public record AssociateResponse(
     /** Builds the response from the associate plus allocations, rated skills, and résumé filename. */
     public static AssociateResponse from(Associate associate, List<Allocation> allocations,
                                          List<AssociateSkill> ratedSkills, String resumeFilename) {
+        return from(associate, allocations, ratedSkills, resumeFilename, null);
+    }
+
+    /**
+     * Builds the response from the associate plus allocations, rated skills, résumé filename,
+     * and extracted previous-employer history (detail view only — the roster list omits it).
+     */
+    public static AssociateResponse from(Associate associate, List<Allocation> allocations,
+                                         List<AssociateSkill> ratedSkills, String resumeFilename,
+                                         List<EmploymentEntry> employmentHistory) {
         List<Allocation> current = allocations.stream().filter(Allocation::isCurrent).toList();
         boolean billable = current.stream().anyMatch(Allocation::isBillable);
         Allocation primary = current.stream()
                 .filter(Allocation::isBillable).findFirst()
                 .orElse(current.isEmpty() ? null : current.get(0));
         return new AssociateResponse(associate.getId(), associate.getName(), associate.getEmail(),
-                associate.getCompany(), associate.getLocation(), associate.getWorkMode(),
+                associate.getPhone(), associate.getCompany(), associate.getLocation(), associate.getWorkMode(),
                 associate.getDesignation(), associate.getJoinedDate(),
                 associate.getResignationDate(), associate.getLastWorkingDay(), associate.getExitReason(),
                 associate.getPrimarySkill(), associate.getSecondarySkill(),
@@ -73,6 +85,7 @@ public record AssociateResponse(
                 primary == null ? null : primary.getStartDate(),
                 primary == null ? null : primary.getEndDate(),
                 benchDays(associate, allocations),
+                employmentHistory,
                 groupSkills(ratedSkills),
                 resumeFilename);
     }

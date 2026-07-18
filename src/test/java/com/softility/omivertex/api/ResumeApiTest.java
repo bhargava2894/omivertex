@@ -275,6 +275,7 @@ class ResumeApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$.name").value("Priya Sharma"))
                 .andExpect(jsonPath("$.phone").value("+91 98765 43210"))
                 .andExpect(jsonPath("$.employmentHistory[0].company").value("Globex"))
+                .andExpect(jsonPath("$.employmentHistory[0].title").value("Senior Engineer"))
                 .andExpect(jsonPath("$.employmentHistory[0].startDate").value("2021-03-01"))
                 .andExpect(jsonPath("$.employmentHistory[0].endDate").doesNotExist());
     }
@@ -288,6 +289,7 @@ class ResumeApiTest extends ApiTestBase {
                                 createPdf("Some resume text"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value((String) null))
+                .andExpect(jsonPath("$.phone").value((String) null))
                 .andExpect(jsonPath("$.employmentHistory").isEmpty());
     }
 

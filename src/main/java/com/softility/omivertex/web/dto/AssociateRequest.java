@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ public record AssociateRequest(
         String location,
         @NotNull(message = "Work mode is required") WorkMode workMode,
         String designation,
+        @Size(max = 32) String phone,
         java.time.LocalDate joinedDate,
         java.time.LocalDate resignationDate,
         java.time.LocalDate lastWorkingDay,
@@ -23,5 +25,8 @@ public record AssociateRequest(
         // The rated skills to attach. Optional (null leaves skills unchanged on update,
         // empty on create). The primarySkill/secondarySkill headline is derived from these.
         @Valid List<SkillAssignmentRequest.Entry> skills,
+        // Previous EXTERNAL employers from the résumé — applied on create only; never
+        // merged with internal allocation-derived history.
+        @Valid List<EmploymentEntry> employmentHistory,
         EntityStatus status) {
 }

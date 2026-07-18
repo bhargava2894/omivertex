@@ -3,6 +3,7 @@ package com.softility.omivertex.service;
 import com.softility.omivertex.domain.Allocation;
 import com.softility.omivertex.domain.Associate;
 import com.softility.omivertex.domain.AssociateSkill;
+import com.softility.omivertex.domain.EmploymentHistory;
 import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.domain.EntityStatus;
 import com.softility.omivertex.domain.WorkMode;
@@ -10,10 +11,12 @@ import com.softility.omivertex.domain.Proficiency;
 import com.softility.omivertex.repository.AllocationRepository;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.AssociateSkillRepository;
+import com.softility.omivertex.repository.EmploymentHistoryRepository;
 import com.softility.omivertex.repository.SkillRepository;
 import com.softility.omivertex.repository.ResumeRepository;
 import com.softility.omivertex.web.dto.AssociateRequest;
 import com.softility.omivertex.web.dto.AssociateResponse;
+import com.softility.omivertex.web.dto.EmploymentEntry;
 import com.softility.omivertex.web.dto.SkillAssignmentRequest;
 import com.softility.omivertex.web.error.ConflictException;
 import com.softility.omivertex.web.error.NotFoundException;
@@ -38,16 +41,19 @@ public class AssociateService {
     private final AssociateSkillRepository associateSkillRepository;
     private final SkillRepository skillRepository;
     private final ResumeRepository resumeRepository;
+    private final EmploymentHistoryRepository employmentHistoryRepository;
 
     public AssociateService(AssociateRepository associateRepository, AllocationRepository allocationRepository,
                             AuditService auditService, AssociateSkillRepository associateSkillRepository,
-                            SkillRepository skillRepository, ResumeRepository resumeRepository) {
+                            SkillRepository skillRepository, ResumeRepository resumeRepository,
+                            EmploymentHistoryRepository employmentHistoryRepository) {
         this.associateRepository = associateRepository;
         this.allocationRepository = allocationRepository;
         this.auditService = auditService;
         this.associateSkillRepository = associateSkillRepository;
         this.skillRepository = skillRepository;
         this.resumeRepository = resumeRepository;
+        this.employmentHistoryRepository = employmentHistoryRepository;
     }
 
     @Transactional(readOnly = true)
@@ -92,8 +98,11 @@ public class AssociateService {
         String resumeFilename = resumeRepository.findMetaByAssociateId(id)
                 .map(ResumeRepository.ResumeMeta::getFilename)
                 .orElse(null);
+        List<EmploymentEntry> history = employmentHistoryRepository.findByAssociateIdOrderBySortOrderAsc(id).stream()
+                .map(h -> new EmploymentEntry(h.getCompany(), h.getTitle(), h.getStartDate(), h.getEndDate()))
+                .toList();
         return AssociateResponse.from(associate, allocationRepository.findByAssociateId(id),
-                associateSkillRepository.findByAssociateId(id), resumeFilename);
+                associateSkillRepository.findByAssociateId(id), resumeFilename, history);
     }
 
     /** Replaces the associate's entire rated-skill set with the given entries. */
@@ -146,9 +155,24 @@ public class AssociateService {
         Associate associate = new Associate();
         apply(associate, request);
         associate = associateRepository.save(associate);
-        auditService.record("CREATED", "Associate", associate.getId(), "Created associate " + associate.getName());
+        auditService.record("CREATED", "Associate", associate.getId(), "Created associate " + associate.getName()
+                + (request.employmentHistory() == null || request.employmentHistory().isEmpty() ? ""
+                        : " with " + request.employmentHistory().size() + " previous employers"));
         if (request.skills() != null) {
             replaceSkills(associate.getId(), new SkillAssignmentRequest(request.skills()));
+        }
+        if (request.employmentHistory() != null) {
+            int order = 0;
+            for (EmploymentEntry entry : request.employmentHistory()) {
+                EmploymentHistory row = new EmploymentHistory();
+                row.setAssociateId(associate.getId());
+                row.setCompany(entry.company());
+                row.setTitle(entry.title());
+                row.setStartDate(entry.startDate());
+                row.setEndDate(entry.endDate());
+                row.setSortOrder(order++);
+                employmentHistoryRepository.save(row);
+            }
         }
         exitInlineIfPast(associate);
         return get(associate.getId());
@@ -231,6 +255,7 @@ public class AssociateService {
         associate.setLocation(request.location());
         associate.setWorkMode(request.workMode());
         associate.setDesignation(request.designation());
+        associate.setPhone(request.phone());
         associate.setJoinedDate(request.joinedDate());
         if ((request.exitReason() == null) != (request.lastWorkingDay() == null)) {
             throw new BadRequestException("Exit reason and last working day must be provided together");

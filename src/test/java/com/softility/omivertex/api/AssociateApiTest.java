@@ -5,6 +5,7 @@ import com.softility.omivertex.domain.WorkMode;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -354,6 +355,40 @@ class AssociateApiTest extends ApiTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1))) // only Anita matches, Rahul is excluded
                 .andExpect(jsonPath("$[0].name").value("Anita Rao"));
+    }
+
+    @Test
+    void create_withPhoneAndEmploymentHistory_persistsAndEchoes() throws Exception {
+        String body = """
+                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                 "workMode":"OFFSHORE","phone":"+91 98765 43210",
+                 "employmentHistory":[
+                   {"company":"Globex","title":"Senior Engineer","startDate":"2021-03-01","endDate":null},
+                   {"company":"Initech","title":"Engineer","startDate":"2018-06-01","endDate":"2021-02-01"}]}""";
+
+        mockMvc.perform(post("/api/v1/associates")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.phone").value("+91 98765 43210"))
+                .andExpect(jsonPath("$.employmentHistory[0].company").value("Globex"))
+                .andExpect(jsonPath("$.employmentHistory[1].company").value("Initech"));
+
+        var saved = associateRepository.findAll().get(0);
+        assertThat(employmentHistoryRepository.findByAssociateIdOrderBySortOrderAsc(saved.getId()))
+                .extracting(com.softility.omivertex.domain.EmploymentHistory::getCompany)
+                .containsExactly("Globex", "Initech"); // résumé order kept
+    }
+
+    @Test
+    void create_withoutHistory_unchanged() throws Exception {
+        String body = """
+                {"name":"Rahul Verma","email":"rahul@softility.com","company":"Softility",
+                 "workMode":"ONSHORE"}""";
+
+        mockMvc.perform(post("/api/v1/associates")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+        assertThat(employmentHistoryRepository.count()).isZero();
     }
 
     @Test
