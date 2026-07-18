@@ -467,8 +467,9 @@ public class GeminiHttpClient implements GeminiClient {
             }
             String name = textOrNull(root.path("name"));
             String phone = textOrNull(root.path("phone"));
-            // The associate.phone column is varchar(32) — degrade rather than fail extraction.
-            phone = phone != null && phone.length() > 32 ? phone.substring(0, 32) : phone;
+            if (phone != null && phone.length() > 32) {
+                phone = null; // a "phone" that long is extraction noise, not a number to salvage
+            }
             List<Employment> employment = new ArrayList<>();
             for (JsonNode e : root.path("employment")) {
                 String company = textOrNull(e.path("company"));
@@ -479,7 +480,7 @@ public class GeminiHttpClient implements GeminiClient {
                         dateOrNull(e.path("startDate")), dateOrNull(e.path("endDate"))));
             }
             return new ResumeExtraction(List.copyOf(skills), root.path("experienceSummary").asText(""),
-                    name, phone, employment);
+                    name, phone, List.copyOf(employment));
         } catch (JsonProcessingException e) {
             throw new BadRequestException("AI resume parsing returned an unexpected response");
         }

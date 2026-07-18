@@ -73,6 +73,19 @@ class GeminiHttpClientTest {
     }
 
     @Test
+    void parseExtraction_implausiblyLongPhone_isNulledAsNoise() {
+        String json = """
+                {"phone":"call between 9 and 5 on +91 98765 43210 or the office line",
+                 "skills":[],"experienceSummary":"s"}""";
+
+        GeminiClient.ResumeExtraction extraction =
+                GeminiHttpClient.parseExtraction(json, List.of());
+
+        // a "phone" that long is extraction noise, not a number to salvage
+        assertThat(extraction.phone()).isNull();
+    }
+
+    @Test
     void parseExtraction_missingProfileFields_areNull() {
         String json = """
                 {"skills":[],"experienceSummary":"s"}""";
