@@ -25,8 +25,10 @@ public interface GeminiClient {
     boolean isConfigured();
 
     /**
-     * Structured skill extraction from resume text. Matches only against the
-     * supplied taxonomy; throws on any upstream/parse failure (callers fall back).
+     * Structured skill extraction from resume text, plus best-effort profile
+     * fields (name, phone, employment history). Matches skills only against
+     * the supplied taxonomy; throws on any upstream/parse failure (callers
+     * fall back).
      */
     ResumeExtraction extractResume(String resumeText, List<SkillOption> taxonomy);
 
@@ -50,6 +52,11 @@ public interface GeminiClient {
     /** One skill the model found, with its estimated level and supporting quote. */
     record ExtractedSkill(Long skillId, Proficiency proficiency, String evidence) {}
 
-    /** Full extraction result. */
-    record ResumeExtraction(List<ExtractedSkill> skills, String experienceSummary) {}
+    /** One previous employer extracted from the résumé; dates may be null ("Present"/unclear). */
+    record Employment(String company, String title, java.time.LocalDate startDate,
+                      java.time.LocalDate endDate) {}
+
+    /** Full extraction result. Profile fields are null / empty when the résumé doesn't state them. */
+    record ResumeExtraction(List<ExtractedSkill> skills, String experienceSummary,
+                            String name, String phone, List<Employment> employment) {}
 }

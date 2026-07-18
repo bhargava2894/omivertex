@@ -404,13 +404,19 @@ public class GeminiHttpClient implements GeminiClient {
                 .map(o -> o.skillId() + ": " + o.name())
                 .collect(Collectors.joining("\n"));
         String prompt = """
-                You extract structured skill data from a resume.
-                Match ONLY skills from this taxonomy (lines are "id: name"):
+                You extract structured data from a resume.
+                Match skills ONLY from this taxonomy (lines are "id: name"):
                 %s
 
                 Return STRICT JSON and nothing else:
-                {"skills":[{"skillId":<id>,"proficiency":"NOVICE|FOUNDATIONAL|INTERMEDIATE|FUNCTIONAL_USER|ADVANCE|MASTERY","evidence":"<short quote or phrase from the resume>"}],
+                {"name":"<candidate's full name, or null>",
+                 "phone":"<phone number as written, or null>",
+                 "employment":[{"company":"<employer name>","title":"<job title or null>",
+                                "startDate":"<first-of-month ISO date like 2021-03-01, or null>",
+                                "endDate":"<first-of-month ISO date, or null if current/unclear>"}],
+                 "skills":[{"skillId":<id>,"proficiency":"NOVICE|FOUNDATIONAL|INTERMEDIATE|FUNCTIONAL_USER|ADVANCE|MASTERY","evidence":"<short quote or phrase from the resume>"}],
                  "experienceSummary":"<1-2 sentences: total years of experience and recent roles>"}
+                Employment: most recent first; employers only, exclude education entries.
 
                 Resume text:
                 %s
@@ -459,9 +465,39 @@ public class GeminiHttpClient implements GeminiClient {
                 }
                 skills.add(new ExtractedSkill(id, proficiency, s.path("evidence").asText("")));
             }
-            return new ResumeExtraction(List.copyOf(skills), root.path("experienceSummary").asText(""));
+            String name = textOrNull(root.path("name"));
+            String phone = textOrNull(root.path("phone"));
+            // The associate.phone column is varchar(32) — degrade rather than fail extraction.
+            phone = phone != null && phone.length() > 32 ? phone.substring(0, 32) : phone;
+            List<Employment> employment = new ArrayList<>();
+            for (JsonNode e : root.path("employment")) {
+                String company = textOrNull(e.path("company"));
+                if (company == null || company.isBlank()) {
+                    continue; // an employer without a name is noise
+                }
+                employment.add(new Employment(company, textOrNull(e.path("title")),
+                        dateOrNull(e.path("startDate")), dateOrNull(e.path("endDate"))));
+            }
+            return new ResumeExtraction(List.copyOf(skills), root.path("experienceSummary").asText(""),
+                    name, phone, employment);
         } catch (JsonProcessingException e) {
             throw new BadRequestException("AI resume parsing returned an unexpected response");
+        }
+    }
+
+    private static String textOrNull(JsonNode node) {
+        return node.isMissingNode() || node.isNull() || node.asText().isBlank() ? null : node.asText();
+    }
+
+    private static java.time.LocalDate dateOrNull(JsonNode node) {
+        String text = textOrNull(node);
+        if (text == null) {
+            return null;
+        }
+        try {
+            return java.time.LocalDate.parse(text);
+        } catch (java.time.format.DateTimeParseException e) {
+            return null; // résumé dates are messy — degrade rather than fail the extraction
         }
     }
 

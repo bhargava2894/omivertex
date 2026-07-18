@@ -227,7 +227,8 @@ class ResumeApiTest extends ApiTestBase {
                 .thenReturn(new GeminiClient.ResumeExtraction(
                         List.of(new GeminiClient.ExtractedSkill(java.getId(), Proficiency.ADVANCE,
                                 "led a Java microservices team")),
-                        "8 years of experience, most recently a senior backend engineer."));
+                        "8 years of experience, most recently a senior backend engineer.",
+                        null, null, List.of()));
 
         asyncPerform(multipart("/api/v1/resumes/parse")
                         .file(new MockMultipartFile("file", "resume.pdf", "application/pdf",

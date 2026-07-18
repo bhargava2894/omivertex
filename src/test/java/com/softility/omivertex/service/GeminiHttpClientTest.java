@@ -49,4 +49,39 @@ class GeminiHttpClientTest {
         assertThatThrownBy(() -> GeminiHttpClient.parseExtraction("not json", List.of()))
                 .isInstanceOf(BadRequestException.class);
     }
+
+    @Test
+    void parseExtraction_readsProfileAndEmployment_lenientOnDates() {
+        String json = """
+                {"name":"Priya Sharma","phone":"+91 98765 43210",
+                 "employment":[
+                   {"company":"Globex","title":"Senior Engineer","startDate":"2021-03-01","endDate":null},
+                   {"company":"Initech","title":null,"startDate":"garbage","endDate":"2020-12-01"},
+                   {"company":"","title":"Dropped — no company","startDate":null,"endDate":null}],
+                 "skills":[],"experienceSummary":"8 years across two firms."}""";
+
+        GeminiClient.ResumeExtraction extraction =
+                GeminiHttpClient.parseExtraction(json, List.of());
+
+        assertThat(extraction.name()).isEqualTo("Priya Sharma");
+        assertThat(extraction.phone()).isEqualTo("+91 98765 43210");
+        assertThat(extraction.employment()).hasSize(2); // companyless row dropped
+        assertThat(extraction.employment().get(0).company()).isEqualTo("Globex");
+        assertThat(extraction.employment().get(0).endDate()).isNull();
+        assertThat(extraction.employment().get(1).startDate()).isNull(); // "garbage" degraded to null
+        assertThat(extraction.employment().get(1).endDate()).isEqualTo(java.time.LocalDate.of(2020, 12, 1));
+    }
+
+    @Test
+    void parseExtraction_missingProfileFields_areNull() {
+        String json = """
+                {"skills":[],"experienceSummary":"s"}""";
+
+        GeminiClient.ResumeExtraction extraction =
+                GeminiHttpClient.parseExtraction(json, List.of());
+
+        assertThat(extraction.name()).isNull();
+        assertThat(extraction.phone()).isNull();
+        assertThat(extraction.employment()).isEmpty();
+    }
 }
