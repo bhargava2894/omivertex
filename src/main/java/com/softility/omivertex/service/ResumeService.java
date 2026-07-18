@@ -5,6 +5,7 @@ import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.repository.AssociateRepository;
 import com.softility.omivertex.repository.ResumeRepository;
 import com.softility.omivertex.repository.SkillRepository;
+import com.softility.omivertex.web.dto.EmploymentEntry;
 import com.softility.omivertex.web.dto.ResumeDtos.ParsedResumeResponse;
 import com.softility.omivertex.web.dto.ResumeDtos.ResumeMetaResponse;
 import com.softility.omivertex.web.dto.ResumeDtos.SuggestedSkill;
@@ -77,7 +78,8 @@ public class ResumeService {
             List<SuggestedSkill> suggestions = matched.stream()
                     .map(s -> new SuggestedSkill(s.getId(), s.getName(), s.getCategory().getName(), null, null))
                     .collect(Collectors.toList());
-            return new ParsedResumeResponse(suggestions, textExtracted, null, SuggestionSource.KEYWORD);
+            return new ParsedResumeResponse(suggestions, textExtracted, null, SuggestionSource.KEYWORD,
+                    null, null, List.of());
         } catch (IOException e) {
             throw new BadRequestException("Failed to read upload file: " + e.getMessage());
         }
@@ -99,7 +101,11 @@ public class ResumeService {
                             skill.getCategory().getName(), s.proficiency(), s.evidence());
                 })
                 .toList();
-        return new ParsedResumeResponse(suggestions, true, extraction.experienceSummary(), SuggestionSource.AI);
+        List<EmploymentEntry> history = extraction.employment().stream()
+                .map(e -> new EmploymentEntry(e.company(), e.title(), e.startDate(), e.endDate()))
+                .toList();
+        return new ParsedResumeResponse(suggestions, true, extraction.experienceSummary(),
+                SuggestionSource.AI, extraction.name(), extraction.phone(), history);
     }
 
     public ResumeMetaResponse store(Long associateId, MultipartFile file) {

@@ -19,7 +19,9 @@ public final class ResumeDtos {
     }
 
     public record ParsedResumeResponse(List<SuggestedSkill> suggestedSkills, boolean textExtracted,
-                                       String experienceSummary, SuggestionSource source) {
+                                       String experienceSummary, SuggestionSource source,
+                                       String name, String phone,
+                                       List<EmploymentEntry> employmentHistory) {
     }
 
     public record ResumeMetaResponse(String filename, String contentType, long byteSize, Instant uploadedAt) {

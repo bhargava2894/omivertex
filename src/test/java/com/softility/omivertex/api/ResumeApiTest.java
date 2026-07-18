@@ -260,6 +260,38 @@ class ResumeApiTest extends ApiTestBase {
     }
 
     @Test
+    void parse_carriesProfileFieldsFromExtraction() throws Exception {
+        when(geminiClient.isConfigured()).thenReturn(true);
+        when(geminiClient.extractResume(anyString(), anyList()))
+                .thenReturn(new GeminiClient.ResumeExtraction(List.of(), "8 years experience.",
+                        "Priya Sharma", "+91 98765 43210",
+                        List.of(new GeminiClient.Employment("Globex", "Senior Engineer",
+                                java.time.LocalDate.of(2021, 3, 1), null))));
+
+        asyncPerform(multipart("/api/v1/resumes/parse")
+                        .file(new MockMultipartFile("file", "resume.pdf", "application/pdf",
+                                createPdf("Priya Sharma resume"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Priya Sharma"))
+                .andExpect(jsonPath("$.phone").value("+91 98765 43210"))
+                .andExpect(jsonPath("$.employmentHistory[0].company").value("Globex"))
+                .andExpect(jsonPath("$.employmentHistory[0].startDate").value("2021-03-01"))
+                .andExpect(jsonPath("$.employmentHistory[0].endDate").doesNotExist());
+    }
+
+    @Test
+    void parse_keywordFallback_leavesProfileFieldsEmpty() throws Exception {
+        when(geminiClient.isConfigured()).thenReturn(false);
+
+        asyncPerform(multipart("/api/v1/resumes/parse")
+                        .file(new MockMultipartFile("file", "resume.pdf", "application/pdf",
+                                createPdf("Some resume text"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value((String) null))
+                .andExpect(jsonPath("$.employmentHistory").isEmpty());
+    }
+
+    @Test
     void parseMyResume_associateAllowed_viaMeEndpoint() throws Exception {
         skill("Backend", "Java");
         // not configured -> keyword path; the point is the ASSOCIATE-role route works
