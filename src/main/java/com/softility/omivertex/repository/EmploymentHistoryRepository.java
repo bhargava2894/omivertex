@@ -8,6 +8,4 @@ import java.util.List;
 public interface EmploymentHistoryRepository extends JpaRepository<EmploymentHistory, Long> {
 
     List<EmploymentHistory> findByAssociateIdOrderBySortOrderAsc(Long associateId);
-
-    void deleteByAssociateId(Long associateId);
 }

@@ -95,6 +95,11 @@ dashboard through caches/proxies).
       three only surfaces at runtime against the live Gemini API (flagged in the
       2026-07-16 Mirai read-tool reviews; needs a visibility decision on the
       private declarations list).
+- [ ] Schema-parity tests: Flyway is disabled in tests (Hibernate ddl-auto on
+      H2), so migration-only constraints (FKs, ON DELETE CASCADE on
+      employment_history and resumes, CHECK constraints) are never exercised
+      by the suite. Consider running Flyway against H2/Testcontainers
+      (surfaced by the 2026-07-18 employment-history review).
 
 ## Resolved decisions
 
