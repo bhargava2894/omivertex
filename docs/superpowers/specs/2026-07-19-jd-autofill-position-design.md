@@ -30,6 +30,12 @@ position create/update/read behaviour is untouched.
   fresh "Open Position" form); the manager edits afterward.
 - **Entry point:** a button inside the Open/Edit Position modal, beside the Job
   Description field — one flow for both create and edit.
+- **Skills not in the taxonomy are surfaced, never dropped.** Mirai returns them as raw
+  strings; the modal shows them as a "not in your taxonomy" note and auto-fills them into
+  the existing legacy **Required Skill (text fallback)** field, so no requirement is lost
+  and the governed taxonomy is not silently mutated. Promoting an unmatched skill into the
+  taxonomy (a permissioned "Add to taxonomy" affordance) is **deferred to a later
+  iteration** — out of scope for this build.
 
 ## Architecture & Data Flow
 
@@ -71,6 +77,7 @@ Modify [GeminiClient.java](file:///Users/bhargavasista/omivertex/src/main/java/c
   record JobDescriptionExtraction(
       String title,
       List<ExtractedSkill> skills,      // matched against the supplied taxonomy
+      List<String> unmatchedSkills,     // skills read but NOT in the taxonomy, raw names
       String jobDescriptionText,        // cleaned JD prose
       WorkMode workMode,                // null = not stated
       Integer allocationPercent,        // null = not stated
@@ -81,7 +88,10 @@ Modify [GeminiClient.java](file:///Users/bhargavasista/omivertex/src/main/java/c
   ```
 - Implement `extractJobDescription` in the real Gemini implementation (structured-output
   prompt, same JSON-parse discipline as `extractResume`; throws on upstream/parse failure
-  so the service falls back). Stub it in the test double(s) that implement `GeminiClient`.
+  so the service falls back). The prompt instructs the model to return matched skills
+  (with a taxonomy `skillId`) **and** a separate list of skill names it read but could not
+  map to the supplied taxonomy (`unmatchedSkills`) — so genuine requirements outside the
+  taxonomy are never lost. Stub it in the test double(s) that implement `GeminiClient`.
 
 ### Service Layer
 
@@ -96,9 +106,11 @@ Modify [PositionService.java](file:///Users/bhargavasista/omivertex/src/main/jav
   4. If `geminiClient.isConfigured()` and text is non-blank, calls
      `extractJobDescription(...)`; on any exception, logs a warning and falls back.
   5. Fallback: `ResumeSkillMatcher` keyword skills only (title/project/dates left null).
-  6. Maps returned skills against the taxonomy (only skills present in the taxonomy
-     survive), and resolves `suggestedProjectId` server-side by fuzzy-matching the
-     extracted project/client name against existing projects (`ProjectRepository`).
+  6. Maps returned skills against the taxonomy: skills present in the taxonomy become
+     structured requirement rows; skills the model read but could not map are carried
+     through as `unmatchedSkills` (raw strings) — never dropped. Resolves
+     `suggestedProjectId` server-side by fuzzy-matching the extracted project/client name
+     against existing projects (`ProjectRepository`).
 - Inject `ResumeTextExtractor`, `ResumeSkillMatcher`, `GeminiClient`, `SkillRepository`,
   `ProjectRepository` via the constructor (constructor injection only).
 
@@ -120,8 +132,9 @@ Add `ParsedJobDescriptionResponse` (new record under
 the web-boundary shape returned to the modal. Skills are represented the same way the
 position form consumes them (skillId, skillName, category, minProficiency, required), plus
 `title`, `jobDescription`, `workMode`, `allocationPercent`, `startDate`, `endDate`,
-`suggestedProjectId`, `suggestedProjectName`, and a boolean `textExtracted` /
-`SuggestionSource` flag so the UI can explain a weak result. Never returns a JPA entity.
+`suggestedProjectId`, `suggestedProjectName`, `unmatchedSkills` (list of raw skill names
+not in the taxonomy), and a boolean `textExtracted` / `SuggestionSource` flag so the UI can
+explain a weak result. Never returns a JPA entity.
 
 Modify [PositionController.java](file:///Users/bhargavasista/omivertex/src/main/java/com/softility/omivertex/web/PositionController.java):
 
@@ -149,6 +162,10 @@ Modify [Positions.jsx](file:///Users/bhargavasista/omivertex/frontend/src/pages/
   `projectId` = `suggestedProjectId` (preselect in the SearchSelect). If
   `suggestedProjectId` is null but a name was read, show it as a hint so the manager can
   pick the project. If little was extracted, toast "Couldn't read much from that file."
+- **Unmatched skills:** when `unmatchedSkills` is non-empty, append them into the legacy
+  **Required Skill (text fallback)** field (comma-joined) and show a small "Not in your
+  taxonomy — kept as free text" note listing them beside the skill rows, so the manager
+  can see what Mirai found but couldn't structure. No requirement is silently lost.
 - Respect `canEdit` (the button only shows when the manager can edit) and use CSS tokens
   only — no raw hex.
 
@@ -175,6 +192,10 @@ plus a `PositionService` test with a stub `GeminiClient`:
 - Fuzzy project match: JD naming "Acme mobile app" resolves to the seeded "Acme · Mobile
   App" project; an unmatchable name → `suggestedProjectId` null but `suggestedProjectName`
   present.
+- Unmatched skills: a JD naming a skill absent from the taxonomy → that name appears in
+  `unmatchedSkills` in the response (and lands in the legacy Required Skill field on the
+  frontend) and is **not** silently dropped, while in-taxonomy skills still become
+  structured rows.
 - Gemini not configured → falls back to keyword skills, still `200`, title/project null.
 - Gemini throws → falls back, no `500`.
 - Empty file / `.txt` / image → `400` via `BadRequestException`.
@@ -191,5 +212,8 @@ plus a `PositionService` test with a stub `GeminiClient`:
 
 - No file storage, no new entity, no DB migration — parse-and-discard.
 - No new project creation — Mirai only suggests an existing project.
+- No taxonomy mutation — skills outside the taxonomy are preserved as free text, not
+  created as `Skill` rows. A permissioned "Add to taxonomy" promotion is a **deferred**
+  follow-up, not part of this build.
 - The suggestion is a soft preselect; nothing persists until the manager clicks Save via
   the unchanged create/update path.
