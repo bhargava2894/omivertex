@@ -212,6 +212,47 @@ public class PositionService {
                 || (associate.getSecondarySkill() != null && associate.getSecondarySkill().toLowerCase().contains(needle));
     }
 
+    /**
+     * Best-effort map of a free-text project/client name to one of the given
+     * options by shared word tokens; null when nothing overlaps. A suggestion the
+     * user confirms — never authoritative.
+     */
+    static Long matchProjectId(String extractedName, List<GeminiClient.ProjectOption> options) {
+        Set<String> wanted = tokenize(extractedName);
+        if (wanted.isEmpty()) {
+            return null;
+        }
+        Long bestId = null;
+        int bestOverlap = 0;
+        for (GeminiClient.ProjectOption o : options) {
+            Set<String> have = tokenize(o.label());
+            int overlap = 0;
+            for (String t : wanted) {
+                if (have.contains(t)) {
+                    overlap++;
+                }
+            }
+            if (overlap > bestOverlap) {
+                bestOverlap = overlap;
+                bestId = o.id();
+            }
+        }
+        return bestOverlap > 0 ? bestId : null;
+    }
+
+    private static Set<String> tokenize(String s) {
+        Set<String> out = new HashSet<>();
+        if (s == null) {
+            return out;
+        }
+        for (String t : s.toLowerCase().split("[^a-z0-9]+")) {
+            if (t.length() >= 2) { // drop 1-char noise and the "·" separator
+                out.add(t);
+            }
+        }
+        return out;
+    }
+
     private OpenPosition find(Long id) {
         return positions.findById(id).orElseThrow(() -> new NotFoundException("Position", id));
     }
