@@ -176,6 +176,7 @@ export default function MyProfile({ showToast }) {
           <DetailRow label="Location" value={profile.location} />
           <DetailRow label="Work mode" value={workModeLabel(profile.workMode)} />
           <DetailRow label="Designation" value={profile.designation} />
+          <DetailRow label="Phone" value={profile.phone} />
           <DetailRow label="Joined" value={joinedWithTenure(profile.joinedDate)} />
           <DetailRow label="Status" value={statusLabel(profile.status)} />
         </div>

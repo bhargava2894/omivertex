@@ -373,6 +373,7 @@ export default function Profile({ id, showToast, canEdit }) {
           <div className="cell-sub" style={{ marginTop: '4px', fontSize: '14px' }}>
             <strong>{associate.designation}</strong> · {associate.email} · {associate.company} ·{' '}
             {associate.location || 'No Location'}
+            {associate.phone && <> · {associate.phone}</>}
           </div>
           <div className="cell-sub" style={{ marginTop: '4px', fontSize: '13.5px' }}>
             Joined {joinedWithTenure(associate.joinedDate) || '—'} · Status{' '}
@@ -688,6 +689,28 @@ export default function Profile({ id, showToast, canEdit }) {
               </div>
             )}
           </div>
+
+          {/* Previous Employment Card */}
+          {(associate.employmentHistory || []).length > 0 && (
+            <div className="card" style={{ padding: '24px' }}>
+              <h3 style={{ marginTop: 0 }}>Previous Employment</h3>
+              <p className="stat-hint" style={{ marginTop: 0 }}>
+                From the résumé — Softility engagement history lives in Allocation &amp; Engagement
+                History.
+              </p>
+              <div style={{ display: 'grid', gap: '8px' }}>
+                {associate.employmentHistory.map((e, i) => (
+                  <div key={i} style={{ fontSize: '13.5px' }}>
+                    <strong>{e.company}</strong>
+                    {e.title && <> · {e.title}</>}
+                    <div className="cell-sub">
+                      {e.startDate || '?'} – {e.endDate || 'present'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
