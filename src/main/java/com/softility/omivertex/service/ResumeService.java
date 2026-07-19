@@ -170,26 +170,6 @@ public class ResumeService {
     }
 
     private void validateFileType(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BadRequestException("Uploaded file cannot be empty");
-        }
-        String contentType = file.getContentType();
-        String filename = file.getOriginalFilename();
-        if (contentType == null) {
-            contentType = "";
-        }
-        if (filename == null) {
-            filename = "";
-        }
-
-        String lowerContentType = contentType.toLowerCase();
-        String lowerFilename = filename.toLowerCase();
-
-        boolean isPdf = lowerContentType.equals("application/pdf") || lowerFilename.endsWith(".pdf");
-        boolean isDocx = lowerContentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") || lowerFilename.endsWith(".docx");
-
-        if (!isPdf && !isDocx) {
-            throw new BadRequestException("Unsupported file type. Only PDF (.pdf) and Word (.docx) documents are allowed.");
-        }
+        UploadedDocuments.requirePdfOrDocx(file);
     }
 }
