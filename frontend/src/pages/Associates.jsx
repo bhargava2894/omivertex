@@ -167,28 +167,35 @@ export default function Associates({ showToast, canEdit }) {
     setResumeFile(file);
     setParsingResume(true);
     setResumeNotice('');
+    setHistoryNote('');
 
     try {
       const data = await api.parseResume(file);
 
       if (data.name || data.phone || (data.employmentHistory || []).length > 0) {
-        setEditing((prev) => ({
-          ...prev,
-          form: {
-            ...prev.form,
-            // prefill only when empty — never clobber what the admin already typed
-            name: prev.form.name || data.name || prev.form.name,
-            phone: prev.form.phone || data.phone || prev.form.phone,
-          },
-        }));
-        const company = editing.form.company || 'Softility';
-        const external = (data.employmentHistory || []).filter(
-          (e) => !e.company || e.company.trim().toLowerCase() !== company.trim().toLowerCase()
-        );
-        if (external.length < (data.employmentHistory || []).length) {
-          setHistoryNote(`${company} entry omitted — internal history comes from allocations.`);
-        }
-        setExtractedHistory(external);
+        // filter against the LATEST Company value — the admin may change it mid-parse
+        setEditing((prev) => {
+          const company = (prev.form.company || 'Softility').trim().toLowerCase();
+          const all = data.employmentHistory || [];
+          const external = all.filter(
+            (e) => !e.company || e.company.trim().toLowerCase() !== company
+          );
+          if (external.length < all.length) {
+            setHistoryNote(
+              `${prev.form.company || 'Softility'} entry omitted — internal history comes from allocations.`
+            );
+          }
+          setExtractedHistory(external);
+          return {
+            ...prev,
+            form: {
+              ...prev.form,
+              // prefill only when empty — never clobber what the admin already typed
+              name: prev.form.name || data.name || '',
+              phone: prev.form.phone || data.phone || '',
+            },
+          };
+        });
       }
 
       if (data.textExtracted && data.suggestedSkills?.length > 0) {
@@ -634,6 +641,8 @@ export default function Associates({ showToast, canEdit }) {
                             if (e.target.files[0]) {
                               handleResumeSelect(e.target.files[0]);
                             }
+                            // allow re-selecting the same file to re-trigger parsing
+                            e.target.value = '';
                           }}
                         />
                       </label>
@@ -652,11 +661,15 @@ export default function Associates({ showToast, canEdit }) {
                           {resumeNotice}
                         </div>
                       )}
+                      {historyNote && (
+                        <p className="stat-hint" style={{ margin: 0 }}>
+                          {historyNote}
+                        </p>
+                      )}
                     </div>
                   </Field>
                   {extractedHistory.length > 0 && (
                     <Field label="Previous employment (from résumé — review before saving)" full>
-                      {historyNote && <p className="stat-hint">{historyNote}</p>}
                       <div style={{ display: 'grid', gap: '6px' }}>
                         {extractedHistory.map((e, i) => (
                           <div
@@ -665,7 +678,7 @@ export default function Associates({ showToast, canEdit }) {
                           >
                             <input
                               style={{ flex: 2 }}
-                              value={e.company}
+                              value={e.company || ''}
                               placeholder="Company"
                               onChange={(ev) =>
                                 setExtractedHistory((h) =>
@@ -690,6 +703,7 @@ export default function Associates({ showToast, canEdit }) {
                             <input
                               type="date"
                               value={e.startDate || ''}
+                              aria-label={`Start date for ${e.company || 'entry'}`}
                               onChange={(ev) =>
                                 setExtractedHistory((h) =>
                                   h.map((row, j) =>
@@ -701,6 +715,7 @@ export default function Associates({ showToast, canEdit }) {
                             <input
                               type="date"
                               value={e.endDate || ''}
+                              aria-label={`End date for ${e.company || 'entry'}`}
                               onChange={(ev) =>
                                 setExtractedHistory((h) =>
                                   h.map((row, j) =>
@@ -712,7 +727,7 @@ export default function Associates({ showToast, canEdit }) {
                             <button
                               type="button"
                               className="btn btn-ghost btn-sm"
-                              aria-label={`Remove ${e.company}`}
+                              aria-label={`Remove ${e.company || 'entry'}`}
                               onClick={() =>
                                 setExtractedHistory((h) => h.filter((_, j) => j !== i))
                               }
