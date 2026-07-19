@@ -194,6 +194,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/positions` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | `?status=&projectId=` |
 | `/positions/{id}/matches` | GET (candidates ranked full-match first, partials labeled with what's missing; ADMIN) | — |
 | `/positions/{id}/fill` | POST (fills position by creating an allocation over the position's start–end window, so capacity is consumed for that period and the end date feeds the roll-off radar; start defaults to today when the position has none; ADMIN) | — |
+| `/positions/parse-jd` | POST multipart `file` (PDF/DOCX; **stateless**, persists nothing; ADMIN). Extracts, via Mirai (Gemini) with a keyword fallback, a suggested `title`, taxonomy-matched required `skills` (each `required:true` by default), a cleaned `jobDescription` summary, `workMode`, `allocationPercent`, `startDate`/`endDate`, and a `suggestedProjectId`+`suggestedProjectName` (the project/client name read from the JD, fuzzy-matched server-side to an existing project). Skills named in the JD but absent from the taxonomy are returned in `unmatchedSkills` (surfaced, never dropped — the UI keeps them as legacy free-text). `source: AI\|KEYWORD`; keyword fallback leaves title/project/dates null. The client reviews the prefilled form and saves via the normal `POST`/`PUT /positions`. Runs async on the `AiExecutor` bulkhead. Shares the PDF/DOCX guard (`UploadedDocuments`) with the résumé uploads. | — |
 | `/staffing` | GET (client → project → associates tree; per-level billable/non-billable counts always reflect *current* allocations only, "billable wins" per client; the page merges the former Allocations screen — ADMIN gets inline Assign/Edit/Remove reusing `/allocations` CRUD, VIEWER gets read-only; ADMIN+VIEWER) | `?includeEnded=` (also return non-current rows, marked `active:false`, count-neutral) |
 | `/taxonomy` | GET (nested alphabetical tree) | — |
 | `/taxonomy/categories` | POST, DELETE/{id} (ADMIN) | — |
@@ -236,8 +237,8 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 - 409 uniqueness, capacity, duplicate-allocation, protective-delete conflicts
 - 503 AI executor saturated (`ServiceUnavailableException`) — retry shortly
 
-**AI execution model:** the three AI endpoints (`/assistant/chat`,
-`/resumes/parse`, `/me/resumes/parse`) run asynchronously on a dedicated
+**AI execution model:** the AI endpoints (`/assistant/chat`,
+`/resumes/parse`, `/me/resumes/parse`, `/positions/parse-jd`) run asynchronously on a dedicated
 4-thread bulkhead (`AiExecutor`, queue 8) so Gemini latency never occupies
 servlet threads; the Gemini HTTP client has 5s connect / 30s read timeouts
 (`omivertex.assistant.gemini.connect-timeout` / `read-timeout`). Response
