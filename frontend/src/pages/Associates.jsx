@@ -168,6 +168,9 @@ export default function Associates({ showToast, canEdit }) {
     setParsingResume(true);
     setResumeNotice('');
     setHistoryNote('');
+    // a new file voids the previous file's extraction — a failed parse must
+    // never leave résumé A's employment rows attached to résumé B's upload
+    setExtractedHistory([]);
 
     try {
       const data = await api.parseResume(file);
