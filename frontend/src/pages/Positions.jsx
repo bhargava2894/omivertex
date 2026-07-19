@@ -38,13 +38,17 @@ export default function Positions({ showToast, canEdit }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [matching, setMatching] = useState(null); // { position, candidates|null, filling }
+  const [parsingJd, setParsingJd] = useState(false);
+  const [unmatchedSkills, setUnmatchedSkills] = useState([]);
 
   const openCreate = () => {
     setErrors({});
+    setUnmatchedSkills([]);
     setEditing({ form: { ...EMPTY } });
   };
   const openEdit = (row) => {
     setErrors({});
+    setUnmatchedSkills([]);
     setEditing({
       id: row.id,
       form: {
@@ -78,6 +82,55 @@ export default function Positions({ showToast, canEdit }) {
       ...e,
       form: { ...e.form, skills: e.form.skills.filter((_, idx) => idx !== i) },
     }));
+
+  const onUploadJd = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    setParsingJd(true);
+    setUnmatchedSkills([]);
+    try {
+      const p = await api.parseJd(file);
+      setEditing((cur) => {
+        if (!cur) return cur;
+        const legacy = (p.unmatchedSkills || []).join(', ');
+        return {
+          ...cur,
+          form: {
+            ...cur.form,
+            title: p.title || cur.form.title,
+            projectId: p.suggestedProjectId != null ? p.suggestedProjectId : cur.form.projectId,
+            jobDescription: p.jobDescription || cur.form.jobDescription,
+            workMode: p.workMode || cur.form.workMode,
+            allocationPercent:
+              p.allocationPercent != null ? p.allocationPercent : cur.form.allocationPercent,
+            startDate: p.startDate || cur.form.startDate,
+            endDate: p.endDate || cur.form.endDate,
+            requiredSkill: legacy || cur.form.requiredSkill,
+            skills: (p.skills || []).map((s) => ({
+              skillId: s.skillId,
+              minProficiency: s.minProficiency || '',
+              required: s.required,
+            })),
+          },
+        };
+      });
+      setUnmatchedSkills(p.unmatchedSkills || []);
+      const skillCount = (p.skills || []).length;
+      if (!p.title && skillCount === 0) {
+        showToast('Couldn’t read much from that file — please fill the form manually', true);
+      } else {
+        showToast('Form pre-filled from the job description');
+        if (p.suggestedProjectId == null && p.suggestedProjectName) {
+          showToast(`Couldn’t match project “${p.suggestedProjectName}” — pick it manually`, true);
+        }
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to parse the job description', true);
+    } finally {
+      setParsingJd(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -314,13 +367,33 @@ export default function Positions({ showToast, canEdit }) {
                 />
               </Field>
               <Field label="Job Description" error={errors.jobDescription} full>
-                <textarea
-                  value={editing.form.jobDescription}
-                  onChange={(e) => set('jobDescription', e.target.value)}
-                  placeholder="Describe the responsibilities, project context, and daily tasks..."
-                  rows={4}
-                  className={errors.jobDescription ? 'invalid' : ''}
-                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer' }}>
+                      <Icon name="sparkles" size={14} />{' '}
+                      {parsingJd ? 'Reading JD…' : 'Upload JD to autofill'}
+                      <input
+                        type="file"
+                        accept=".pdf,.docx"
+                        hidden
+                        disabled={parsingJd}
+                        onChange={onUploadJd}
+                      />
+                    </label>
+                  </div>
+                  <textarea
+                    value={editing.form.jobDescription}
+                    onChange={(e) => set('jobDescription', e.target.value)}
+                    placeholder="Describe the responsibilities, project context, and daily tasks..."
+                    rows={4}
+                    className={errors.jobDescription ? 'invalid' : ''}
+                  />
+                  {unmatchedSkills.length > 0 && (
+                    <p className="stat-hint" style={{ margin: 0 }}>
+                      Not in your taxonomy — kept as free text: {unmatchedSkills.join(', ')}
+                    </p>
+                  )}
+                </div>
               </Field>
               <Field label="Skill requirements" error={errors.skills} full>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
