@@ -26,4 +26,12 @@ class ProjectNameMatchTest {
         assertNull(PositionService.matchProjectId(null, OPTIONS));
         assertNull(PositionService.matchProjectId("   ", OPTIONS));
     }
+
+    @Test
+    void corporateBoilerplateAloneDoesNotMatch() {
+        // "corp" is shared with the two Acme options but is boilerplate, not a
+        // real signal — an unrelated company must NOT preselect Acme's projects.
+        assertNull(PositionService.matchProjectId("Zenith Corp", OPTIONS));
+        assertNull(PositionService.matchProjectId("Initech Inc", OPTIONS));
+    }
 }

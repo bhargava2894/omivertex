@@ -320,13 +320,22 @@ public class PositionService {
         return bestOverlap > 0 ? bestId : null;
     }
 
+    /**
+     * Corporate-entity boilerplate that appears across many company names — it must
+     * not, on its own, drive a project match (e.g. "Zenith Corp" ≠ "Acme Corp").
+     */
+    private static final Set<String> PROJECT_NAME_STOPWORDS = Set.of(
+            "corp", "corporation", "inc", "incorporated", "ltd", "limited", "llc",
+            "llp", "plc", "pvt", "private", "gmbh", "co", "company", "the", "and");
+
     private static Set<String> tokenize(String s) {
         Set<String> out = new HashSet<>();
         if (s == null) {
             return out;
         }
         for (String t : s.toLowerCase().split("[^a-z0-9]+")) {
-            if (t.length() >= 2) { // drop 1-char noise and the "·" separator
+            // drop 1-char noise, the "·" separator, and generic corporate boilerplate
+            if (t.length() >= 2 && !PROJECT_NAME_STOPWORDS.contains(t)) {
                 out.add(t);
             }
         }
