@@ -91,6 +91,7 @@ Client 1 ──── * Project 1 ──── * Allocation * ──── 1 Ass
 | **Client** | name, industry, location, status (ACTIVE/INACTIVE) | `name` unique (case-insensitive check in service) |
 | **Project** | code, name, client FK, status (ACTIVE/ON_HOLD/COMPLETED), startDate, endDate | `code` unique |
 | **Associate** | name, email, company, location, workMode (ONSHORE/OFFSHORE), designation, joinedDate, resignationDate, lastWorkingDay, exitReason, status | `email` unique |
+| **EmploymentHistory** | associate FK, company, title, startDate, endDate, sortOrder | résumé-extracted previous (external) employers only, applied create-only, never merged with allocation-derived internal history |
 | **Allocation** | associate FK, project FK, billable (bool), allocationPercent (1–100), startDate, endDate (null = open) | see business rules |
 | **AppUser** | email, name, role (VIEWER/ADMIN/ASSOCIATE), status (PENDING/APPROVED/REJECTED), associateId FK | `email` unique; backs the company-email sign-in flow |
 | **SkillCategory** | name | `name` unique |
@@ -188,7 +189,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 |---|---|---|
 | `/clients` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | — |
 | `/projects` | same | `?clientId=` |
-| `/associates` | same | `?workMode=&billable=&bench=&categoryId=&skillId=&minProficiency=&q=` (name/email/company search) `&page=&size=` (25 default; omit `page` for a plain array, backward compatible) |
+| `/associates` | same (`AssociateRequest`/`AssociateResponse` carry `phone` and `employmentHistory` — previous external employers; `employmentHistory` is applied on create only, ignored on update, and only the detail `GET /associates/{id}` response returns it — the roster list omits it) | `?workMode=&billable=&bench=&categoryId=&skillId=&minProficiency=&q=` (name/email/company search) `&page=&size=` (25 default; omit `page` for a plain array, backward compatible) |
 | `/allocations` | same (PUT uses `AllocationUpdateRequest` — no re-parenting) | `?projectId=&associateId=&active=` |
 | `/positions` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | `?status=&projectId=` |
 | `/positions/{id}/matches` | GET (candidates ranked full-match first, partials labeled with what's missing; ADMIN) | — |
@@ -200,7 +201,7 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 | `/associates/{id}/skills` | PUT (idempotent rated-skills replace; ADMIN) | — |
 | `/associates/{id}/certifications` | GET, POST (ADMIN) | — |
 | `/associates/{id}/resume` | GET (download), POST (upload/replace; ADMIN), DELETE (remove; ADMIN) | — |
-| `/resumes/parse` | POST multipart `file` (stateless suggestions; ADMIN; AI extraction with per-skill `proficiency`+`evidence` and `experienceSummary` when Gemini is configured, keyword fallback otherwise; `source: AI\|KEYWORD`) | — |
+| `/resumes/parse` | POST multipart `file` (stateless suggestions; ADMIN; AI extraction with per-skill `proficiency`+`evidence` and `experienceSummary`, plus extracted `name`/`phone`/`employmentHistory` for the New Associate overview, when Gemini is configured; keyword fallback otherwise, which leaves `name`/`phone`/`employmentHistory` empty; `source: AI\|KEYWORD`) | — |
 | `/me/resumes/parse` | POST multipart `file` (same stateless parse for the self-service propose flow; ASSOCIATE) | — |
 | `/certifications` | GET (org-wide, alphabetical soonest expiry first) | `?q=` (search by name, authority, associate name) |
 | `/certifications/{id}` | DELETE (ADMIN) | — |

@@ -103,6 +103,14 @@ dashboard through caches/proxies).
 
 ## Resolved decisions
 
+- **Résumé history is structured and external-only** (2026-07-18): résumé
+  parsing extracts name/phone/employment into the New Associate overview;
+  entries matching the form's company (Softility) are dropped — internal
+  engagement history stays allocation-derived, the two are never merged.
+  Email is deliberately NOT extracted (résumés carry personal addresses;
+  company emails come from EmailNaming). Follow-ups: post-create history
+  editing, Mirai get_associate_detail exposure, profile re-upload overview.
+
 - **Mirai chat history is per-tab sessionStorage, not server-side** (2026-07-18):
   a refresh restores the conversation (last 40 messages incl. draft cards);
   the tab closing or logout wipes it. Deliberately no server persistence and
