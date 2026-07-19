@@ -86,6 +86,21 @@ export const api = {
       body: JSON.stringify(data),
     }),
   deleteCertification: (id) => request(`/certifications/${id}`, { method: 'DELETE' }),
+  parseJd: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/positions/parse-jd`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const error = new Error(body.message || 'Parsing failed');
+      error.status = res.status;
+      throw error;
+    }
+    return res.json();
+  },
   parseResume: async (file) => {
     const formData = new FormData();
     formData.append('file', file);
