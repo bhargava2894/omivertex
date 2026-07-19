@@ -14,6 +14,7 @@ import { PROFICIENCIES } from '../proficiency.js';
 const EMPTY = {
   name: '',
   email: '',
+  employeeId: '',
   company: 'Softility',
   location: '',
   workMode: 'ONSHORE',
@@ -264,6 +265,7 @@ export default function Associates({ showToast, canEdit }) {
           });
           return acc;
         }, {}),
+        employeeId: row.employeeId || '',
         status: row.status,
       },
     });
@@ -276,6 +278,7 @@ export default function Associates({ showToast, canEdit }) {
     const { skills, ...rest } = editing.form;
     const payload = {
       ...rest,
+      employeeId: rest.employeeId ? rest.employeeId.trim() : null,
       joinedDate: rest.joinedDate || null,
       resignationDate: rest.resignationDate || null,
       lastWorkingDay: rest.lastWorkingDay || null,
@@ -447,7 +450,9 @@ export default function Associates({ showToast, canEdit }) {
                   <a href={'#/associates/' + r.id}>{r.name}</a>
                 </div>
                 <div className="cell-sub">
-                  {[r.designation, r.primarySkill, r.email].filter(Boolean).join(' · ')}
+                  {[r.employeeId, r.designation, r.primarySkill, r.email]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </div>
               </div>
             ),
@@ -518,6 +523,13 @@ export default function Associates({ showToast, canEdit }) {
                   value={editing.form.email}
                   onChange={(e) => set('email', e.target.value)}
                   className={errors.email ? 'invalid' : ''}
+                />
+              </Field>
+              <Field label="Employee ID" error={errors.employeeId}>
+                <input
+                  value={editing.form.employeeId}
+                  onChange={(e) => set('employeeId', e.target.value)}
+                  className={errors.employeeId ? 'invalid' : ''}
                 />
               </Field>
               <Field label="Company" required error={errors.company}>

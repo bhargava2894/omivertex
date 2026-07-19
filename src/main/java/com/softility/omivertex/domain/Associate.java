@@ -31,6 +31,9 @@ public class Associate {
 
     private String designation;
 
+    @Column(name = "employee_id", unique = true)
+    private String employeeId;
+
     // Résumé-extracted contact number; not required at intake.
     @Column(length = 32)
     private String phone;
@@ -98,5 +101,7 @@ public class Associate {
     public void setSecondarySkill(String secondarySkill) { this.secondarySkill = secondarySkill; }
     public EntityStatus getStatus() { return status; }
     public void setStatus(EntityStatus status) { this.status = status; }
+    public String getEmployeeId() { return employeeId; }
+    public void setEmployeeId(String employeeId) { this.employeeId = employeeId; }
     public Instant getCreatedAt() { return createdAt; }
 }

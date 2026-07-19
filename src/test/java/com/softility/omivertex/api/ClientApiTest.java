@@ -1,5 +1,6 @@
 package com.softility.omivertex.api;
 
+import com.softility.omivertex.domain.Client;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
@@ -41,6 +42,29 @@ class ClientApiTest extends ApiTestBase {
                                 {"name":"acme corp"}"""))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void createClient_withClientId_savesClientId() throws Exception {
+        mockMvc.perform(post("/api/v1/clients")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Acme Corp","clientId":"CLI-123","industry":"Retail","location":"Chicago"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.clientId").value("CLI-123"));
+    }
+
+    @Test
+    void createClient_duplicateClientId_returns409() throws Exception {
+        Client existing = client("Acme Corp");
+        existing.setClientId("CLI-123");
+        clientRepository.save(existing);
+
+        mockMvc.perform(post("/api/v1/clients")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Other Corp","clientId":"CLI-123","industry":"Healthcare"}"""))
+                .andExpect(status().isConflict());
     }
 
     @Test

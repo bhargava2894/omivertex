@@ -8,7 +8,7 @@ import Badge from '../components/Badge.jsx';
 import Field from '../components/Field.jsx';
 import Icon from '../components/Icon.jsx';
 
-const EMPTY = { name: '', industry: '', location: '', status: 'ACTIVE' };
+const EMPTY = { name: '', clientId: '', industry: '', location: '', status: 'ACTIVE' };
 
 export default function Clients({ showToast, canEdit }) {
   const { data, loading, reload } = useLoad(() => api.list('clients'));
@@ -29,6 +29,7 @@ export default function Clients({ showToast, canEdit }) {
       id: row.id,
       form: {
         name: row.name,
+        clientId: row.clientId || '',
         industry: row.industry || '',
         location: row.location || '',
         status: row.status,
@@ -41,8 +42,12 @@ export default function Clients({ showToast, canEdit }) {
     setSaving(true);
     setErrors({});
     try {
-      if (editing.id) await api.update('clients', editing.id, editing.form);
-      else await api.create('clients', editing.form);
+      const payload = {
+        ...editing.form,
+        clientId: editing.form.clientId ? editing.form.clientId.trim() : null,
+      };
+      if (editing.id) await api.update('clients', editing.id, payload);
+      else await api.create('clients', payload);
       showToast(editing.id ? 'Client updated' : 'Client created');
       setEditing(null);
       reload();
@@ -103,6 +108,7 @@ export default function Clients({ showToast, canEdit }) {
             label: 'Client',
             render: (r) => <span className="cell-main">{r.name}</span>,
           },
+          { key: 'clientId', label: 'Client ID', render: (r) => r.clientId || '—' },
           { key: 'industry', label: 'Industry', render: (r) => r.industry || '—' },
           { key: 'location', label: 'Location', render: (r) => r.location || '—' },
           { key: 'status', label: 'Status', render: (r) => <Badge value={r.status} /> },
@@ -132,6 +138,13 @@ export default function Clients({ showToast, canEdit }) {
                   value={editing.form.name}
                   onChange={(e) => set('name', e.target.value)}
                   className={errors.name ? 'invalid' : ''}
+                />
+              </Field>
+              <Field label="Client ID" error={errors.clientId}>
+                <input
+                  value={editing.form.clientId}
+                  onChange={(e) => set('clientId', e.target.value)}
+                  className={errors.clientId ? 'invalid' : ''}
                 />
               </Field>
               <Field label="Industry" error={errors.industry}>

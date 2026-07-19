@@ -42,6 +42,11 @@ public class ClientService {
         if (clientRepository.existsByNameIgnoreCase(request.name())) {
             throw new ConflictException("A client named '" + request.name() + "' already exists");
         }
+        if (request.clientId() != null && !request.clientId().isBlank()) {
+            if (clientRepository.existsByClientIdIgnoreCase(request.clientId().trim())) {
+                throw new ConflictException("A client with Client ID '" + request.clientId().trim() + "' already exists");
+            }
+        }
         Client client = new Client();
         apply(client, request);
         client = clientRepository.save(client);
@@ -54,6 +59,12 @@ public class ClientService {
         if (!client.getName().equalsIgnoreCase(request.name())
                 && clientRepository.existsByNameIgnoreCase(request.name())) {
             throw new ConflictException("A client named '" + request.name() + "' already exists");
+        }
+        if (request.clientId() != null && !request.clientId().isBlank()) {
+            boolean isNewOrChanged = client.getClientId() == null || !client.getClientId().equalsIgnoreCase(request.clientId().trim());
+            if (isNewOrChanged && clientRepository.existsByClientIdIgnoreCase(request.clientId().trim())) {
+                throw new ConflictException("A client with Client ID '" + request.clientId().trim() + "' already exists");
+            }
         }
         apply(client, request);
         auditService.record("UPDATED", "Client", client.getId(), "Updated client " + client.getName());
@@ -75,6 +86,7 @@ public class ClientService {
 
     private void apply(Client client, ClientRequest request) {
         client.setName(request.name());
+        client.setClientId(request.clientId() != null && !request.clientId().isBlank() ? request.clientId().trim() : null);
         client.setIndustry(request.industry());
         client.setLocation(request.location());
         client.setStatus(request.status() == null ? EntityStatus.ACTIVE : request.status());

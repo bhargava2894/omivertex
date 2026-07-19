@@ -7,5 +7,7 @@ public interface AssociateRepository extends JpaRepository<Associate, Long> {
 
     boolean existsByEmailIgnoreCase(String email);
 
+    boolean existsByEmployeeIdIgnoreCase(String employeeId);
+
     java.util.Optional<Associate> findByEmailIgnoreCase(String email);
 }

@@ -21,6 +21,9 @@ public class SeedDataLoader implements ApplicationRunner {
     /** Presence of this position means the skill-gap demo scenario is already seeded. */
     private static final String SCENARIO_MARKER = "Platform Engineer";
 
+    private int clientCounter = 1;
+    private int associateCounter = 1;
+
     private final ClientRepository clients;
     private final ProjectRepository projects;
     private final AssociateRepository associates;
@@ -352,6 +355,7 @@ public class SeedDataLoader implements ApplicationRunner {
     private Client client(String name, String industry, String location) {
         Client client = new Client();
         client.setName(name);
+        client.setClientId("CLI-" + String.format("%03d", clientCounter++));
         client.setIndustry(industry);
         client.setLocation(location);
         return clients.save(client);
@@ -375,6 +379,7 @@ public class SeedDataLoader implements ApplicationRunner {
         Associate associate = new Associate();
         associate.setName(name);
         associate.setEmail(email);
+        associate.setEmployeeId("EMP-" + String.format("%03d", associateCounter++));
         associate.setCompany(company);
         associate.setLocation(location);
         associate.setWorkMode(workMode);

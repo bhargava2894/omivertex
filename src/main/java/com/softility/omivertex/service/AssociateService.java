@@ -152,6 +152,11 @@ public class AssociateService {
         if (associateRepository.existsByEmailIgnoreCase(request.email())) {
             throw new ConflictException("An associate with email '" + request.email() + "' already exists");
         }
+        if (request.employeeId() != null && !request.employeeId().isBlank()) {
+            if (associateRepository.existsByEmployeeIdIgnoreCase(request.employeeId().trim())) {
+                throw new ConflictException("An associate with employee ID '" + request.employeeId().trim() + "' already exists");
+            }
+        }
         Associate associate = new Associate();
         apply(associate, request);
         associate = associateRepository.save(associate);
@@ -185,6 +190,12 @@ public class AssociateService {
         if (!associate.getEmail().equalsIgnoreCase(request.email())
                 && associateRepository.existsByEmailIgnoreCase(request.email())) {
             throw new ConflictException("An associate with email '" + request.email() + "' already exists");
+        }
+        if (request.employeeId() != null && !request.employeeId().isBlank()) {
+            boolean isNewOrChanged = associate.getEmployeeId() == null || !associate.getEmployeeId().equalsIgnoreCase(request.employeeId().trim());
+            if (isNewOrChanged && associateRepository.existsByEmployeeIdIgnoreCase(request.employeeId().trim())) {
+                throw new ConflictException("An associate with employee ID '" + request.employeeId().trim() + "' already exists");
+            }
         }
         apply(associate, request);
         associateRepository.save(associate);
@@ -255,6 +266,7 @@ public class AssociateService {
     private void apply(Associate associate, AssociateRequest request) {
         associate.setName(request.name());
         associate.setEmail(request.email());
+        associate.setEmployeeId(request.employeeId() != null && !request.employeeId().isBlank() ? request.employeeId().trim() : null);
         associate.setCompany(request.company());
         associate.setLocation(request.location());
         associate.setWorkMode(request.workMode());

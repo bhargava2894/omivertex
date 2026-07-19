@@ -1,5 +1,6 @@
 package com.softility.omivertex.api;
 
+import com.softility.omivertex.domain.Associate;
 import com.softility.omivertex.domain.Skill;
 import com.softility.omivertex.domain.WorkMode;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,31 @@ class AssociateApiTest extends ApiTestBase {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Other","email":"PRIYA@softility.com","company":"Softility","workMode":"ONSHORE"}"""))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void createAssociate_withEmployeeId_savesEmployeeId() throws Exception {
+        mockMvc.perform(post("/api/v1/associates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-123",
+                                 "company":"Softility","location":"Hyderabad","workMode":"OFFSHORE","designation":"Senior Consultant"}"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.employeeId").value("EMP-123"));
+    }
+
+    @Test
+    void createAssociate_duplicateEmployeeId_returns409() throws Exception {
+        Associate existing = associate("Priya Sharma", "priya@softility.com", WorkMode.OFFSHORE);
+        existing.setEmployeeId("EMP-123");
+        associateRepository.save(existing);
+
+        mockMvc.perform(post("/api/v1/associates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Other","email":"other@softility.com","employeeId":"EMP-123",
+                                 "company":"Softility","workMode":"ONSHORE"}"""))
                 .andExpect(status().isConflict());
     }
 

@@ -20,6 +20,7 @@ public record AssociateResponse(
         Long id,
         String name,
         String email,
+        String employeeId,
         String phone,
         String company,
         String location,
@@ -74,6 +75,7 @@ public record AssociateResponse(
                 .filter(Allocation::isBillable).findFirst()
                 .orElse(current.isEmpty() ? null : current.get(0));
         return new AssociateResponse(associate.getId(), associate.getName(), associate.getEmail(),
+                associate.getEmployeeId(),
                 associate.getPhone(), associate.getCompany(), associate.getLocation(), associate.getWorkMode(),
                 associate.getDesignation(), associate.getJoinedDate(),
                 associate.getResignationDate(), associate.getLastWorkingDay(), associate.getExitReason(),

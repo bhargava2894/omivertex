@@ -371,6 +371,10 @@ export default function Profile({ id, showToast, canEdit }) {
             )}
           </div>
           <div className="cell-sub" style={{ marginTop: '4px', fontSize: '14px' }}>
+            {associate.employeeId && (
+              <strong style={{ color: 'var(--color-primary)' }}>{associate.employeeId}</strong>
+            )}
+            {associate.employeeId && <> · </>}
             <strong>{associate.designation}</strong> · {associate.email} · {associate.company} ·{' '}
             {associate.location || 'No Location'}
             {associate.phone && <> · {associate.phone}</>}

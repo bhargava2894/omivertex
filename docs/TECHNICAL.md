@@ -88,9 +88,9 @@ Client 1 ──── * Project 1 ──── * Allocation * ──── 1 Ass
 
 | Entity | Key fields | Constraints |
 |---|---|---|
-| **Client** | name, industry, location, status (ACTIVE/INACTIVE) | `name` unique (case-insensitive check in service) |
+| **Client** | name, clientId, industry, location, status (ACTIVE/INACTIVE) | `name` unique (case-insensitive check in service); `clientId` unique |
 | **Project** | code, name, client FK, status (ACTIVE/ON_HOLD/COMPLETED), startDate, endDate | `code` unique |
-| **Associate** | name, email, company, location, workMode (ONSHORE/OFFSHORE), designation, joinedDate, resignationDate, lastWorkingDay, exitReason, status | `email` unique |
+| **Associate** | name, email, employeeId, company, location, workMode (ONSHORE/OFFSHORE), designation, joinedDate, resignationDate, lastWorkingDay, exitReason, status | `email` unique; `employeeId` unique |
 | **EmploymentHistory** | associate FK, company, title, startDate, endDate, sortOrder | résumé-extracted previous (external) employers only, applied create-only, never merged with allocation-derived internal history |
 | **Allocation** | associate FK, project FK, billable (bool), allocationPercent (1–100), startDate, endDate (null = open) | see business rules |
 | **AppUser** | email, name, role (VIEWER/ADMIN/ASSOCIATE), status (PENDING/APPROVED/REJECTED), associateId FK | `email` unique; backs the company-email sign-in flow |
@@ -187,9 +187,9 @@ Base path `/api/v1`. JSON. Session cookie required (see §7).
 
 | Resource | Endpoints | Filters |
 |---|---|---|
-| `/clients` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | — |
+| `/clients` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} (`ClientRequest`/`ClientResponse` carry `clientId`) | — |
 | `/projects` | same | `?clientId=` |
-| `/associates` | same (`AssociateRequest`/`AssociateResponse` carry `phone` and `employmentHistory` — previous external employers; `employmentHistory` is applied on create only, ignored on update, and only the detail `GET /associates/{id}` response returns it — the roster list omits it) | `?workMode=&billable=&bench=&categoryId=&skillId=&minProficiency=&q=` (name/email/company search) `&page=&size=` (25 default; omit `page` for a plain array, backward compatible) |
+| `/associates` | same (`AssociateRequest`/`AssociateResponse` carry `employeeId`, `phone`, and `employmentHistory` — previous external employers; `employmentHistory` is applied on create only, ignored on update, and only the detail `GET /associates/{id}` response returns it — the roster list omits it) | `?workMode=&billable=&bench=&categoryId=&skillId=&minProficiency=&q=` (name/email/company search) `&page=&size=` (25 default; omit `page` for a plain array, backward compatible) |
 | `/allocations` | same (PUT uses `AllocationUpdateRequest` — no re-parenting) | `?projectId=&associateId=&active=` |
 | `/positions` | GET, POST, GET/{id}, PUT/{id}, DELETE/{id} | `?status=&projectId=` |
 | `/positions/{id}/matches` | GET (candidates ranked full-match first, partials labeled with what's missing; ADMIN) | — |

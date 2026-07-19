@@ -171,6 +171,7 @@ export default function MyProfile({ showToast }) {
           Managed by your admin — contact HR to update these.
         </p>
         <div className="detail-grid">
+          {profile.employeeId && <DetailRow label="Employee ID" value={profile.employeeId} />}
           <DetailRow label="Email" value={profile.email} />
           <DetailRow label="Company" value={profile.company} />
           <DetailRow label="Location" value={profile.location} />

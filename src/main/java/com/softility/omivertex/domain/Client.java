@@ -16,6 +16,9 @@ public class Client {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "client_id", unique = true)
+    private String clientId;
+
     private String industry;
 
     private String location;
@@ -38,5 +41,7 @@ public class Client {
     public void setLocation(String location) { this.location = location; }
     public EntityStatus getStatus() { return status; }
     public void setStatus(EntityStatus status) { this.status = status; }
+    public String getClientId() { return clientId; }
+    public void setClientId(String clientId) { this.clientId = clientId; }
     public Instant getCreatedAt() { return createdAt; }
 }
