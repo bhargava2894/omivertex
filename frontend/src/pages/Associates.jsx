@@ -692,7 +692,7 @@ export default function Associates({ showToast, canEdit }) {
                             style={{ display: 'flex', gap: '6px', alignItems: 'center' }}
                           >
                             <input
-                              style={{ flex: 2 }}
+                              style={{ flex: 2, minWidth: 0 }}
                               value={e.company || ''}
                               placeholder="Company"
                               onChange={(ev) =>
@@ -704,7 +704,7 @@ export default function Associates({ showToast, canEdit }) {
                               }
                             />
                             <input
-                              style={{ flex: 2 }}
+                              style={{ flex: 2, minWidth: 0 }}
                               value={e.title || ''}
                               placeholder="Title"
                               onChange={(ev) =>
@@ -717,6 +717,7 @@ export default function Associates({ showToast, canEdit }) {
                             />
                             <input
                               type="date"
+                              style={{ flex: 1.5, minWidth: 0 }}
                               value={e.startDate || ''}
                               aria-label={`Start date for ${e.company || 'entry'}`}
                               onChange={(ev) =>
@@ -729,6 +730,7 @@ export default function Associates({ showToast, canEdit }) {
                             />
                             <input
                               type="date"
+                              style={{ flex: 1.5, minWidth: 0 }}
                               value={e.endDate || ''}
                               aria-label={`End date for ${e.company || 'entry'}`}
                               onChange={(ev) =>
