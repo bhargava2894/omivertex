@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.softility.omivertex.domain.Proficiency;
+import com.softility.omivertex.domain.WorkMode;
 import com.softility.omivertex.web.error.BadRequestException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -443,6 +444,114 @@ public class GeminiHttpClient implements GeminiClient {
         } catch (Exception e) {
             log.warn("Gemini extraction call failed", e);
             throw new BadRequestException("AI resume parsing is unavailable right now");
+        }
+    }
+
+    @Override
+    public JobDescriptionExtraction extractJobDescription(String jdText, List<SkillOption> taxonomy,
+                                                          List<ProjectOption> projects) {
+        if (apiKey.isEmpty()) {
+            throw new BadRequestException("AI job-description parsing is not configured — "
+                    + "set OMIVERTEX_ASSISTANT_GEMINI_API_KEY and restart");
+        }
+        String skillList = taxonomy.stream()
+                .map(o -> o.skillId() + ": " + o.name())
+                .collect(Collectors.joining("\n"));
+        String projectList = projects.stream()
+                .map(ProjectOption::label)
+                .collect(Collectors.joining("\n"));
+        String prompt = """
+                You extract structured data from a job description (JD).
+                Match required skills ONLY from this taxonomy (lines are "id: name"):
+                %s
+
+                Known projects (one per line, "Client · Project"):
+                %s
+
+                Return STRICT JSON and nothing else:
+                {"title":"<role/position title, or null>",
+                 "skills":[{"skillId":<id>,"proficiency":"NOVICE|FOUNDATIONAL|INTERMEDIATE|FUNCTIONAL_USER|ADVANCE|MASTERY"}],
+                 "unmatchedSkills":["<skill named in the JD that is NOT in the taxonomy above>"],
+                 "jobDescription":"<cleaned 2-4 sentence summary of the responsibilities>",
+                 "workMode":"ONSHORE|OFFSHORE|null",
+                 "allocationPercent":<integer 1-100 or null>,
+                 "startDate":"<ISO date like 2026-03-01, or null>",
+                 "endDate":"<ISO date, or null>",
+                 "projectName":"<the client/project this JD is for; copy from the known list if it matches, else as written, or null>"}
+                Do not invent skills: anything named in the JD but not in the taxonomy goes in unmatchedSkills.
+
+                Job description text:
+                %s
+                """.formatted(skillList, projectList, jdText);
+        Map<String, Object> body = Map.of(
+                "contents", List.of(Map.of("role", "user", "parts", List.of(Map.of("text", prompt)))),
+                "generationConfig", Map.of("responseMimeType", "application/json"));
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = rest.post()
+                    .uri(endpoint)
+                    .header("x-goog-api-key", apiKey)
+                    .header("Content-Type", "application/json")
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+            return parseJobDescription(extractText(response), taxonomy);
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (org.springframework.web.client.RestClientResponseException e) {
+            log.warn("Gemini JD extraction returned {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BadRequestException("AI job-description parsing is unavailable right now (upstream "
+                    + e.getStatusCode().value() + ")");
+        } catch (Exception e) {
+            log.warn("Gemini JD extraction call failed", e);
+            throw new BadRequestException("AI job-description parsing is unavailable right now");
+        }
+    }
+
+    /** Maps the model's JD JSON to the contract; unknown skill ids and bad enums degrade rather than fail. */
+    static JobDescriptionExtraction parseJobDescription(String json, List<SkillOption> taxonomy) {
+        Set<Long> validIds = taxonomy.stream().map(SkillOption::skillId).collect(Collectors.toSet());
+        try {
+            JsonNode root = MAPPER.readTree(json);
+            List<ExtractedSkill> skills = new ArrayList<>();
+            for (JsonNode s : root.path("skills")) {
+                long id = s.path("skillId").asLong(-1);
+                if (!validIds.contains(id)) {
+                    continue;
+                }
+                Proficiency proficiency;
+                try {
+                    proficiency = Proficiency.valueOf(s.path("proficiency").asText(""));
+                } catch (IllegalArgumentException e) {
+                    proficiency = Proficiency.INTERMEDIATE;
+                }
+                skills.add(new ExtractedSkill(id, proficiency, ""));
+            }
+            List<String> unmatched = new ArrayList<>();
+            for (JsonNode u : root.path("unmatchedSkills")) {
+                String name = textOrNull(u);
+                if (name != null) {
+                    unmatched.add(name);
+                }
+            }
+            WorkMode workMode;
+            try {
+                workMode = WorkMode.valueOf(root.path("workMode").asText(""));
+            } catch (IllegalArgumentException e) {
+                workMode = null;
+            }
+            Integer allocation = root.path("allocationPercent").isIntegralNumber()
+                    ? root.path("allocationPercent").asInt() : null;
+            if (allocation != null && (allocation < 1 || allocation > 100)) {
+                allocation = null;
+            }
+            return new JobDescriptionExtraction(
+                    textOrNull(root.path("title")), List.copyOf(skills), List.copyOf(unmatched),
+                    textOrNull(root.path("jobDescription")), workMode, allocation,
+                    dateOrNull(root.path("startDate")), dateOrNull(root.path("endDate")),
+                    textOrNull(root.path("projectName")));
+        } catch (JsonProcessingException e) {
+            throw new BadRequestException("AI job-description parsing returned an unexpected response");
         }
     }
 

@@ -1,6 +1,7 @@
 package com.softility.omivertex.service;
 
 import com.softility.omivertex.domain.Proficiency;
+import com.softility.omivertex.domain.WorkMode;
 
 import java.util.List;
 
@@ -32,6 +33,16 @@ public interface GeminiClient {
      */
     ResumeExtraction extractResume(String resumeText, List<SkillOption> taxonomy);
 
+    /**
+     * Structured extraction from a job description: a role title, skills matched
+     * against the supplied taxonomy, skill names NOT in the taxonomy (raw, never
+     * dropped), a cleaned description, work mode / allocation / dates when stated,
+     * and the project/client name read from the JD. Throws on upstream/parse
+     * failure (callers fall back).
+     */
+    JobDescriptionExtraction extractJobDescription(
+            String jdText, List<SkillOption> taxonomy, List<ProjectOption> projects);
+
     /** One prior chat turn; role is "user" or "model". */
     record Turn(String role, String content) {}
 
@@ -59,4 +70,14 @@ public interface GeminiClient {
     /** Full extraction result. Profile fields are null / empty when the résumé doesn't state them. */
     record ResumeExtraction(List<ExtractedSkill> skills, String experienceSummary,
                             String name, String phone, List<Employment> employment) {}
+
+    /** One existing project offered to the model for name alignment. */
+    record ProjectOption(Long id, String label) {}
+
+    /** Full JD extraction. Any field is null when the JD does not state it. */
+    record JobDescriptionExtraction(String title, List<ExtractedSkill> skills,
+                                    List<String> unmatchedSkills, String jobDescriptionText,
+                                    WorkMode workMode, Integer allocationPercent,
+                                    java.time.LocalDate startDate, java.time.LocalDate endDate,
+                                    String suggestedProjectName) {}
 }
