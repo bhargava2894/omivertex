@@ -9,12 +9,19 @@ import com.softility.omivertex.repository.ProjectRepository;
 import com.softility.omivertex.repository.SkillRepository;
 import com.softility.omivertex.repository.AssociateSkillRepository;
 import com.softility.omivertex.web.dto.*;
+import com.softility.omivertex.web.dto.PositionJdDtos;
+import com.softility.omivertex.web.dto.PositionJdDtos.ParsedJobDescriptionResponse;
+import com.softility.omivertex.web.dto.ResumeDtos;
 import com.softility.omivertex.web.error.BadRequestException;
 import com.softility.omivertex.web.error.ConflictException;
 import com.softility.omivertex.web.error.NotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,8 +36,13 @@ import java.util.stream.Collectors;
 @Transactional
 public class PositionService {
 
+    private static final Logger log = LoggerFactory.getLogger(PositionService.class);
+
     /** How many candidates the matcher returns. */
     static final int MAX_MATCH_CANDIDATES = 10;
+
+    /** AI extraction input cap — keeps prompts bounded for very long JDs. */
+    static final int MAX_AI_JD_CHARS = 20_000;
 
     private final OpenPositionRepository positions;
     private final ProjectRepository projects;
@@ -41,12 +53,17 @@ public class PositionService {
     private final SkillRepository skillRepository;
     private final AssociateSkillRepository associateSkillRepository;
     private final PositionSkillRepository positionSkills;
+    private final ResumeTextExtractor textExtractor;
+    private final ResumeSkillMatcher skillMatcher;
+    private final GeminiClient geminiClient;
 
     public PositionService(OpenPositionRepository positions, ProjectRepository projects,
                            AssociateRepository associates, AllocationRepository allocations,
                            AllocationService allocationService, AuditService auditService,
                            SkillRepository skillRepository, AssociateSkillRepository associateSkillRepository,
-                           PositionSkillRepository positionSkills) {
+                           PositionSkillRepository positionSkills,
+                           ResumeTextExtractor textExtractor, ResumeSkillMatcher skillMatcher,
+                           GeminiClient geminiClient) {
         this.positions = positions;
         this.projects = projects;
         this.associates = associates;
@@ -56,6 +73,9 @@ public class PositionService {
         this.skillRepository = skillRepository;
         this.associateSkillRepository = associateSkillRepository;
         this.positionSkills = positionSkills;
+        this.textExtractor = textExtractor;
+        this.skillMatcher = skillMatcher;
+        this.geminiClient = geminiClient;
     }
 
     @Transactional(readOnly = true)
@@ -72,6 +92,66 @@ public class PositionService {
     @Transactional(readOnly = true)
     public PositionResponse get(Long id) {
         return PositionResponse.from(find(id), positionSkills.findByPositionId(id));
+    }
+
+    @Transactional(readOnly = true)
+    public ParsedJobDescriptionResponse parseJobDescription(MultipartFile file) {
+        UploadedDocuments.requirePdfOrDocx(file);
+        try {
+            byte[] bytes = file.getBytes();
+            String text = textExtractor.extractText(bytes, file.getContentType(), file.getOriginalFilename());
+            boolean textExtracted = text != null && !text.isBlank();
+
+            List<GeminiClient.ProjectOption> projectOptions = projects.findAll().stream()
+                    .map(p -> new GeminiClient.ProjectOption(p.getId(),
+                            p.getClient().getName() + " · " + p.getName()))
+                    .toList();
+
+            if (textExtracted && geminiClient.isConfigured()) {
+                try {
+                    return aiParseJd(text, projectOptions);
+                } catch (Exception e) {
+                    log.warn("AI JD extraction failed — falling back to keyword matching", e);
+                }
+            }
+
+            List<PositionJdDtos.JdSuggestedSkill> skills = skillMatcher.matchSkills(text).stream()
+                    .map(s -> new PositionJdDtos.JdSuggestedSkill(s.getId(), s.getName(),
+                            s.getCategory().getName(), null, true))
+                    .toList();
+            return new ParsedJobDescriptionResponse(null, skills, List.of(), null, null, null,
+                    null, null, null, null, textExtracted, ResumeDtos.SuggestionSource.KEYWORD);
+        } catch (IOException e) {
+            throw new BadRequestException("Failed to read upload file: " + e.getMessage());
+        }
+    }
+
+    private ParsedJobDescriptionResponse aiParseJd(String text,
+                                                   List<GeminiClient.ProjectOption> projectOptions) {
+        Map<Long, Skill> byId = skillRepository.findAll().stream()
+                .collect(Collectors.toMap(Skill::getId, s -> s));
+        List<GeminiClient.SkillOption> taxonomy = byId.values().stream()
+                .map(s -> new GeminiClient.SkillOption(s.getId(), s.getName()))
+                .toList();
+        String capped = text.length() > MAX_AI_JD_CHARS ? text.substring(0, MAX_AI_JD_CHARS) : text;
+        GeminiClient.JobDescriptionExtraction ext =
+                geminiClient.extractJobDescription(capped, taxonomy, projectOptions);
+
+        List<PositionJdDtos.JdSuggestedSkill> skills = ext.skills().stream()
+                .filter(s -> byId.containsKey(s.skillId()))
+                .map(s -> {
+                    Skill skill = byId.get(s.skillId());
+                    return new PositionJdDtos.JdSuggestedSkill(skill.getId(), skill.getName(),
+                            skill.getCategory().getName(), s.proficiency(), true);
+                })
+                .toList();
+        List<String> unmatched = ext.unmatchedSkills() == null ? List.of() : ext.unmatchedSkills();
+        Long suggestedProjectId = matchProjectId(ext.suggestedProjectName(), projectOptions);
+
+        return new ParsedJobDescriptionResponse(ext.title(), skills, unmatched,
+                ext.jobDescriptionText(), ext.workMode(), ext.allocationPercent(),
+                ext.startDate(), ext.endDate(), suggestedProjectId, ext.suggestedProjectName(),
+                true, ResumeDtos.SuggestionSource.AI);
     }
 
     public PositionResponse create(PositionRequest request) {
