@@ -83,8 +83,10 @@ Modify [GeminiClient.java](file:///Users/bhargavasista/omivertex/src/main/java/c
       Integer allocationPercent,        // null = not stated
       java.time.LocalDate startDate,    // null = not stated
       java.time.LocalDate endDate,      // null = not stated
-      Long suggestedProjectId,          // null when no confident match
-      String suggestedProjectName) {}   // raw name read from the JD, for display
+      String suggestedProjectName) {}   // raw project/client name read from the JD
+
+  // The server resolves suggestedProjectName -> a real projectId (fuzzy match,
+  // testable Java); the model returns only the name it read.
   ```
 - Implement `extractJobDescription` in the real Gemini implementation (structured-output
   prompt, same JSON-parse discipline as `extractResume`; throws on upstream/parse failure
