@@ -380,6 +380,32 @@ class AssociateApiTest extends ApiTestBase {
     }
 
     @Test
+    void update_ignoresEmploymentHistory_createOnlyBySpec() throws Exception {
+        String createBody = """
+                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                 "workMode":"OFFSHORE",
+                 "employmentHistory":[{"company":"Globex","title":"Senior Engineer","startDate":"2021-03-01","endDate":null}]}""";
+        mockMvc.perform(post("/api/v1/associates")
+                        .contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated());
+        Long id = associateRepository.findAll().get(0).getId();
+
+        String updateBody = """
+                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                 "workMode":"OFFSHORE",
+                 "employmentHistory":[{"company":"Hooli","title":"CTO","startDate":null,"endDate":null}]}""";
+        mockMvc.perform(put("/api/v1/associates/" + id)
+                        .contentType(MediaType.APPLICATION_JSON).content(updateBody))
+                .andExpect(status().isOk())
+                // the response reflects PERSISTED history, not the ignored input
+                .andExpect(jsonPath("$.employmentHistory[0].company").value("Globex"));
+
+        assertThat(employmentHistoryRepository.findByAssociateIdOrderBySortOrderAsc(id))
+                .extracting(com.softility.omivertex.domain.EmploymentHistory::getCompany)
+                .containsExactly("Globex"); // unchanged — Hooli was ignored
+    }
+
+    @Test
     void create_withoutHistory_unchanged() throws Exception {
         String body = """
                 {"name":"Rahul Verma","email":"rahul@softility.com","company":"Softility",

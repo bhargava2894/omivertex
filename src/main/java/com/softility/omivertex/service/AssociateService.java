@@ -157,7 +157,9 @@ public class AssociateService {
         associate = associateRepository.save(associate);
         auditService.record("CREATED", "Associate", associate.getId(), "Created associate " + associate.getName()
                 + (request.employmentHistory() == null || request.employmentHistory().isEmpty() ? ""
-                        : " with " + request.employmentHistory().size() + " previous employers"));
+                        : " with " + request.employmentHistory().size()
+                                + (request.employmentHistory().size() == 1
+                                        ? " previous employer" : " previous employers")));
         if (request.skills() != null) {
             replaceSkills(associate.getId(), new SkillAssignmentRequest(request.skills()));
         }
@@ -191,6 +193,8 @@ public class AssociateService {
             replaceSkills(id, new SkillAssignmentRequest(request.skills()));
         }
         exitInlineIfPast(associate);
+        // employmentHistory is deliberately NOT applied here — create-only per the
+        // 2026-07-18 spec; post-create editing is a tracked follow-up.
         return get(id);
     }
 
