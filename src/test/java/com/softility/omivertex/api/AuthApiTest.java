@@ -104,7 +104,7 @@ class AuthApiTest {
         mockMvc.perform(post("/api/v1/clients").session(session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Viewer Client"}"""))
+                                {"name":"Viewer Client","clientId":"CLI-VIEWER"}"""))
                 .andExpect(status().isForbidden());
     }
 
@@ -114,7 +114,7 @@ class AuthApiTest {
         mockMvc.perform(post("/api/v1/clients").session(session)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Admin Client %s"}""".formatted(System.nanoTime())))
+                                {"name":"Admin Client %s","clientId":"CLI-ADMIN-%s"}""".formatted(System.nanoTime(), System.nanoTime())))
                 .andExpect(status().isCreated());
     }
 

@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 
 public record ClientRequest(
         @NotBlank(message = "Name is required") String name,
-        String clientId,
+        @NotBlank(message = "Client ID is required") String clientId,
         String industry,
         String location,
         EntityStatus status) {

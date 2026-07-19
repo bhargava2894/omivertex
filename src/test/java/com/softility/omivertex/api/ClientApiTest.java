@@ -15,7 +15,7 @@ class ClientApiTest extends ApiTestBase {
         mockMvc.perform(post("/api/v1/clients")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Acme Corp","industry":"Retail","location":"Chicago"}"""))
+                                {"name":"Acme Corp","clientId":"CLI-001","industry":"Retail","location":"Chicago"}"""))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.name").value("Acme Corp"))
@@ -28,9 +28,19 @@ class ClientApiTest extends ApiTestBase {
         mockMvc.perform(post("/api/v1/clients")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"","industry":"Retail"}"""))
+                                {"name":"","clientId":"CLI-001","industry":"Retail"}"""))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.name").exists());
+    }
+
+    @Test
+    void createClient_withBlankClientId_returns400WithFieldError() throws Exception {
+        mockMvc.perform(post("/api/v1/clients")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Acme Corp","clientId":"","industry":"Retail"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.clientId").exists());
     }
 
     @Test
@@ -39,7 +49,7 @@ class ClientApiTest extends ApiTestBase {
         mockMvc.perform(post("/api/v1/clients")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"acme corp"}"""))
+                                {"name":"acme corp","clientId":"CLI-002"}"""))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").exists());
     }
@@ -97,7 +107,7 @@ class ClientApiTest extends ApiTestBase {
         mockMvc.perform(put("/api/v1/clients/" + saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Acme Corporation","industry":"Retail","location":"Chicago","status":"INACTIVE"}"""))
+                                {"name":"Acme Corporation","clientId":"CLI-001","industry":"Retail","location":"Chicago","status":"INACTIVE"}"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Acme Corporation"))
                 .andExpect(jsonPath("$.status").value("INACTIVE"));

@@ -18,7 +18,7 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(post("/api/v1/associates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-001","company":"Softility",
                                  "location":"Hyderabad","workMode":"OFFSHORE","designation":"Senior Consultant"}"""))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
@@ -29,11 +29,22 @@ class AssociateApiTest extends ApiTestBase {
     }
 
     @Test
+    void createAssociate_blankEmployeeId_returns400WithFieldError() throws Exception {
+        mockMvc.perform(post("/api/v1/associates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"",
+                                 "company":"Softility","workMode":"OFFSHORE"}"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.employeeId").exists());
+    }
+
+    @Test
     void createAssociate_invalidEmail_returns400() throws Exception {
         mockMvc.perform(post("/api/v1/associates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Priya Sharma","email":"not-an-email","company":"Softility","workMode":"OFFSHORE"}"""))
+                                {"name":"Priya Sharma","email":"not-an-email","employeeId":"EMP-001","company":"Softility","workMode":"OFFSHORE"}"""))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.email").exists());
     }
@@ -44,7 +55,7 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(post("/api/v1/associates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Other","email":"PRIYA@softility.com","company":"Softility","workMode":"ONSHORE"}"""))
+                                {"name":"Other","email":"PRIYA@softility.com","employeeId":"EMP-002","company":"Softility","workMode":"ONSHORE"}"""))
                 .andExpect(status().isConflict());
     }
 
@@ -112,7 +123,7 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(post("/api/v1/associates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-001","company":"Softility",
                                  "workMode":"OFFSHORE","skills":[
                                    {"skillId":%d,"proficiency":"INTERMEDIATE","primary":true},
                                    {"skillId":%d,"proficiency":"ADVANCE","primary":false}]}"""
@@ -136,7 +147,7 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(post("/api/v1/associates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-002","company":"Softility",
                                  "workMode":"OFFSHORE","skills":[
                                    {"skillId":%d,"proficiency":"ADVANCE","primary":true},
                                    {"skillId":%d,"proficiency":"ADVANCE","primary":true}]}"""
@@ -217,7 +228,7 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(put("/api/v1/associates/" + dev.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-001","company":"Softility",
                                  "workMode":"OFFSHORE","exitReason":"RESIGNED",
                                  "resignationDate":"%s","lastWorkingDay":"%s"}"""
                                 .formatted(java.time.LocalDate.now(), java.time.LocalDate.now().plusDays(30))))
@@ -232,7 +243,7 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(put("/api/v1/associates/" + dev.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-001","company":"Softility",
                                  "workMode":"OFFSHORE","exitReason":"RESIGNED"}"""))
                 .andExpect(status().isBadRequest());
     }
@@ -243,7 +254,7 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(put("/api/v1/associates/" + dev.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-001","company":"Softility",
                                  "workMode":"OFFSHORE","exitReason":"RESIGNED",
                                  "resignationDate":"%s","lastWorkingDay":"%s"}"""
                                 .formatted(java.time.LocalDate.now().plusDays(10), java.time.LocalDate.now())))
@@ -268,7 +279,7 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(post("/api/v1/associates")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Meena Pillai","email":"meena@softility.com","company":"Softility",
+                                {"name":"Meena Pillai","email":"meena@softility.com","employeeId":"EMP-001","company":"Softility",
                                  "workMode":"ONSHORE","joinedDate":"2026-01-15"}"""))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.joinedDate").value("2026-01-15"));
@@ -309,7 +320,7 @@ class AssociateApiTest extends ApiTestBase {
         mockMvc.perform(put("/api/v1/associates/" + saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-001","company":"Softility",
                                  "location":"Dallas","workMode":"ONSHORE","designation":"Lead Consultant"}"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.workMode").value("ONSHORE"))
@@ -386,7 +397,7 @@ class AssociateApiTest extends ApiTestBase {
     @Test
     void create_withPhoneAndEmploymentHistory_persistsAndEchoes() throws Exception {
         String body = """
-                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-001","company":"Softility",
                  "workMode":"OFFSHORE","phone":"+91 98765 43210",
                  "employmentHistory":[
                    {"company":"Globex","title":"Senior Engineer","startDate":"2021-03-01","endDate":null},
@@ -408,7 +419,7 @@ class AssociateApiTest extends ApiTestBase {
     @Test
     void update_ignoresEmploymentHistory_createOnlyBySpec() throws Exception {
         String createBody = """
-                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-002","company":"Softility",
                  "workMode":"OFFSHORE",
                  "employmentHistory":[{"company":"Globex","title":"Senior Engineer","startDate":"2021-03-01","endDate":null}]}""";
         mockMvc.perform(post("/api/v1/associates")
@@ -417,7 +428,7 @@ class AssociateApiTest extends ApiTestBase {
         Long id = associateRepository.findAll().get(0).getId();
 
         String updateBody = """
-                {"name":"Priya Sharma","email":"priya@softility.com","company":"Softility",
+                {"name":"Priya Sharma","email":"priya@softility.com","employeeId":"EMP-002","company":"Softility",
                  "workMode":"OFFSHORE",
                  "employmentHistory":[{"company":"Hooli","title":"CTO","startDate":null,"endDate":null}]}""";
         mockMvc.perform(put("/api/v1/associates/" + id)
@@ -434,7 +445,7 @@ class AssociateApiTest extends ApiTestBase {
     @Test
     void create_withoutHistory_unchanged() throws Exception {
         String body = """
-                {"name":"Rahul Verma","email":"rahul@softility.com","company":"Softility",
+                {"name":"Rahul Verma","email":"rahul@softility.com","employeeId":"EMP-003","company":"Softility",
                  "workMode":"ONSHORE"}""";
 
         mockMvc.perform(post("/api/v1/associates")

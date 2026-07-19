@@ -140,7 +140,7 @@ export default function Clients({ showToast, canEdit }) {
                   className={errors.name ? 'invalid' : ''}
                 />
               </Field>
-              <Field label="Client ID" error={errors.clientId}>
+              <Field label="Client ID" required error={errors.clientId}>
                 <input
                   value={editing.form.clientId}
                   onChange={(e) => set('clientId', e.target.value)}

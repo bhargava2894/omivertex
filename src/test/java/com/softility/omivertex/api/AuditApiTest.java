@@ -16,7 +16,7 @@ class AuditApiTest extends ApiTestBase {
         mockMvc.perform(post("/api/v1/clients")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Acme Corp"}"""))
+                                {"name":"Acme Corp","clientId":"CLI-001"}"""))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/v1/admin/audit"))
@@ -34,7 +34,7 @@ class AuditApiTest extends ApiTestBase {
         mockMvc.perform(put("/api/v1/clients/" + saved.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Acme Corporation"}"""))
+                                {"name":"Acme Corporation","clientId":"CLI-001"}"""))
                 .andExpect(status().isOk());
         mockMvc.perform(delete("/api/v1/clients/" + saved.getId()))
                 .andExpect(status().isNoContent());

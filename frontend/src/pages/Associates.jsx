@@ -525,7 +525,7 @@ export default function Associates({ showToast, canEdit }) {
                   className={errors.email ? 'invalid' : ''}
                 />
               </Field>
-              <Field label="Employee ID" error={errors.employeeId}>
+              <Field label="Employee ID" required error={errors.employeeId}>
                 <input
                   value={editing.form.employeeId}
                   onChange={(e) => set('employeeId', e.target.value)}
