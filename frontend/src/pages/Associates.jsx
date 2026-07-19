@@ -18,6 +18,7 @@ const EMPTY = {
   location: '',
   workMode: 'ONSHORE',
   designation: '',
+  phone: '',
   joinedDate: '',
   resignationDate: '',
   lastWorkingDay: '',
@@ -128,6 +129,9 @@ export default function Associates({ showToast, canEdit }) {
   const [parsingResume, setParsingResume] = useState(false);
   const [resumeNotice, setResumeNotice] = useState('');
   const [drag, setDrag] = useState(false);
+  // résumé-extracted previous (external) employers — reviewable before create; never sent on update
+  const [extractedHistory, setExtractedHistory] = useState([]);
+  const [historyNote, setHistoryNote] = useState('');
 
   // server returns a paged envelope; search + filtering happen server-side now
   const rows = data?.content || [];
@@ -145,6 +149,8 @@ export default function Associates({ showToast, canEdit }) {
     setResumeFile(null);
     setParsingResume(false);
     setResumeNotice('');
+    setExtractedHistory([]);
+    setHistoryNote('');
   };
 
   const handleResumeSelect = async (file) => {
@@ -164,6 +170,27 @@ export default function Associates({ showToast, canEdit }) {
 
     try {
       const data = await api.parseResume(file);
+
+      if (data.name || data.phone || (data.employmentHistory || []).length > 0) {
+        setEditing((prev) => ({
+          ...prev,
+          form: {
+            ...prev.form,
+            // prefill only when empty — never clobber what the admin already typed
+            name: prev.form.name || data.name || prev.form.name,
+            phone: prev.form.phone || data.phone || prev.form.phone,
+          },
+        }));
+        const company = editing.form.company || 'Softility';
+        const external = (data.employmentHistory || []).filter(
+          (e) => !e.company || e.company.trim().toLowerCase() !== company.trim().toLowerCase()
+        );
+        if (external.length < (data.employmentHistory || []).length) {
+          setHistoryNote(`${company} entry omitted — internal history comes from allocations.`);
+        }
+        setExtractedHistory(external);
+      }
+
       if (data.textExtracted && data.suggestedSkills?.length > 0) {
         const mergedSkills = { ...editing.form.skills };
         let addedCount = 0;
@@ -216,6 +243,7 @@ export default function Associates({ showToast, canEdit }) {
         location: row.location || '',
         workMode: row.workMode,
         designation: row.designation || '',
+        phone: row.phone || '',
         joinedDate: row.joinedDate || '',
         resignationDate: row.resignationDate || '',
         lastWorkingDay: row.lastWorkingDay || '',
@@ -242,6 +270,7 @@ export default function Associates({ showToast, canEdit }) {
       resignationDate: rest.resignationDate || null,
       lastWorkingDay: rest.lastWorkingDay || null,
       exitReason: rest.exitReason || null,
+      phone: rest.phone || null,
       skills: Object.entries(skills || {})
         .filter(([, v]) => v && v.proficiency)
         .map(([skillId, v]) => ({
@@ -250,6 +279,17 @@ export default function Associates({ showToast, canEdit }) {
           primary: !!v.primary,
         })),
     };
+    if (!editing.id) {
+      // employment history is create-only — never sent on update
+      payload.employmentHistory = extractedHistory
+        .filter((e) => e.company && e.company.trim())
+        .map((e) => ({
+          company: e.company.trim(),
+          title: e.title || null,
+          startDate: e.startDate || null,
+          endDate: e.endDate || null,
+        }));
+    }
     try {
       if (editing.id) {
         await api.update('associates', editing.id, payload);
@@ -486,6 +526,9 @@ export default function Associates({ showToast, canEdit }) {
                   onChange={(e) => set('designation', e.target.value)}
                 />
               </Field>
+              <Field label="Phone" error={errors.phone}>
+                <input value={editing.form.phone} onChange={(e) => set('phone', e.target.value)} />
+              </Field>
               <Field label="Joined date" error={errors.joinedDate}>
                 <input
                   type="date"
@@ -542,74 +585,146 @@ export default function Associates({ showToast, canEdit }) {
                 />
               </Field>
               {!editing.id && (
-                <Field label="Résumé (PDF/Word)" error={errors.resume} full>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label
-                      className={`dropzone ${drag ? 'drag' : ''}`}
-                      style={{
-                        padding: '24px 16px',
-                        border: '2px dashed var(--color-border)',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        textAlign: 'center',
-                        backgroundColor: 'var(--color-bg-card)',
-                        transition: 'all 0.2s ease',
-                        display: 'block',
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setDrag(true);
-                      }}
-                      onDragLeave={() => setDrag(false)}
-                      onDrop={async (e) => {
-                        e.preventDefault();
-                        setDrag(false);
-                        handleResumeSelect(e.dataTransfer.files[0]);
-                      }}
-                    >
-                      <Icon
-                        name="upload"
-                        size={24}
-                        style={{ marginBottom: '8px', color: 'var(--color-primary)' }}
-                      />
-                      <div style={{ fontSize: '14px', color: 'var(--color-foreground)' }}>
-                        {parsingResume ? (
-                          <strong>Parsing résumé...</strong>
-                        ) : resumeFile ? (
-                          <strong>Selected: {resumeFile.name}</strong>
-                        ) : (
-                          <strong>Click to select a résumé</strong>
-                        )}
-                        {!parsingResume && !resumeFile && ' or drag a PDF/Word file here'}
-                      </div>
-                      <input
-                        type="file"
-                        accept=".pdf,.docx"
-                        style={{ display: 'none' }}
-                        onChange={async (e) => {
-                          if (e.target.files[0]) {
-                            handleResumeSelect(e.target.files[0]);
-                          }
-                        }}
-                      />
-                    </label>
-                    {resumeNotice && (
-                      <div
+                <>
+                  <Field label="Résumé (PDF/Word)" error={errors.resume} full>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label
+                        className={`dropzone ${drag ? 'drag' : ''}`}
                         style={{
-                          fontSize: '13px',
-                          color: 'var(--color-info-fg, #0284c7)',
-                          backgroundColor: 'var(--color-info-bg, #f0f9ff)',
-                          padding: '10px 14px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--color-info-border, #e0f2fe)',
-                          lineHeight: '1.4',
+                          padding: '24px 16px',
+                          border: '2px dashed var(--color-border)',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          backgroundColor: 'var(--color-bg-card)',
+                          transition: 'all 0.2s ease',
+                          display: 'block',
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDrag(true);
+                        }}
+                        onDragLeave={() => setDrag(false)}
+                        onDrop={async (e) => {
+                          e.preventDefault();
+                          setDrag(false);
+                          handleResumeSelect(e.dataTransfer.files[0]);
                         }}
                       >
-                        {resumeNotice}
+                        <Icon
+                          name="upload"
+                          size={24}
+                          style={{ marginBottom: '8px', color: 'var(--color-primary)' }}
+                        />
+                        <div style={{ fontSize: '14px', color: 'var(--color-foreground)' }}>
+                          {parsingResume ? (
+                            <strong>Parsing résumé...</strong>
+                          ) : resumeFile ? (
+                            <strong>Selected: {resumeFile.name}</strong>
+                          ) : (
+                            <strong>Click to select a résumé</strong>
+                          )}
+                          {!parsingResume && !resumeFile && ' or drag a PDF/Word file here'}
+                        </div>
+                        <input
+                          type="file"
+                          accept=".pdf,.docx"
+                          style={{ display: 'none' }}
+                          onChange={async (e) => {
+                            if (e.target.files[0]) {
+                              handleResumeSelect(e.target.files[0]);
+                            }
+                          }}
+                        />
+                      </label>
+                      {resumeNotice && (
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            color: 'var(--color-info-fg, #0284c7)',
+                            backgroundColor: 'var(--color-info-bg, #f0f9ff)',
+                            padding: '10px 14px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-info-border, #e0f2fe)',
+                            lineHeight: '1.4',
+                          }}
+                        >
+                          {resumeNotice}
+                        </div>
+                      )}
+                    </div>
+                  </Field>
+                  {extractedHistory.length > 0 && (
+                    <Field label="Previous employment (from résumé — review before saving)" full>
+                      {historyNote && <p className="stat-hint">{historyNote}</p>}
+                      <div style={{ display: 'grid', gap: '6px' }}>
+                        {extractedHistory.map((e, i) => (
+                          <div
+                            key={i}
+                            style={{ display: 'flex', gap: '6px', alignItems: 'center' }}
+                          >
+                            <input
+                              style={{ flex: 2 }}
+                              value={e.company}
+                              placeholder="Company"
+                              onChange={(ev) =>
+                                setExtractedHistory((h) =>
+                                  h.map((row, j) =>
+                                    j === i ? { ...row, company: ev.target.value } : row
+                                  )
+                                )
+                              }
+                            />
+                            <input
+                              style={{ flex: 2 }}
+                              value={e.title || ''}
+                              placeholder="Title"
+                              onChange={(ev) =>
+                                setExtractedHistory((h) =>
+                                  h.map((row, j) =>
+                                    j === i ? { ...row, title: ev.target.value } : row
+                                  )
+                                )
+                              }
+                            />
+                            <input
+                              type="date"
+                              value={e.startDate || ''}
+                              onChange={(ev) =>
+                                setExtractedHistory((h) =>
+                                  h.map((row, j) =>
+                                    j === i ? { ...row, startDate: ev.target.value } : row
+                                  )
+                                )
+                              }
+                            />
+                            <input
+                              type="date"
+                              value={e.endDate || ''}
+                              onChange={(ev) =>
+                                setExtractedHistory((h) =>
+                                  h.map((row, j) =>
+                                    j === i ? { ...row, endDate: ev.target.value } : row
+                                  )
+                                )
+                              }
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              aria-label={`Remove ${e.company}`}
+                              onClick={() =>
+                                setExtractedHistory((h) => h.filter((_, j) => j !== i))
+                              }
+                            >
+                              <Icon name="x" size={14} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    )}
-                  </div>
-                </Field>
+                    </Field>
+                  )}
+                </>
               )}
               <Field label="Skills (★ marks the primary skill)" full>
                 <div
