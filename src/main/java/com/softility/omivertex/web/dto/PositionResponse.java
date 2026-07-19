@@ -24,7 +24,8 @@ public record PositionResponse(
         int headcount,
         LocalDate startDate,
         LocalDate endDate,
-        PositionStatus status) {
+        PositionStatus status,
+        String jobDescription) {
 
     /** One demanded skill on the position; required=false means nice-to-have. */
     public record SkillLine(Long skillId, String skillName, String category,
@@ -46,6 +47,7 @@ public record PositionResponse(
                 position.getAllocationPercent(),
                 position.getHeadcount(),
                 position.getStartDate(), position.getEndDate(),
-                position.getStatus());
+                position.getStatus(),
+                position.getJobDescription());
     }
 }

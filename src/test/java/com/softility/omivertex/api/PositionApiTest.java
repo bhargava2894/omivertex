@@ -405,4 +405,41 @@ class PositionApiTest extends ApiTestBase {
                 .andExpect(jsonPath("$[1].fullMatch").value(false))
                 .andExpect(jsonPath("$[2].fullMatch").value(false));
     }
+
+    @Test
+    void createPosition_withJobDescription_savesAndReturnsIt() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+
+        mockMvc.perform(post("/api/v1/positions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Senior Java Developer","projectId":%d,"requiredSkill":"Java",
+                                 "billable":true,"allocationPercent":100,"startDate":"%s",
+                                 "jobDescription":"Need a Java developer with AWS experience"}"""
+                                .formatted(proj.getId(), LocalDate.now())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.jobDescription").value("Need a Java developer with AWS experience"));
+    }
+
+    @Test
+    void updatePosition_updatesJobDescription() throws Exception {
+        var acme = client("Acme Corp");
+        var proj = project("ACM-100", "Storefront Revamp", acme);
+        var created = mockMvc.perform(post("/api/v1/positions").contentType(MediaType.APPLICATION_JSON)
+                        .content(positionJson(proj.getId())))
+                .andExpect(status().isCreated()).andReturn();
+        long id = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(put("/api/v1/positions/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Lead Java Developer","projectId":%d,"requiredSkill":"Java",
+                                 "billable":true,"allocationPercent":50,"status":"OPEN",
+                                 "jobDescription":"Updated description"}"""
+                                .formatted(proj.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.jobDescription").value("Updated description"));
+    }
 }

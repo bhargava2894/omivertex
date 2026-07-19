@@ -596,7 +596,7 @@ td.actions { text-align: right; white-space: nowrap; }
 .form-grid .full { grid-column: 1 / -1; }
 .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
 .field label .req { color: var(--color-destructive); }
-.field input, .field select {
+.field input, .field select, .field textarea {
   width: 100%;
   padding: 9px 12px;
   border: 1px solid var(--color-border);
@@ -606,9 +606,10 @@ td.actions { text-align: right; white-space: nowrap; }
   color: var(--color-foreground);
   transition: border-color 0.18s var(--ease);
 }
-.field input:focus, .field select:focus { outline: 2px solid var(--color-primary); outline-offset: -1px; }
+.field textarea { resize: vertical; min-height: 100px; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--color-primary); outline-offset: -1px; }
 .field .error { color: var(--color-destructive); font-size: 12.5px; margin-top: 4px; }
-.field input.invalid, .field select.invalid { border-color: var(--color-destructive); }
+.field input.invalid, .field select.invalid, .field textarea.invalid { border-color: var(--color-destructive); }
 .checkbox-field { display: flex; align-items: center; gap: 9px; padding-top: 8px; }
 .checkbox-field input { width: 17px; height: 17px; accent-color: var(--color-primary); }
 .checkbox-field label { font-size: 14px; font-weight: 500; margin: 0; }

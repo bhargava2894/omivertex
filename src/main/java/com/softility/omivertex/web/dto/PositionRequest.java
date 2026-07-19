@@ -26,7 +26,8 @@ public record PositionRequest(
         Integer headcount,
         LocalDate startDate,
         LocalDate endDate,
-        PositionStatus status) {
+        PositionStatus status,
+        String jobDescription) {
 
     /** One demanded skill: must-have (required=true/null) or nice-to-have. */
     public record SkillReq(

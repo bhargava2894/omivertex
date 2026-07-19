@@ -254,6 +254,9 @@ public class AssistantContextBuilder {
                     if (!nice.isEmpty()) {
                         sb.append(" · nice-to-have: ").append(nice);
                     }
+                    if (p.getJobDescription() != null && !p.getJobDescription().isBlank()) {
+                        sb.append(" · description: ").append(p.getJobDescription().trim());
+                    }
                     return sb.toString();
                 })
                 .toList();

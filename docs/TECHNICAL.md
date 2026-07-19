@@ -98,7 +98,7 @@ Client 1 ──── * Project 1 ──── * Allocation * ──── 1 Ass
 | **Skill** | name, category FK | `(name, category_id)` unique |
 | **AssociateSkill** | associate FK, skill FK, proficiency (NOVICE, FOUNDATIONAL, INTERMEDIATE, FUNCTIONAL_USER, ADVANCE, MASTERY) | `(associate_id, skill_id)` unique |
 | **Certification** | associate FK, name, authority, credentialId, issuedDate, expiryDate | — |
-| **OpenPosition** | title, project FK, billable, allocationPercent, startDate, endDate, workMode, status (OPEN/FILLED/CANCELLED) | endDate ≥ startDate → else 400 |
+| **OpenPosition** | title, project FK, billable, allocationPercent, startDate, endDate, workMode, status (OPEN/FILLED/CANCELLED), requiredSkill, jobDescription | endDate ≥ startDate → else 400 |
 | **PositionSkill** | position FK, skill FK, minProficiency, required (bool) | `(position_id, skill_id)` unique |
 | **ProfileChangeRequest** | associate FK, type (SKILLS/RESUME), status (PENDING/APPROVED/REJECTED), skillsPayload (text), resumeFilename, resumeContentType, resumeByteSize, resumeContent (blob), note, decidedBy, decidedAt, createdAt | — |
 | **Resume** | associateId, filename, contentType, byteSize, content (blob, lazy-loaded), uploadedAt | `associate_id` unique — one résumé per associate, replace-on-upload |

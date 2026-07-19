@@ -43,6 +43,9 @@ public class OpenPosition {
     @Column(nullable = false)
     private int headcount = 1;
 
+    @Column(columnDefinition = "text")
+    private String jobDescription;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -69,5 +72,7 @@ public class OpenPosition {
     public void setStatus(PositionStatus status) { this.status = status; }
     public int getHeadcount() { return headcount; }
     public void setHeadcount(int headcount) { this.headcount = headcount; }
+    public String getJobDescription() { return jobDescription; }
+    public void setJobDescription(String jobDescription) { this.jobDescription = jobDescription; }
     public Instant getCreatedAt() { return createdAt; }
 }

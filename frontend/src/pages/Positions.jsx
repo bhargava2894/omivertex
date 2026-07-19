@@ -22,6 +22,7 @@ const EMPTY = {
   startDate: '',
   endDate: '',
   status: 'OPEN',
+  jobDescription: '',
 };
 
 export default function Positions({ showToast, canEdit }) {
@@ -62,6 +63,7 @@ export default function Positions({ showToast, canEdit }) {
         startDate: row.startDate || '',
         endDate: row.endDate || '',
         status: row.status,
+        jobDescription: row.jobDescription || '',
       },
     });
   };
@@ -96,6 +98,7 @@ export default function Positions({ showToast, canEdit }) {
       headcount: Number(f.headcount || 1),
       startDate: f.startDate || null,
       endDate: f.endDate || null,
+      jobDescription: f.jobDescription || null,
     };
     try {
       if (editing.id) await api.update('positions', editing.id, payload);
@@ -191,6 +194,22 @@ export default function Positions({ showToast, canEdit }) {
                 <div className="cell-sub">
                   {r.projectName} · {r.clientName}
                 </div>
+                {r.jobDescription && (
+                  <div
+                    className="cell-sub"
+                    style={{
+                      marginTop: '4px',
+                      fontStyle: 'italic',
+                      maxWidth: '300px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                    title={r.jobDescription}
+                  >
+                    {r.jobDescription}
+                  </div>
+                )}
               </div>
             ),
           },
@@ -292,6 +311,15 @@ export default function Positions({ showToast, canEdit }) {
                   onChange={(v) => set('projectId', v)}
                   placeholder="Search company or project…"
                   invalid={!!errors.projectId}
+                />
+              </Field>
+              <Field label="Job Description" error={errors.jobDescription} full>
+                <textarea
+                  value={editing.form.jobDescription}
+                  onChange={(e) => set('jobDescription', e.target.value)}
+                  placeholder="Describe the responsibilities, project context, and daily tasks..."
+                  rows={4}
+                  className={errors.jobDescription ? 'invalid' : ''}
                 />
               </Field>
               <Field label="Skill requirements" error={errors.skills} full>
@@ -459,6 +487,22 @@ export default function Positions({ showToast, canEdit }) {
               {matching.position.workMode ? ` · ${matching.position.workMode.toLowerCase()}` : ''} ·{' '}
               {matching.position.allocationPercent}%
             </p>
+            {matching.position.jobDescription && (
+              <div
+                className="cell-sub"
+                style={{
+                  margin: '8px 0 16px 0',
+                  padding: '10px 12px',
+                  background: 'var(--color-muted)',
+                  borderRadius: 'var(--radius-sm)',
+                  borderLeft: '3px solid var(--color-primary)',
+                  fontStyle: 'italic',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {matching.position.jobDescription}
+              </div>
+            )}
             {matching.candidates == null ? (
               <div className="skeleton-row" />
             ) : matching.candidates.length === 0 ? (
